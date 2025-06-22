@@ -104,7 +104,7 @@ function App() {
 
 			{/* Comparison Section Component */}
 			<ComparisonSection isDarkMode={isDarkMode} />
-			<SeamlessIntegrations isDarkMode={isDarkMode} />
+			{/* <SeamlessIntegrations isDarkMode={isDarkMode} /> */}
 
 			{/* FAQ Section Component */}
 			<FAQSection isDarkMode={isDarkMode} />
@@ -125,7 +125,7 @@ function Navbar({ toggleDarkMode, isDarkMode }) {
 				{/* Logo - Updated to Nimble AI and centered */}
 				<a href='#' className='flex items-center space-x-2 flex-grow justify-center basis-1/3'>
 					{/* Removed image import and replaced with text logo */}
-					<img src={isDarkMode ? require('./logo-white.png') : require('./logo.png')} alt='Nimble AI Logo' className='h-12 w-auto object-contain' />
+					<img src={require('./logo.png')} alt='Nimble AI Logo' className={`h-12 w-auto object-contain ${isDarkMode ? 'logo-invert' : ''}`} />
 				</a>
 				{/* Dark Mode Toggle Button */}
 				<div className='flex-grow flex justify-end basis-1/3'>
@@ -730,24 +730,24 @@ function AboutSection({ isDarkMode }) {
 					<InfoCard title='Beta Access:' value='Q2, 2025' isDarkMode={isDarkMode} />
 					<InfoCard title='Implementation:' value='Founder-led Onboarding' isDarkMode={isDarkMode} />
 					<InfoCard
-						title='Free Trial:'
-						value='One month free'
-						icon={
-							<svg
-								className={`w-4 h-4 sm:w-5 sm:h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}
-								fill='none'
-								stroke='currentColor'
-								viewBox='0 0 24 24'
-								xmlns='http://www.w3.org/2000/svg'
-							>
-								<path
-									strokeLinecap='round'
-									strokeLinejoin='round'
-									strokeWidth='2'
-									d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V4m0 12v4m-6-2h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
-								></path>
-							</svg>
-						}
+						title='Your First Demo Is on Us – Try It Free!'
+						// value='Your First Demo Is on Us – Try It Free!'
+						// icon={
+						// 	<svg
+						// 		className={`w-4 h-4 sm:w-5 sm:h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}
+						// 		fill='none'
+						// 		stroke='currentColor'
+						// 		viewBox='0 0 24 24'
+						// 		xmlns='http://www.w3.org/2000/svg'
+						// 	>
+						// 		<path
+						// 			strokeLinecap='round'
+						// 			strokeLinejoin='round'
+						// 			strokeWidth='2'
+						// 			d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V4m0 12v4m-6-2h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
+						// 		></path>
+						// 	</svg>
+						// }
 						isDarkMode={isDarkMode}
 					/>
 				</div>
@@ -859,10 +859,10 @@ function FAQSection({ isDarkMode }) {
 			question: 'What platforms does it support?',
 			answer: 'Nimble AI is designed to integrate seamlessly with various popular customer support and CRM platforms. Specific integrations will be announced closer to launch.',
 		},
-		{
-			question: 'Who can use Nimble AI?',
-			answer: 'Nimble AI is built for businesses of all sizes looking to enhance their customer support, streamline operations, and leverage AI for better customer interactions.',
-		},
+		// {
+		// 	question: 'Who can use Nimble AI?',
+		// 	answer: 'Nimble AI is built for businesses of all sizes looking to enhance their customer support, streamline operations, and leverage AI for better customer interactions.',
+		// },
 		{
 			question: 'What kind of data does Nimble AI use for training?',
 			answer: 'Nimble AI is trained on a diverse range of anonymized and aggregated customer interaction data to ensure broad applicability and high accuracy, while strictly adhering to privacy protocols.',
@@ -879,10 +879,10 @@ function FAQSection({ isDarkMode }) {
 			question: 'What support is available after implementation?',
 			answer: 'We offer comprehensive support packages, including dedicated account management, technical assistance, and regular updates to ensure optimal performance and continuous improvement of your AI solutions.',
 		},
-		{
-			question: 'How long does it take to implement Nimble AI?',
-			answer: 'Implementation time varies depending on your specific needs and existing infrastructure, but our team works closely with you to ensure a swift and efficient setup, typically ranging from a few weeks to a couple of months.',
-		},
+		// {
+		// 	question: 'How long does it take to implement Nimble AI?',
+		// 	answer: 'Implementation time varies depending on your specific needs and existing infrastructure, but our team works closely with you to ensure a swift and efficient setup, typically ranging from a few weeks to a couple of months.',
+		// },
 	];
 
 	return (
@@ -985,7 +985,7 @@ function Footer({ isDarkMode }) {
 				<div className='flex flex-col items-center space-y-1.5 sm:space-y-2 mb-3 sm:mb-4'>
 					<span className={`text-xs sm:text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Follow Us</span>
 					<a
-						href='https://www.linkedin.com'
+						href='https://www.linkedin.com/company/nimbleai-in/'
 						target='_blank'
 						rel='noopener noreferrer'
 						className={`${isDarkMode ? 'text-gray-200 hover:text-gray-100' : 'text-gray-700 hover:text-gray-900'} transition-colors duration-300`}
