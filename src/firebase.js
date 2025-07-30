@@ -1,0 +1,53 @@
+// src/firebase.js (or wherever you initialize Firebase)
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'; // We need this for authentication
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'; // Add Firestore for database operations
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDF7VLqX7qWmqre7L8lGZxx_GTiSiU9bHI",
+    authDomain: "nimbleai-firebase.firebaseapp.com",
+    projectId: "nimbleai-firebase",
+    storageBucket: "nimbleai-firebase.firebasestorage.app",
+    messagingSenderId: "919316988485",
+    appId: "1:919316988485:web:18c9b97cccddd38d9a992c",
+    measurementId: "G-D3ZJ4FFTER"
+  };
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app); // Export the auth instance
+export const db = getFirestore(app); // Export the Firestore instance
+
+const provider = new GoogleAuthProvider();
+export const signInWithGoogle = () => signInWithPopup(auth, provider);
+export const logout = () => signOut(auth);
+
+// Function to save user data to Firestore
+export const saveUserToDatabase = async (user) => {
+  try {
+    const userRef = doc(db, 'users', user.uid);
+    
+    // Check if user already exists
+    const userDoc = await getDoc(userRef);
+    
+    const userData = {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      providerId: user.providerId,
+      lastLoginAt: new Date().toISOString(),
+      createdAt: userDoc.exists() ? userDoc.data().createdAt : new Date().toISOString(),
+      // Add any additional fields you want to track
+      isActive: true,
+      loginCount: userDoc.exists() ? (userDoc.data().loginCount || 0) + 1 : 1
+    };
+
+    await setDoc(userRef, userData, { merge: true });
+    return true;
+  } catch (error) {
+    console.error('Error saving user data to database:', error);
+    return false;
+  }
+};
+
+

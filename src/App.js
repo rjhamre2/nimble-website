@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import ChatWidget from './components/ChatWidget';
 import FeaturesSection from './components/FeaturesSection';
 import HeroSection from './components/HeroSection';
-import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
+import SignInButton from './components/SignInButton';
+import Dashboard from './components/Dashboard/Dashboard';
+import { useAuth } from './hooks/useAuth';
 
 // Custom Hook for Intersection Observer to trigger animations on scroll
 const useIntersectionObserver = (options) => {
@@ -33,6 +36,50 @@ const useIntersectionObserver = (options) => {
 	}, [options]); // Re-run effect if options change
 
 	return [targetRef, isVisible];
+};
+
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+	const { user, loading } = useAuth();
+	
+	if (loading) {
+		return (
+			<div className="min-h-screen flex items-center justify-center bg-gray-50">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+					<p className="text-gray-600">Loading...</p>
+				</div>
+			</div>
+		);
+	}
+	
+	if (!user) {
+		return <Navigate to="/" replace />;
+	}
+	
+	return children;
+};
+
+// Public Route Component (redirects to dashboard if already signed in)
+const PublicRoute = ({ children }) => {
+	const { user, loading } = useAuth();
+	
+	if (loading) {
+		return (
+			<div className="min-h-screen flex items-center justify-center bg-gray-50">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+					<p className="text-gray-600">Loading...</p>
+				</div>
+			</div>
+		);
+	}
+	
+	if (user) {
+		return <Navigate to="/dashboard" replace />;
+	}
+	
+	return children;
 };
 
 // Main App Component
@@ -153,23 +200,31 @@ function App() {
 				<Navbar toggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode} />
 				<Routes>
 					<Route path="/" element={
-						<>
-							{/* Hero Section Component */}
-							<HeroSection isDarkMode={isDarkMode} />
-							{/* Features Section Component */}
-							<FeaturesSection isDarkMode={isDarkMode} />
+						<PublicRoute>
+							<>
+								{/* Hero Section Component */}
+								<HeroSection isDarkMode={isDarkMode} />
+								
+								{/* Features Section Component */}
+								<FeaturesSection isDarkMode={isDarkMode} />
 
-							{/* Comparison Section Component */}
-							{/* <ComparisonSection isDarkMode={isDarkMode} /> */}
-							<SeamlessIntegrations isDarkMode={isDarkMode} />
+								{/* Comparison Section Component */}
+								{/* <ComparisonSection isDarkMode={isDarkMode} /> */}
+								<SeamlessIntegrations isDarkMode={isDarkMode} />
 
-							{/* FAQ Section Component */}
-							<FAQSection isDarkMode={isDarkMode} />
-							<PricingSection isDarkMode={isDarkMode} onPlanSelect={handlePlanSelect} />
+								{/* FAQ Section Component */}
+								<FAQSection isDarkMode={isDarkMode} />
+								<PricingSection isDarkMode={isDarkMode} onPlanSelect={handlePlanSelect} />
 
-							{/* About Section Component */}
-							<AboutSection isDarkMode={isDarkMode} />
-						</>
+								{/* About Section Component */}
+								<AboutSection isDarkMode={isDarkMode} />
+							</>
+						</PublicRoute>
+					} />
+					<Route path="/dashboard" element={
+						<ProtectedRoute>
+							<Dashboard />
+						</ProtectedRoute>
 					} />
 					<Route path="/privacy-policy" element={<PrivacyPolicy isDarkMode={isDarkMode} />} />
 					<Route path="/terms-of-service" element={<TermsOfService isDarkMode={isDarkMode} />} />
@@ -213,7 +268,7 @@ function Navbar({ toggleDarkMode, isDarkMode }) {
 					<img src={require('./logo.png')} alt='Nimble AI Logo' className={`h-12 w-auto object-contain ${isDarkMode ? 'logo-invert' : ''}`} />
 				</Link>
 				{/* Dark Mode Toggle Button */}
-				<div className='flex-grow flex justify-end basis-1/3'>
+				<div className='flex-grow flex justify-end items-center gap-4 basis-1/3'>
 					<button
 						onClick={toggleDarkMode}
 						className={`p-2 rounded-full transition-colors duration-300 ${
@@ -243,6 +298,7 @@ function Navbar({ toggleDarkMode, isDarkMode }) {
 							</svg>
 						)}
 					</button>
+					<SignInButton />
 				</div>
 			</div>
 		</nav>

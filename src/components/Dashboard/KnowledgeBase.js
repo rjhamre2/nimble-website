@@ -1,0 +1,403 @@
+import React, { useState } from 'react';
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  PencilIcon,
+  TrashIcon,
+  PlusIcon,
+  DocumentTextIcon,
+  CloudArrowUpIcon,
+  CheckIcon,
+  XMarkIcon
+} from '@heroicons/react/24/outline';
+
+const KnowledgeBase = () => {
+  const [faqs, setFaqs] = useState([
+    {
+      id: 1,
+      question: 'How do I reset my password?',
+      answer: 'To reset your password, go to the login page and click "Forgot Password". Enter your email address and follow the instructions sent to your inbox.',
+      link: 'https://help.example.com/reset-password',
+      isExpanded: false,
+      isEditing: false
+    },
+    {
+      id: 2,
+      question: 'What is your return policy?',
+      answer: 'We offer a 30-day return policy for all unused items in their original packaging. Returns must be initiated within 30 days of purchase.',
+      link: 'https://help.example.com/returns',
+      isExpanded: false,
+      isEditing: false
+    },
+    {
+      id: 3,
+      question: 'How long does shipping take?',
+      answer: 'Standard shipping takes 3-5 business days. Express shipping takes 1-2 business days. International shipping may take 7-14 business days.',
+      link: 'https://help.example.com/shipping',
+      isExpanded: false,
+      isEditing: false
+    },
+    {
+      id: 4,
+      question: 'Do you ship internationally?',
+      answer: 'Yes, we ship to most countries worldwide. International shipping rates and delivery times vary by location.',
+      link: 'https://help.example.com/international',
+      isExpanded: false,
+      isEditing: false
+    }
+  ]);
+
+  const [newFaq, setNewFaq] = useState({ question: '', answer: '', link: '' });
+  const [isAddingFaq, setIsAddingFaq] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // FAQ Management Functions
+  const toggleFaq = (id) => {
+    setFaqs(faqs.map(faq => 
+      faq.id === id ? { ...faq, isExpanded: !faq.isExpanded } : faq
+    ));
+  };
+
+  const startEditingFaq = (id) => {
+    setFaqs(faqs.map(faq => 
+      faq.id === id ? { ...faq, isEditing: true } : faq
+    ));
+  };
+
+  const saveFaq = (id, updatedData) => {
+    setFaqs(faqs.map(faq => 
+      faq.id === id ? { ...faq, ...updatedData, isEditing: false } : faq
+    ));
+  };
+
+  const cancelEditingFaq = (id) => {
+    setFaqs(faqs.map(faq => 
+      faq.id === id ? { ...faq, isEditing: false } : faq
+    ));
+  };
+
+  const deleteFaq = (id) => {
+    if (window.confirm('Are you sure you want to delete this FAQ?')) {
+      setFaqs(faqs.filter(faq => faq.id !== id));
+    }
+  };
+
+  const addNewFaq = () => {
+    if (newFaq.question.trim() && newFaq.answer.trim()) {
+      const newId = Math.max(...faqs.map(f => f.id)) + 1;
+      setFaqs([...faqs, {
+        id: newId,
+        question: newFaq.question,
+        answer: newFaq.answer,
+        link: newFaq.link,
+        isExpanded: true,
+        isEditing: false
+      }]);
+      setNewFaq({ question: '', answer: '', link: '' });
+      setIsAddingFaq(false);
+    }
+  };
+
+  // File Upload Functions
+  const handleFileUpload = (event) => {
+    const files = Array.from(event.target.files);
+    setIsUploading(true);
+    
+    // Simulate file upload
+    setTimeout(() => {
+      const newFiles = files.map((file, index) => ({
+        id: Date.now() + index,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        uploadDate: new Date().toISOString(),
+        status: 'uploaded'
+      }));
+      
+      setUploadedFiles([...uploadedFiles, ...newFiles]);
+      setIsUploading(false);
+      event.target.value = ''; // Reset file input
+    }, 2000);
+  };
+
+  const deleteFile = (id) => {
+    if (window.confirm('Are you sure you want to delete this file?')) {
+      setUploadedFiles(uploadedFiles.filter(file => file.id !== id));
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Knowledge Base</h2>
+          <p className="text-gray-600">Manage your AI training data and FAQs</p>
+        </div>
+        <button
+          onClick={() => setIsAddingFaq(true)}
+          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <PlusIcon className="h-5 w-5" />
+          <span>Add FAQ</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left Side - FAQs */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Frequently Asked Questions</h3>
+            <span className="text-sm text-gray-500">{faqs.length} questions</span>
+          </div>
+
+          {/* Add New FAQ Form */}
+          {isAddingFaq && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <h4 className="font-medium text-blue-900">Add New FAQ</h4>
+              <input
+                type="text"
+                placeholder="Question"
+                value={newFaq.question}
+                onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <textarea
+                placeholder="Answer"
+                value={newFaq.answer}
+                onChange={(e) => setNewFaq({ ...newFaq, answer: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="url"
+                placeholder="Link (optional)"
+                value={newFaq.link}
+                onChange={(e) => setNewFaq({ ...newFaq, link: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="flex space-x-2">
+                <button
+                  onClick={addNewFaq}
+                  className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                >
+                  <CheckIcon className="h-4 w-4" />
+                  <span>Save</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsAddingFaq(false);
+                    setNewFaq({ question: '', answer: '', link: '' });
+                  }}
+                  className="flex items-center space-x-1 bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                  <span>Cancel</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* FAQ List */}
+          <div className="space-y-2">
+            {faqs.map((faq) => (
+              <div key={faq.id} className="bg-white border border-gray-200 rounded-lg">
+                {/* FAQ Header */}
+                <div className="flex items-center justify-between p-4">
+                  <div className="flex items-center space-x-3 flex-1">
+                    <button
+                      onClick={() => toggleFaq(faq.id)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      {faq.isExpanded ? (
+                        <ChevronDownIcon className="h-5 w-5" />
+                      ) : (
+                        <ChevronRightIcon className="h-5 w-5" />
+                      )}
+                    </button>
+                    <div className="flex-1">
+                      {faq.isEditing ? (
+                        <input
+                          type="text"
+                          value={faq.question}
+                          onChange={(e) => saveFaq(faq.id, { question: e.target.value })}
+                          className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          autoFocus
+                        />
+                      ) : (
+                        <h4 className="font-medium text-gray-900">{faq.question}</h4>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => startEditingFaq(faq.id)}
+                      className="p-1 text-gray-400 hover:text-blue-600"
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteFaq(faq.id)}
+                      className="p-1 text-gray-400 hover:text-red-600"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* FAQ Content */}
+                {faq.isExpanded && (
+                  <div className="px-4 pb-4 border-t border-gray-100">
+                    <div className="pt-4 space-y-3">
+                      {faq.isEditing ? (
+                        <textarea
+                          value={faq.answer}
+                          onChange={(e) => saveFaq(faq.id, { answer: e.target.value })}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      ) : (
+                        <p className="text-gray-700">{faq.answer}</p>
+                      )}
+                      
+                      {faq.link && (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-500">Link:</span>
+                          {faq.isEditing ? (
+                            <input
+                              type="url"
+                              value={faq.link}
+                              onChange={(e) => saveFaq(faq.id, { link: e.target.value })}
+                              className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          ) : (
+                            <a
+                              href={faq.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 text-sm underline"
+                            >
+                              {faq.link}
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      {faq.isEditing && (
+                        <div className="flex space-x-2 pt-2">
+                          <button
+                            onClick={() => cancelEditingFaq(faq.id)}
+                            className="text-sm text-gray-600 hover:text-gray-800"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Side - File Upload */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Training Documents</h3>
+            <span className="text-sm text-gray-500">{uploadedFiles.length} files</span>
+          </div>
+
+          {/* File Upload Area */}
+          <div className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h4 className="text-lg font-medium text-gray-900 mb-2">Upload Training Files</h4>
+            <p className="text-gray-600 mb-4">Upload .txt files to train your AI agent</p>
+            
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                multiple
+                accept=".txt"
+                onChange={handleFileUpload}
+                className="hidden"
+                disabled={isUploading}
+              />
+              <div className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center space-x-2">
+                <DocumentTextIcon className="h-5 w-5" />
+                <span>{isUploading ? 'Uploading...' : 'Choose Files'}</span>
+              </div>
+            </label>
+            
+            <p className="text-xs text-gray-500 mt-2">Maximum file size: 10MB</p>
+          </div>
+
+          {/* Uploaded Files List */}
+          {uploadedFiles.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <h4 className="font-medium text-gray-900 mb-3">Uploaded Files</h4>
+              <div className="space-y-2">
+                {uploadedFiles.map((file) => (
+                  <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <DocumentTextIcon className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <p className="font-medium text-gray-900">{file.name}</p>
+                        <p className="text-sm text-gray-500">
+                          {formatFileSize(file.size)} • {new Date(file.uploadDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                        {file.status}
+                      </span>
+                      <button
+                        onClick={() => deleteFile(file.id)}
+                        className="p-1 text-gray-400 hover:text-red-600"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Training Status */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-3">Training Status</h4>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Last trained</span>
+                <span className="text-sm font-medium">2 hours ago</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Training documents</span>
+                <span className="text-sm font-medium">{uploadedFiles.length} files</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">FAQ entries</span>
+                <span className="text-sm font-medium">{faqs.length} questions</span>
+              </div>
+            </div>
+            <button className="w-full mt-4 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors">
+              Retrain AI Agent
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default KnowledgeBase; 
