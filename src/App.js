@@ -5,6 +5,18 @@ import HeroSection from './components/HeroSection';
 import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
 import SignInButton from './components/SignInButton';
 import Dashboard from './components/Dashboard/Dashboard';
+import FacebookDebug from './components/FacebookDebug';
+import FacebookStatus from './components/FacebookStatus';
+import FacebookDiagnostic from './components/FacebookDiagnostic';
+import FacebookAppSwitcher from './components/FacebookAppSwitcher';
+import PrivacyPolicyTester from './components/PrivacyPolicyTester';
+import FacebookLiveModeTester from './components/FacebookLiveModeTester';
+import URLConfigurationChecker from './components/URLConfigurationChecker';
+import LocalhostTester from './components/LocalhostTester';
+import PrivacyPolicyCreator from './components/PrivacyPolicyCreator';
+import FacebookQuickFix from './components/FacebookQuickFix';
+import LiveModeHelper from './components/LiveModeHelper';
+import DataDeletionURIFixer from './components/DataDeletionURIFixer';
 import { useAuth } from './hooks/useAuth';
 
 // Custom Hook for Intersection Observer to trigger animations on scroll
@@ -218,6 +230,22 @@ function App() {
 
 								{/* About Section Component */}
 								<AboutSection isDarkMode={isDarkMode} />
+								
+								{/* Facebook Debug Components - Remove these after testing */}
+								<div className="container mx-auto px-4 py-8 space-y-4">
+									<DataDeletionURIFixer />
+									<LiveModeHelper />
+									<FacebookQuickFix />
+									<PrivacyPolicyCreator />
+									<LocalhostTester />
+									<URLConfigurationChecker />
+									<FacebookLiveModeTester />
+									<PrivacyPolicyTester />
+									<FacebookAppSwitcher />
+									<FacebookDiagnostic />
+									<FacebookStatus />
+									<FacebookDebug />
+								</div>
 							</>
 						</PublicRoute>
 					} />

@@ -1,6 +1,6 @@
 // src/firebase.js (or wherever you initialize Firebase)
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'; // We need this for authentication
+import { getAuth, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, signOut } from 'firebase/auth'; // We need this for authentication
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'; // Add Firestore for database operations
 
 const firebaseConfig = {
@@ -17,8 +17,15 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app); // Export the auth instance
 export const db = getFirestore(app); // Export the Firestore instance
 
-const provider = new GoogleAuthProvider();
-export const signInWithGoogle = () => signInWithPopup(auth, provider);
+const googleProvider = new GoogleAuthProvider();
+const facebookProvider = new FacebookAuthProvider();
+
+// Configure Facebook provider with additional scopes if needed
+facebookProvider.addScope('email');
+facebookProvider.addScope('public_profile');
+
+export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
+export const signInWithFacebook = () => signInWithPopup(auth, facebookProvider);
 export const logout = () => signOut(auth);
 
 // Function to save user data to Firestore

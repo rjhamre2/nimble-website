@@ -24,6 +24,23 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>Nimble AI</title>
+    
+    <!-- Facebook SDK -->
+    <script>
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId            : '1110256151158809',
+          autoLogAppEvents : true,
+          xfbml            : true,
+          version          : 'v23.0',
+          cookie          : true,
+          status          : true
+        });
+      };
+    </script>
+    <script async defer crossorigin="anonymous"
+      src="https://connect.facebook.net/en_US/sdk.js">
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
