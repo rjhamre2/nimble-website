@@ -27,9 +27,12 @@ function URLConfigurationChecker() {
 
       // Expected OAuth redirect URIs
       const expectedRedirects = [
-        'https://nimbleai-firebase.firebaseapp.com/__/auth/handler',
+        'https://nimbleai.in/__/auth/handler',
+        'https://nimbleai.in/',
         'http://localhost:3000/__/auth/handler',
-        'https://nimbleai.in/__/auth/handler'
+        'http://localhost:3000/',
+        'http://localhost:3001/__/auth/handler',
+        'http://localhost:3001/'
       ];
 
       // Expected app domains

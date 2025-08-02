@@ -25,7 +25,12 @@ function SignInButton() {
   };
 
   const handleFacebookSignIn = async () => {
-    await loginWithFacebook();
+    try {
+      await loginWithFacebook();
+      // PublicRoute will automatically redirect to dashboard (same as Google)
+    } catch (error) {
+      console.error('Facebook sign in error:', error);
+    }
   };
 
   if (loading) {

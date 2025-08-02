@@ -20,9 +20,18 @@ export const db = getFirestore(app); // Export the Firestore instance
 const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
 
-// Configure Facebook provider with additional scopes if needed
+// Configure Facebook provider with additional scopes and security settings
 facebookProvider.addScope('email');
 facebookProvider.addScope('public_profile');
+facebookProvider.setCustomParameters({
+  'display': 'popup',
+  'auth_type': 'reauthenticate'
+});
+
+// Configure Google provider with security settings
+googleProvider.setCustomParameters({
+  'prompt': 'select_account'
+});
 
 export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
 export const signInWithFacebook = () => signInWithPopup(auth, facebookProvider);
@@ -46,10 +55,15 @@ export const saveUserToDatabase = async (user) => {
       createdAt: userDoc.exists() ? userDoc.data().createdAt : new Date().toISOString(),
       // Add any additional fields you want to track
       isActive: true,
-      loginCount: userDoc.exists() ? (userDoc.data().loginCount || 0) + 1 : 1
+      loginCount: userDoc.exists() ? (userDoc.data().loginCount || 0) + 1 : 1,
+      // Add security-related fields
+      lastLoginIP: null, // You can add IP tracking if needed
+      loginMethod: user.providerId || 'unknown',
+      isEmailVerified: user.emailVerified || false
     };
 
     await setDoc(userRef, userData, { merge: true });
+    console.log('User data saved to Firestore successfully');
     return true;
   } catch (error) {
     console.error('Error saving user data to database:', error);

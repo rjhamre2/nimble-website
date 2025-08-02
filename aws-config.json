@@ -1,0 +1,49 @@
+{
+  "name": "nimbleai-website-aws-config",
+  "description": "AWS hosting configuration for NimbleAI website",
+  "version": "1.0.0",
+  "hosting": {
+    "platform": "aws",
+    "domain": "nimbleai.in",
+    "ssl": true,
+    "security": {
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://graph.facebook.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com; frame-src 'self' https://www.facebook.com https://accounts.google.com;"
+      }
+    }
+  },
+  "facebook": {
+    "appId": "1110256151158809",
+    "domains": [
+      "nimbleai.in",
+      "nimbleai-firebase.firebaseapp.com"
+    ],
+    "oauthRedirects": [
+      "https://nimbleai.in/__/auth/handler",
+      "https://nimbleai.in/",
+      "https://nimbleai-firebase.firebaseapp.com/__/auth/handler",
+      "https://nimbleai-firebase.firebaseapp.com/"
+    ]
+  },
+  "firebase": {
+    "projectId": "nimbleai-firebase",
+    "authDomain": "nimbleai-firebase.firebaseapp.com",
+    "authorizedDomains": [
+      "nimbleai.in",
+      "nimbleai-firebase.firebaseapp.com"
+    ]
+  },
+  "lambda": {
+    "allowedOrigins": [
+      "https://nimbleai.in",
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://localhost:3001",
+      "http://127.0.0.1:3001"
+    ]
+  }
+} 

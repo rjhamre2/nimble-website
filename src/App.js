@@ -2,21 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import ChatWidget from './components/ChatWidget';
 import FeaturesSection from './components/FeaturesSection';
 import HeroSection from './components/HeroSection';
+import WhatsAppEmbeddedSignup from './components/WhatsAppEmbeddedSignup';
 import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
 import SignInButton from './components/SignInButton';
 import Dashboard from './components/Dashboard/Dashboard';
-import FacebookDebug from './components/FacebookDebug';
-import FacebookStatus from './components/FacebookStatus';
-import FacebookDiagnostic from './components/FacebookDiagnostic';
-import FacebookAppSwitcher from './components/FacebookAppSwitcher';
-import PrivacyPolicyTester from './components/PrivacyPolicyTester';
-import FacebookLiveModeTester from './components/FacebookLiveModeTester';
-import URLConfigurationChecker from './components/URLConfigurationChecker';
-import LocalhostTester from './components/LocalhostTester';
-import PrivacyPolicyCreator from './components/PrivacyPolicyCreator';
-import FacebookQuickFix from './components/FacebookQuickFix';
-import LiveModeHelper from './components/LiveModeHelper';
-import DataDeletionURIFixer from './components/DataDeletionURIFixer';
 import { useAuth } from './hooks/useAuth';
 
 // Custom Hook for Intersection Observer to trigger animations on scroll
@@ -231,21 +220,22 @@ function App() {
 								{/* About Section Component */}
 								<AboutSection isDarkMode={isDarkMode} />
 								
-								{/* Facebook Debug Components - Remove these after testing */}
-								<div className="container mx-auto px-4 py-8 space-y-4">
-									<DataDeletionURIFixer />
-									<LiveModeHelper />
-									<FacebookQuickFix />
-									<PrivacyPolicyCreator />
-									<LocalhostTester />
-									<URLConfigurationChecker />
-									<FacebookLiveModeTester />
-									<PrivacyPolicyTester />
-									<FacebookAppSwitcher />
-									<FacebookDiagnostic />
-									<FacebookStatus />
-									<FacebookDebug />
-								</div>
+								{/* WhatsApp Embedded Signup Section */}
+								<section className={`py-16 px-4 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
+									<div className="max-w-4xl mx-auto">
+										<div className="text-center mb-12">
+											<h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
+												WhatsApp Business Setup
+											</h2>
+											<p className="text-lg max-w-2xl mx-auto">
+												Set up your WhatsApp Business Account to start using Nimble AI with WhatsApp messaging.
+											</p>
+										</div>
+										<div className="max-w-md mx-auto">
+											<WhatsAppEmbeddedSignup isDarkMode={isDarkMode} />
+										</div>
+									</div>
+								</section>
 							</>
 						</PublicRoute>
 					} />
