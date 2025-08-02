@@ -6,6 +6,11 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode }) => {
   const [signupData, setSignupData] = useState(null);
   const [error, setError] = useState(null);
   const [pendingCode, setPendingCode] = useState(null);
+  
+  // New state to track both pieces of data separately
+  const [whatsappData, setWhatsappData] = useState(null);
+  const [authCode, setAuthCode] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Configuration - Replace with your actual values
   const CONFIG = {
@@ -58,37 +63,22 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode }) => {
           
           // Handle successful completion
           if (data.event === 'FINISH' || data.event === 'FINISH_ONLY_WABA' || data.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING') {
-            const newSignupData = {
+            const newWhatsappData = {
               phone_number_id: data.data.phone_number_id,
               waba_id: data.data.waba_id,
               business_id: data.data.business_id,
               event: data.event
             };
-            console.log('Setting new signup data:', newSignupData);
-            console.log('Current pending code:', pendingCode);
-            setSignupData(newSignupData);
+            console.log('Setting new WhatsApp data:', newWhatsappData);
+            setWhatsappData(newWhatsappData);
+            setSignupData(newWhatsappData); // Keep for backward compatibility
             setError(null);
-            
-            // If we have a pending code, send it now
-            if (pendingCode && newSignupData.waba_id && newSignupData.phone_number_id) {
-              console.log('Sending pending code with new signup data');
-              sendCodeToServer(pendingCode, newSignupData.waba_id, newSignupData.phone_number_id)
-                .then(result => {
-                  console.log('WhatsApp integration completed successfully:', result);
-                  setPendingCode(null); // Clear the pending code
-                  setError(null);
-                })
-                .catch(error => {
-                  console.error('Failed to send pending code to Lambda backend:', error);
-                });
-            } else {
-              console.log('No pending code to send, or missing data');
-            }
           }
           // Handle abandoned flow
           else if (data.event === 'CANCEL') {
             setError(`Signup abandoned at step: ${data.data.current_step || 'Unknown'}`);
             setSignupData(null);
+            setWhatsappData(null);
           }
         }
       } catch (err) {
@@ -98,13 +88,33 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode }) => {
 
     return () => {
       // Cleanup event listener
-      window.removeEventListener('message', (event) => {
-        if (!event.origin.endsWith('facebook.com')) return;
-      });
+      window.removeEventListener('message', () => {});
     };
-  }, [pendingCode]); // Add pendingCode to dependencies
+  }, []);
 
-  // Function to send authorization code to Lambda backend
+  // New useEffect to watch for when both pieces of data are available
+  useEffect(() => {
+    if (whatsappData && authCode && !isProcessing) {
+      console.log('Both WhatsApp data and auth code available - calling Lambda');
+      setIsProcessing(true);
+      
+      sendCodeToServer(authCode, whatsappData.waba_id, whatsappData.phone_number_id)
+        .then(result => {
+          console.log('WhatsApp integration completed successfully:', result);
+          setError(null);
+          // Clear the data after successful processing
+          setWhatsappData(null);
+          setAuthCode(null);
+          setPendingCode(null);
+          setIsProcessing(false);
+        })
+        .catch(error => {
+          console.error('Failed to send code to Lambda backend:', error);
+          setIsProcessing(false);
+        });
+    }
+  }, [whatsappData, authCode, isProcessing]);
+
   const sendCodeToServer = async (code, wabaId, phoneNumberId) => {
     try {
       console.log('Sending code to Lambda backend for token exchange:', { 
@@ -155,26 +165,12 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode }) => {
     if (response.authResponse) {
       const code = response.authResponse.code;
       console.log('WhatsApp Embedded Signup response code:', code);
-      console.log('Current signupData:', signupData);
+      console.log('Current WhatsApp data:', whatsappData);
       
-      // Send this code to your Lambda backend to exchange for business token
-      // The code has a 30-second TTL, so exchange it quickly
-      if (signupData && signupData.waba_id && signupData.phone_number_id) {
-        console.log('Sending code immediately with existing signup data');
-        sendCodeToServer(code, signupData.waba_id, signupData.phone_number_id)
-          .then(result => {
-            console.log('WhatsApp integration completed successfully:', result);
-            setError(null);
-          })
-          .catch(error => {
-            console.error('Failed to send code to Lambda backend:', error);
-          });
-      } else {
-        console.warn('WABA and Phone IDs not available yet, storing code for later');
-        console.log('Storing pending code:', code);
-        // Store the code temporarily until we have the IDs
-        setPendingCode(code);
-      }
+      // Store the auth code and let useEffect handle the Lambda call
+      console.log('Storing auth code for processing');
+      setAuthCode(code);
+      setPendingCode(code); // Keep for backward compatibility
       
     } else {
       console.log('WhatsApp Embedded Signup response (no authResponse):', response);
@@ -191,6 +187,10 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode }) => {
 
     setError(null);
     setSignupData(null);
+    setWhatsappData(null);
+    setAuthCode(null);
+    setPendingCode(null);
+    setIsProcessing(false);
 
     // eslint-disable-next-line no-undef
     FB.login(fbLoginCallback, {
@@ -236,14 +236,19 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode }) => {
                 ⏳ Processing authorization code...
               </div>
             )}
+            {isProcessing && (
+              <div className="mt-2 p-2 bg-blue-100 border border-blue-400 text-blue-700 rounded text-xs">
+                🔄 Sending data to Lambda backend...
+              </div>
+            )}
           </div>
         )}
 
         <button
           onClick={launchWhatsAppSignup}
-          disabled={!isSDKReady}
+          disabled={!isSDKReady || isProcessing}
           className={`w-full py-3 px-4 rounded-md font-medium transition-colors duration-200 flex items-center justify-center gap-2 ${
-            isSDKReady 
+            isSDKReady && !isProcessing
               ? 'bg-green-600 text-white hover:bg-green-700' 
               : 'bg-gray-400 text-gray-600 cursor-not-allowed'
           }`}
@@ -251,7 +256,7 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode }) => {
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
           </svg>
-          {isSDKReady ? 'Setup WhatsApp Business' : 'Loading...'}
+          {isSDKReady ? (isProcessing ? 'Processing...' : 'Setup WhatsApp Business') : 'Loading...'}
         </button>
       </div>
 
