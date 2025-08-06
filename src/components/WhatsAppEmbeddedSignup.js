@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import apiConfig from '../config/api';
 
-const WhatsAppEmbeddedSignup = ({ isDarkMode }) => {
+const WhatsAppEmbeddedSignup = ({ isDarkMode, user }) => {
   const [isSDKReady, setIsSDKReady] = useState(false);
   const [signupData, setSignupData] = useState(null);
   const [error, setError] = useState(null);
@@ -63,6 +63,7 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode }) => {
           
           // Handle successful completion
           if (data.event === 'FINISH' || data.event === 'FINISH_ONLY_WABA' || data.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING') {
+            console.log('Raw Facebook event data:', data.data);
             const newWhatsappData = {
               phone_number_id: data.data.phone_number_id,
               waba_id: data.data.waba_id,
@@ -70,6 +71,11 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode }) => {
               event: data.event
             };
             console.log('Setting new WhatsApp data:', newWhatsappData);
+            console.log('Phone number ID check:', {
+              phone_number_id: data.data.phone_number_id,
+              type: typeof data.data.phone_number_id,
+              exists: !!data.data.phone_number_id
+            });
             setWhatsappData(newWhatsappData);
             setSignupData(newWhatsappData); // Keep for backward compatibility
             setError(null);
@@ -96,6 +102,26 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode }) => {
   useEffect(() => {
     if (whatsappData && authCode && !isProcessing) {
       console.log('Both WhatsApp data and auth code available - calling Lambda');
+      console.log('WhatsApp data details:', whatsappData);
+      console.log('Phone number ID validation:', {
+        phone_number_id: whatsappData.phone_number_id,
+        waba_id: whatsappData.waba_id,
+        authCode: authCode ? 'present' : 'missing'
+      });
+      
+      // Validate required fields before proceeding
+      if (!whatsappData.phone_number_id) {
+        console.error('❌ Missing phone_number_id in whatsappData:', whatsappData);
+        setError('Setup incomplete: Phone number ID not received from Facebook. Please try again.');
+        return;
+      }
+      
+      if (!whatsappData.waba_id) {
+        console.error('❌ Missing waba_id in whatsappData:', whatsappData);
+        setError('Setup incomplete: WhatsApp Business Account ID not received. Please try again.');
+        return;
+      }
+      
       setIsProcessing(true);
       
       sendCodeToServer(authCode, whatsappData.waba_id, whatsappData.phone_number_id)
@@ -124,11 +150,32 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode }) => {
       });
       console.log('API URL:', apiConfig.endpoints.whatsapp());
       
+      // Validate inputs before creating request body
+      if (!phoneNumberId) {
+        throw new Error('Phone number ID is required but was not provided');
+      }
+      if (!wabaId) {
+        throw new Error('WABA ID is required but was not provided');
+      }
+      if (!code) {
+        throw new Error('Authorization code is required but was not provided');
+      }
+      if (!user?.uid) {
+        throw new Error('User ID is required but user is not authenticated');
+      }
+      
       const requestBody = {
         code,
         waba_id: wabaId,
         phone_number_id: phoneNumberId,
+        user_id: user.uid,
       };
+      console.log('Request body validation:', {
+        code: !!code,
+        waba_id: !!wabaId,
+        phone_number_id: !!phoneNumberId,
+        user_id: !!user?.uid
+      });
       console.log('Request body:', requestBody);
       
       const response = await fetch(apiConfig.endpoints.whatsapp(), {

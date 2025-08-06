@@ -6,8 +6,11 @@ import {
   PlusIcon,
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
+import { useAuth } from '../../hooks/useAuth';
+import WhatsAppEmbeddedSignup from '../WhatsAppEmbeddedSignup';
 
 const IntegrationsPage = () => {
+  const { user } = useAuth();
   const [isTesting, setIsTesting] = useState(false);
 
   // Mock integrations data
@@ -15,7 +18,7 @@ const IntegrationsPage = () => {
     {
       id: 'whatsapp',
       name: 'WhatsApp',
-      status: 'connected',
+      status: 'setup_required', // Changed from 'connected' to 'setup_required'
       icon: '💬',
       description: 'Business WhatsApp API',
       lastSync: '2 minutes ago',
@@ -65,15 +68,21 @@ const IntegrationsPage = () => {
   };
 
   const getStatusColor = (status) => {
-    return status === 'connected' 
-      ? 'bg-green-100 text-green-800' 
-      : 'bg-red-100 text-red-800';
+    if (status === 'connected') return 'bg-green-100 text-green-800';
+    if (status === 'setup_required') return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
   };
 
   const getStatusIcon = (status) => {
-    return status === 'connected' 
-      ? <CheckCircleIcon className="h-5 w-5" />
-      : <XCircleIcon className="h-5 w-5" />;
+    if (status === 'connected') return <CheckCircleIcon className="h-5 w-5" />;
+    if (status === 'setup_required') return <ArrowPathIcon className="h-5 w-5" />;
+    return <XCircleIcon className="h-5 w-5" />;
+  };
+
+  const getStatusText = (status) => {
+    if (status === 'connected') return 'Connected';
+    if (status === 'setup_required') return 'Setup Required';
+    return 'Disconnected';
   };
 
   return (
@@ -106,51 +115,60 @@ const IntegrationsPage = () => {
               </div>
               <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(integration.status)}`}>
                 {getStatusIcon(integration.status)}
-                <span className="capitalize">{integration.status}</span>
+                <span className="capitalize">{getStatusText(integration.status)}</span>
               </span>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <p className="text-sm text-gray-500">Messages</p>
-                <p className="font-semibold text-gray-900">{integration.messageCount}</p>
+            {/* Show WhatsApp Setup for WhatsApp integration */}
+            {integration.id === 'whatsapp' && integration.status === 'setup_required' ? (
+              <div className="mb-4">
+                <WhatsAppEmbeddedSignup isDarkMode={false} user={user} />
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Last Sync</p>
-                <p className="font-semibold text-gray-900">{integration.lastSync}</p>
-              </div>
-            </div>
+            ) : (
+              <>
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Messages</p>
+                    <p className="font-semibold text-gray-900">{integration.messageCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Last Sync</p>
+                    <p className="font-semibold text-gray-900">{integration.lastSync}</p>
+                  </div>
+                </div>
 
-            {/* Actions */}
-            <div className="flex space-x-2">
-              {integration.status === 'connected' ? (
-                <>
-                  <button
-                    onClick={() => handleTestMessage(integration.id)}
-                    disabled={isTesting}
-                    className="flex-1 flex items-center justify-center space-x-1 bg-green-100 text-green-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors disabled:opacity-50"
-                  >
-                    {isTesting ? (
-                      <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <ChatBubbleLeftRightIcon className="h-4 w-4" />
-                    )}
-                    <span>{isTesting ? 'Testing...' : 'Test Message'}</span>
-                  </button>
-                  <button className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
-                    Settings
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => handleReconnect(integration.id)}
-                  className="w-full bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Connect
-                </button>
-              )}
-            </div>
+                {/* Actions */}
+                <div className="flex space-x-2">
+                  {integration.status === 'connected' ? (
+                    <>
+                      <button
+                        onClick={() => handleTestMessage(integration.id)}
+                        disabled={isTesting}
+                        className="flex-1 flex items-center justify-center space-x-1 bg-green-100 text-green-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors disabled:opacity-50"
+                      >
+                        {isTesting ? (
+                          <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                        )}
+                        <span>{isTesting ? 'Testing...' : 'Test Message'}</span>
+                      </button>
+                      <button className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+                        Settings
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handleReconnect(integration.id)}
+                      className="w-full bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      Connect
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         ))}
       </div>

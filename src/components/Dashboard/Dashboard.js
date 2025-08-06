@@ -61,11 +61,9 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Onboarding Summary Banner */}
       <OnboardingBanner userData={userData} />
-      
       <div className="flex">
         {/* Left Sidebar */}
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-        
         {/* Main Content */}
         <div className="flex-1 p-6">
           <div className="max-w-7xl mx-auto">
