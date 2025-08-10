@@ -27,30 +27,22 @@ const IntegrationsPage = () => {
     {
       id: 'instagram',
       name: 'Instagram',
-      status: 'connected',
+      status: 'coming_soon',
       icon: '📷',
       description: 'Instagram Direct Messages',
-      lastSync: '5 minutes ago',
-      messageCount: '856'
+      lastSync: 'Coming Soon',
+      messageCount: '0'
     },
     {
       id: 'website',
       name: 'Website Chat',
-      status: 'connected',
+      status: 'coming_soon',
       icon: '🌐',
       description: 'Website chat widget',
-      lastSync: '1 minute ago',
-      messageCount: '2,341'
-    },
-    {
-      id: 'telegram',
-      name: 'Telegram',
-      status: 'disconnected',
-      icon: '📱',
-      description: 'Telegram Bot',
-      lastSync: 'Never',
+      lastSync: 'Coming Soon',
       messageCount: '0'
-    }
+    },
+
   ];
 
   const handleTestMessage = (integrationId) => {
@@ -70,18 +62,21 @@ const IntegrationsPage = () => {
   const getStatusColor = (status) => {
     if (status === 'connected') return 'bg-green-100 text-green-800';
     if (status === 'setup_required') return 'bg-yellow-100 text-yellow-800';
+    if (status === 'coming_soon') return 'bg-gray-100 text-gray-800';
     return 'bg-red-100 text-red-800';
   };
 
   const getStatusIcon = (status) => {
     if (status === 'connected') return <CheckCircleIcon className="h-5 w-5" />;
     if (status === 'setup_required') return <ArrowPathIcon className="h-5 w-5" />;
+    if (status === 'coming_soon') return <ArrowPathIcon className="h-5 w-5" />;
     return <XCircleIcon className="h-5 w-5" />;
   };
 
   const getStatusText = (status) => {
     if (status === 'connected') return 'Connected';
     if (status === 'setup_required') return 'Setup Required';
+    if (status === 'coming_soon') return 'Coming Soon';
     return 'Disconnected';
   };
 
@@ -92,10 +87,10 @@ const IntegrationsPage = () => {
           <h2 className="text-2xl font-bold text-gray-900">Integrations</h2>
           <p className="text-gray-600">Manage your platform connections</p>
         </div>
-        <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+        {/* <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
           <PlusIcon className="h-5 w-5" />
           <span>Add Platform</span>
-        </button>
+        </button> */}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -158,6 +153,13 @@ const IntegrationsPage = () => {
                         Settings
                       </button>
                     </>
+                  ) : integration.status === 'coming_soon' ? (
+                    <button
+                      disabled
+                      className="w-full bg-gray-100 text-gray-500 px-3 py-2 rounded-lg text-sm font-medium cursor-not-allowed"
+                    >
+                      Coming Soon
+                    </button>
                   ) : (
                     <button
                       onClick={() => handleReconnect(integration.id)}
@@ -173,17 +175,7 @@ const IntegrationsPage = () => {
         ))}
       </div>
 
-      {/* Add New Integration Card */}
-      <div className="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 p-6 text-center">
-        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <PlusIcon className="h-6 w-6 text-gray-400" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Add New Platform</h3>
-        <p className="text-gray-600 mb-4">Connect more platforms to reach your customers</p>
-        <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-          Browse Platforms
-        </button>
-      </div>
+
     </div>
   );
 };

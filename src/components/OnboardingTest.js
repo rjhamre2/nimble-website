@@ -53,11 +53,10 @@ const OnboardingTest = () => {
 
   return (
     <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-      <h3 className="text-lg font-semibold text-blue-800 mb-4">Onboarding API Test</h3>
+      <h3 className="text-lg font-semibold text-blue-800 mb-4">Onboarding</h3>
       
       <div className="mb-4">
         <p className="text-sm text-gray-600 mb-2">Current User: {user?.email}</p>
-        <p className="text-sm text-gray-600">User ID: {user?.uid}</p>
       </div>
 
       <div className="space-y-4">
@@ -98,7 +97,7 @@ const OnboardingTest = () => {
           disabled={loading || !company.trim() || !specialization.trim()}
           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Processing...' : 'Trigger Onboarding'}
+          {loading ? 'Processing...' : 'Onboard'}
         </button>
       </div>
 

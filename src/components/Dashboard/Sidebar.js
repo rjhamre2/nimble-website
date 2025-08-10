@@ -13,13 +13,13 @@ import {
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const menuItems = [
     { id: 'dashboard', name: 'Dashboard', icon: HomeIcon },
-    { id: 'chats', name: 'Chats & Conversations', icon: ChatBubbleLeftRightIcon },
-    { id: 'knowledge', name: 'Knowledge Base', icon: BookOpenIcon },
+    // { id: 'chats', name: 'Chats & Conversations', icon: ChatBubbleLeftRightIcon },
     { id: 'integrations', name: 'Integrations', icon: PuzzlePieceIcon },
-    { id: 'analytics', name: 'Analytics & Reports', icon: ChartBarIcon },
-    { id: 'settings', name: 'Settings', icon: Cog6ToothIcon },
-    { id: 'billing', name: 'Billing & Plan', icon: CreditCardIcon },
-    { id: 'support', name: 'Support', icon: QuestionMarkCircleIcon }
+    { id: 'knowledge', name: 'Knowledge Base', icon: BookOpenIcon },
+    // { id: 'analytics', name: 'Analytics & Reports', icon: ChartBarIcon },
+    // { id: 'settings', name: 'Settings', icon: Cog6ToothIcon },
+    // { id: 'billing', name: 'Billing & Plan', icon: CreditCardIcon },
+    // { id: 'support', name: 'Support', icon: QuestionMarkCircleIcon }
   ];
 
   return (
@@ -63,12 +63,12 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       {/* Bottom section - Quick actions */}
       <div className="absolute bottom-0 w-64 p-4 border-t border-gray-200">
         <div className="space-y-3">
-          <button className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+          {/* <button className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
             Training Mode
           </button>
           <button className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors">
             Invite Team
-          </button>
+          </button> */}
         </div>
       </div>
     </div>

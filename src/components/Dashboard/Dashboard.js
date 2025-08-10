@@ -61,8 +61,9 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Onboarding Summary Banner */}
+      {/* Onboarding Summary Banner - Commented out
       <OnboardingBanner userData={userData} />
+      */}
       <div className="flex">
         {/* Left Sidebar */}
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />

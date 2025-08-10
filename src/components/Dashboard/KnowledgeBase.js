@@ -212,172 +212,16 @@ const KnowledgeBase = () => {
           <h2 className="text-2xl font-bold text-gray-900">Knowledge Base</h2>
           <p className="text-gray-600">Manage your AI training data and FAQs</p>
         </div>
-        <button
+        {/* <button
           onClick={() => setIsAddingFaq(true)}
           className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
           <PlusIcon className="h-5 w-5" />
           <span>Add FAQ</span>
-        </button>
+        </button> */}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left Side - FAQs */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Frequently Asked Questions</h3>
-            <span className="text-sm text-gray-500">{faqs.length} questions</span>
-          </div>
-
-          {/* Add New FAQ Form */}
-          {isAddingFaq && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-              <h4 className="font-medium text-blue-900">Add New FAQ</h4>
-              <input
-                type="text"
-                placeholder="Question"
-                value={newFaq.question}
-                onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <textarea
-                placeholder="Answer"
-                value={newFaq.answer}
-                onChange={(e) => setNewFaq({ ...newFaq, answer: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="url"
-                placeholder="Link (optional)"
-                value={newFaq.link}
-                onChange={(e) => setNewFaq({ ...newFaq, link: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <div className="flex space-x-2">
-                <button
-                  onClick={addNewFaq}
-                  className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-                >
-                  <CheckIcon className="h-4 w-4" />
-                  <span>Save</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsAddingFaq(false);
-                    setNewFaq({ question: '', answer: '', link: '' });
-                  }}
-                  className="flex items-center space-x-1 bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600"
-                >
-                  <XMarkIcon className="h-4 w-4" />
-                  <span>Cancel</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* FAQ List */}
-          <div className="space-y-2">
-            {faqs.map((faq) => (
-              <div key={faq.id} className="bg-white border border-gray-200 rounded-lg">
-                {/* FAQ Header */}
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center space-x-3 flex-1">
-                    <button
-                      onClick={() => toggleFaq(faq.id)}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      {faq.isExpanded ? (
-                        <ChevronDownIcon className="h-5 w-5" />
-                      ) : (
-                        <ChevronRightIcon className="h-5 w-5" />
-                      )}
-                    </button>
-                    <div className="flex-1">
-                      {faq.isEditing ? (
-                        <input
-                          type="text"
-                          value={faq.question}
-                          onChange={(e) => saveFaq(faq.id, { question: e.target.value })}
-                          className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          autoFocus
-                        />
-                      ) : (
-                        <h4 className="font-medium text-gray-900">{faq.question}</h4>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => startEditingFaq(faq.id)}
-                      className="p-1 text-gray-400 hover:text-blue-600"
-                    >
-                      <PencilIcon className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => deleteFaq(faq.id)}
-                      className="p-1 text-gray-400 hover:text-red-600"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* FAQ Content */}
-                {faq.isExpanded && (
-                  <div className="px-4 pb-4 border-t border-gray-100">
-                    <div className="pt-4 space-y-3">
-                      {faq.isEditing ? (
-                        <textarea
-                          value={faq.answer}
-                          onChange={(e) => saveFaq(faq.id, { answer: e.target.value })}
-                          rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      ) : (
-                        <p className="text-gray-700">{faq.answer}</p>
-                      )}
-                      
-                      {faq.link && (
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-500">Link:</span>
-                          {faq.isEditing ? (
-                            <input
-                              type="url"
-                              value={faq.link}
-                              onChange={(e) => saveFaq(faq.id, { link: e.target.value })}
-                              className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          ) : (
-                            <a
-                              href={faq.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 text-sm underline"
-                            >
-                              {faq.link}
-                            </a>
-                          )}
-                        </div>
-                      )}
-
-                      {faq.isEditing && (
-                        <div className="flex space-x-2 pt-2">
-                          <button
-                            onClick={() => cancelEditingFaq(faq.id)}
-                            className="text-sm text-gray-600 hover:text-gray-800"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="max-w-2xl mx-auto">
 
         {/* Right Side - File Upload */}
         <div className="space-y-4">
@@ -465,7 +309,7 @@ const KnowledgeBase = () => {
               disabled={isTraining}
               className="w-full mt-4 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isTraining ? 'Training...' : 'Retrain AI Agent'}
+              {isTraining ? 'Training...' : 'Train AI Agent'}
             </button>
             
             {trainingError && (
