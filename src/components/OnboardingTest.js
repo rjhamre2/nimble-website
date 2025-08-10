@@ -7,10 +7,22 @@ const OnboardingTest = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [company, setCompany] = useState('');
+  const [specialization, setSpecialization] = useState('');
 
   const handleOnboardUser = async () => {
     if (!isAuthenticated) {
       setError('Please sign in first');
+      return;
+    }
+
+    if (!company.trim()) {
+      setError('Company is required');
+      return;
+    }
+
+    if (!specialization.trim()) {
+      setError('Specialization is required');
       return;
     }
 
@@ -19,7 +31,7 @@ const OnboardingTest = () => {
     setResult(null);
 
     try {
-      const response = await onboardUser();
+      const response = await onboardUser(company.trim(), specialization.trim());
       setResult(response);
       console.log('Onboarding result:', response);
     } catch (err) {
@@ -48,10 +60,42 @@ const OnboardingTest = () => {
         <p className="text-sm text-gray-600">User ID: {user?.uid}</p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
+        {/* Company Input */}
+        <div>
+          <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
+            Company *
+          </label>
+          <input
+            type="text"
+            id="company"
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            placeholder="Enter your company name"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+
+        {/* Specialization Input */}
+        <div>
+          <label htmlFor="specialization" className="block text-sm font-medium text-gray-700 mb-1">
+            Specialization *
+          </label>
+          <input
+            type="text"
+            id="specialization"
+            value={specialization}
+            onChange={(e) => setSpecialization(e.target.value)}
+            placeholder="Enter your specialization (e.g., E-commerce, Healthcare, Education)"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+
         <button
           onClick={handleOnboardUser}
-          disabled={loading}
+          disabled={loading || !company.trim() || !specialization.trim()}
           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Processing...' : 'Trigger Onboarding'}

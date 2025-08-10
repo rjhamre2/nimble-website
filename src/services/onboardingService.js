@@ -2,8 +2,16 @@ import { auth } from '../firebase';
 import { apiConfig } from '../config/api';
 
 // Function to call the onboarding API via Lambda proxy
-export const onboardUser = async () => {
+export const onboardUser = async (company, specialization) => {
   try {
+    // Validate mandatory fields
+    if (!company || typeof company !== 'string') {
+      throw new Error('Company is required and must be a string');
+    }
+    if (!specialization || typeof specialization !== 'string') {
+      throw new Error('Specialization is required and must be a string');
+    }
+
     const user = auth.currentUser;
     if (!user) {
       throw new Error('No authenticated user found');
@@ -18,6 +26,8 @@ export const onboardUser = async () => {
     console.log('Calling onboarding API for user:', user.uid);
     console.log('Full URL being called:', proxyUrl);
     console.log('User ID token length:', idToken.length);
+    console.log('Company:', company);
+    console.log('Specialization:', specialization);
     
     const response = await fetch(proxyUrl, {
       method: 'POST',
@@ -28,6 +38,8 @@ export const onboardUser = async () => {
       body: JSON.stringify({
         test: true,
         user_id: user.uid,
+        company: company,
+        specialization: specialization,
         timestamp: new Date().toISOString()
       }),
     });
