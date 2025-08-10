@@ -5,17 +5,19 @@ const API_CONFIG = {
     baseURL: 'http://localhost:5001',
     endpoints: {
       whatsapp: '/api/whatsapp/exchange-code',
-      health: '/api/health'
+      health: '/api/health',
+      onboard: '/api/proxy/onboard_user'
     }
   },
   
   // Production environment (AWS Lambda)
   production: {
-    // Your actual Lambda Function URL
-    baseURL: 'https://ozpmzjnghswkf5fzen5rqle7p40wnxrk.lambda-url.ap-south-1.on.aws',
+    // Use environment variable for Lambda Function URL
+    baseURL: process.env.REACT_APP_DASHBOARD2EC2LAMBDA_BASE_URL || 'https://ozpmzjnghswkf5fzen5rqle7p40wnxrk.lambda-url.ap-south-1.on.aws',
     endpoints: {
       whatsapp: '/api/whatsapp/exchange-code',
-      health: '/api/health'
+      health: '/api/health',
+      onboard: '/api/proxy/onboard_user'
     }
   }
 };
@@ -59,7 +61,8 @@ export const apiConfig = {
   // Direct endpoint access
   endpoints: {
     whatsapp: () => buildApiUrl('whatsapp'),
-    health: () => buildApiUrl('health')
+    health: () => buildApiUrl('health'),
+    onboard: () => buildApiUrl('onboard')
   }
 };
 

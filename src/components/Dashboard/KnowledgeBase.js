@@ -1,4 +1,8 @@
+import { useAuth } from '../../hooks/useAuth';
+import axios from 'axios';
 import React, { useState } from 'react';
+
+
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -47,10 +51,14 @@ const KnowledgeBase = () => {
     }
   ]);
 
+  const [uploadError, setUploadError] = useState(null);
   const [newFaq, setNewFaq] = useState({ question: '', answer: '', link: '' });
   const [isAddingFaq, setIsAddingFaq] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isTraining, setIsTraining] = useState(false);
+  const [trainingError, setTrainingError] = useState(null);
+  const { user } = useAuth(); // <-- ADDED to get the signed-in user
 
   // FAQ Management Functions
   const toggleFaq = (id) => {
@@ -100,25 +108,49 @@ const KnowledgeBase = () => {
   };
 
   // File Upload Functions
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0]; // Assuming one file
+    if (!file || !user) {
+      return;
+    }
+
     setIsUploading(true);
-    
-    // Simulate file upload
-    setTimeout(() => {
-      const newFiles = files.map((file, index) => ({
-        id: Date.now() + index,
+    setUploadError(null); // Reset previous errors
+
+    try {
+      const token = await user.getIdToken();
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('user_id', user.uid); // Add user_id to FormData
+
+      const apiUrl = `${process.env.REACT_APP_DASHBOARD2EC2LAMBDA_BASE_URL}/api/proxy/faqs/upload`;
+
+      const response = await axios.post(apiUrl, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      const newFile = {
+        id: Date.now(),
         name: file.name,
         size: file.size,
-        type: file.type,
         uploadDate: new Date().toISOString(),
-        status: 'uploaded'
-      }));
+        status: 'uploaded',
+        backendMessage: response.data.message
+      };
       
-      setUploadedFiles([...uploadedFiles, ...newFiles]);
+      setUploadedFiles(prevFiles => [...prevFiles, newFile]);
+
+    } catch (err) {
+      console.error(`Failed to upload ${file.name}:`, err);
+      const errorMessage = err.response?.data?.message || 'The upload failed. Please try again.';
+      setUploadError(errorMessage);
+    } finally {
       setIsUploading(false);
       event.target.value = ''; // Reset file input
-    }, 2000);
+    }
   };
 
   const deleteFile = (id) => {
@@ -133,6 +165,44 @@ const KnowledgeBase = () => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleRetrainAI = async () => {
+    if (!user) {
+      setTrainingError('Please sign in to retrain the AI agent');
+      return;
+    }
+
+    setIsTraining(true);
+    setTrainingError(null);
+
+    try {
+      const token = await user.getIdToken();
+      
+      const apiUrl = `${process.env.REACT_APP_DASHBOARD2EC2LAMBDA_BASE_URL}/api/proxy/train`;
+      
+      const response = await axios.post(apiUrl, 
+        { user_id: user.uid },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      console.log('Training response:', response.data);
+      
+      // Show success message
+      alert('AI Agent training completed successfully!');
+      
+    } catch (err) {
+      console.error('Training failed:', err);
+      const errorMessage = err.response?.data?.message || 'Training failed. Please try again.';
+      setTrainingError(errorMessage);
+    } finally {
+      setIsTraining(false);
+    }
   };
 
   return (
@@ -390,9 +460,19 @@ const KnowledgeBase = () => {
                 <span className="text-sm font-medium">{faqs.length} questions</span>
               </div>
             </div>
-            <button className="w-full mt-4 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors">
-              Retrain AI Agent
+            <button 
+              onClick={handleRetrainAI}
+              disabled={isTraining}
+              className="w-full mt-4 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isTraining ? 'Training...' : 'Retrain AI Agent'}
             </button>
+            
+            {trainingError && (
+              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-800 text-sm">
+                {trainingError}
+              </div>
+            )}
           </div>
         </div>
       </div>

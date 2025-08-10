@@ -10,6 +10,7 @@ import KnowledgeBase from './KnowledgeBase';
 import AnalyticsReports from './AnalyticsReports';
 import PlanBilling from './PlanBilling';
 import Settings from './Settings';
+import OnboardingTest from '../OnboardingTest';
 
 const Dashboard = () => {
   const { user, userData } = useAuth();
@@ -31,6 +32,7 @@ const Dashboard = () => {
       case 'dashboard':
         return (
           <div className="space-y-6">
+            <OnboardingTest />
             <OverviewCards />
             <LiveAgentPreview />
             <RecentChats />
