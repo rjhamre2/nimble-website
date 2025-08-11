@@ -12,6 +12,7 @@ import WhatsAppEmbeddedSignup from '../WhatsAppEmbeddedSignup';
 const IntegrationsPage = () => {
   const { user } = useAuth();
   const [isTesting, setIsTesting] = useState(false);
+  const [showWhatsAppSetup, setShowWhatsAppSetup] = useState(false);
 
   // Mock integrations data
   const integrations = [
@@ -54,9 +55,18 @@ const IntegrationsPage = () => {
     }, 2000);
   };
 
-  const handleReconnect = (integrationId) => {
-    // Add reconnection logic
-    console.log('Reconnecting:', integrationId);
+  const handleReconnect = async (integrationId) => {
+    setIsTesting(true);
+    try {
+      // Simulate reconnection process
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      // For now, just show a success message since integrations is not state
+      alert(`Successfully reconnected to ${integrationId}!`);
+    } catch (error) {
+      console.error('Reconnection error:', error);
+    } finally {
+      setIsTesting(false);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -117,7 +127,13 @@ const IntegrationsPage = () => {
             {/* Show WhatsApp Setup for WhatsApp integration */}
             {integration.id === 'whatsapp' && integration.status === 'setup_required' ? (
               <div className="mb-4">
-                <WhatsAppEmbeddedSignup isDarkMode={false} user={user} />
+                <button
+                  onClick={() => setShowWhatsAppSetup(true)}
+                  className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                >
+                  <span>💬</span>
+                  <span>Setup WhatsApp Business</span>
+                </button>
               </div>
             ) : (
               <>
@@ -175,7 +191,25 @@ const IntegrationsPage = () => {
         ))}
       </div>
 
-
+      {/* WhatsApp Setup Modal */}
+      {showWhatsAppSetup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">WhatsApp Business Setup</h3>
+              <button
+                onClick={() => setShowWhatsAppSetup(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <WhatsAppEmbeddedSignup isDarkMode={false} user={user} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

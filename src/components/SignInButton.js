@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signInWithGoogle, logout } from '../firebase';
+import { signInWithGoogleLambda as signInWithGoogle, logoutLambda as logout } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 

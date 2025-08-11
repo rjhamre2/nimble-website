@@ -1,4 +1,4 @@
-import { auth } from '../firebase';
+import { getCurrentUser } from './authService';
 import { apiConfig } from '../config/api';
 
 // Function to call the onboarding API via Lambda proxy
@@ -12,13 +12,13 @@ export const onboardUser = async (company, specialization) => {
       throw new Error('Specialization is required and must be a string');
     }
 
-    const user = auth.currentUser;
+    const user = getCurrentUser();
     if (!user) {
       throw new Error('No authenticated user found');
     }
 
     // Get the user's ID token for authentication
-    const idToken = await user.getIdToken();
+    const idToken = localStorage.getItem('authToken');
     
     // Build the proxy URL for the onboarding endpoint
     const proxyUrl = `${apiConfig.config.baseURL}/api/proxy/onboard_user`;

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { getCurrentUser } from '../services/authService';
 
 const SimpleTest = () => {
   const [result, setResult] = useState('');

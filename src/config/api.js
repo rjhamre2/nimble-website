@@ -6,19 +6,43 @@ const API_CONFIG = {
     endpoints: {
       whatsapp: '/api/whatsapp/exchange-code',
       health: '/api/health',
-      onboard: '/api/proxy/onboard_user'
+      onboard: '/api/proxy/onboard_user',
+      // Authentication endpoints
+      auth: {
+        google: '/api/proxy/auth/google',
+        logout: '/api/proxy/auth/logout',
+        verify: '/api/proxy/auth/verify',
+        health: '/api/proxy/auth/health'
+      }
     }
   },
   
   // Production environment (AWS Lambda)
   production: {
     // Use environment variable for Lambda Function URL
-    baseURL: process.env.REACT_APP_DASHBOARD2EC2LAMBDA_BASE_URL || 'https://ozpmzjnghswkf5fzen5rqle7p40wnxrk.lambda-url.ap-south-1.on.aws',
+    baseURL: process.env.REACT_APP_DASHBOARD2EC2LAMBDA_BASE_URL || 'https://your-lambda-function-url.amazonaws.com',
     endpoints: {
       whatsapp: '/api/whatsapp/exchange-code',
       health: '/api/health',
-      onboard: '/api/proxy/onboard_user'
+      onboard: '/api/proxy/onboard_user',
+      // Authentication endpoints
+      auth: {
+        google: '/api/proxy/auth/google',
+        logout: '/api/proxy/auth/logout',
+        verify: '/api/proxy/auth/verify',
+        health: '/api/proxy/auth/health'
+      }
     }
+  }
+};
+
+// Authentication Lambda configuration (separate from main Lambda)
+const AUTH_CONFIG = {
+  development: {
+    baseURL: 'http://localhost:5001',
+  },
+  production: {
+    baseURL: process.env.REACT_APP_AUTH_LAMBDA_BASE_URL || 'https://mp74jdohju4t5773wfvwmfnoza0gvckw.lambda-url.ap-south-1.on.aws',
   }
 };
 
@@ -41,10 +65,28 @@ const getApiConfig = () => {
   return API_CONFIG[env];
 };
 
+// Get current Auth configuration
+const getAuthConfig = () => {
+  const env = getCurrentEnvironment();
+  return AUTH_CONFIG[env];
+};
+
 // Helper function to build full API URLs
 const buildApiUrl = (endpoint) => {
   const config = getApiConfig();
   return `${config.baseURL}${config.endpoints[endpoint] || endpoint}`;
+};
+
+// Helper function to build auth API URLs
+const buildAuthUrl = (authEndpoint) => {
+  const config = getAuthConfig();
+  const authEndpoints = {
+    google: '/api/proxy/auth/google',
+    logout: '/api/proxy/auth/logout',
+    verify: '/api/proxy/auth/verify',
+    health: '/api/proxy/auth/health'
+  };
+  return `${config.baseURL}${authEndpoints[authEndpoint]}`;
 };
 
 // Export configuration and helper functions
@@ -54,15 +96,24 @@ export const apiConfig = {
   
   // Current configuration
   config: getApiConfig(),
+  authConfig: getAuthConfig(),
   
   // Helper functions
   buildUrl: buildApiUrl,
+  buildAuthUrl: buildAuthUrl,
   
   // Direct endpoint access
   endpoints: {
     whatsapp: () => buildApiUrl('whatsapp'),
     health: () => buildApiUrl('health'),
-    onboard: () => buildApiUrl('onboard')
+    onboard: () => buildApiUrl('onboard'),
+    // Authentication endpoints
+    auth: {
+      google: () => buildAuthUrl('google'),
+      logout: () => buildAuthUrl('logout'),
+      verify: () => buildAuthUrl('verify'),
+      health: () => buildAuthUrl('health')
+    }
   }
 };
 

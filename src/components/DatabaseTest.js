@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { testFirestoreConnection, saveUserToDatabase } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
+import { apiConfig } from '../config/api';
 
 const DatabaseTest = () => {
   const { user } = useAuth();
@@ -9,11 +9,16 @@ const DatabaseTest = () => {
 
   const handleTestConnection = async () => {
     setIsTesting(true);
-    setTestResult('Testing connection...');
+    setTestResult('Testing Lambda connection...');
     
     try {
-      const result = await testFirestoreConnection();
-      setTestResult(result ? '✅ Connection test successful!' : '❌ Connection test failed');
+      const response = await fetch(apiConfig.endpoints.auth.health());
+      if (response.ok) {
+        const data = await response.json();
+        setTestResult(`✅ Lambda connection successful! Firebase: ${data.firebase}`);
+      } else {
+        setTestResult('❌ Lambda connection failed');
+      }
     } catch (error) {
       setTestResult(`❌ Error: ${error.message}`);
     } finally {
@@ -28,11 +33,29 @@ const DatabaseTest = () => {
     }
 
     setIsTesting(true);
-    setTestResult('Testing user save...');
+    setTestResult('Testing user verification...');
     
     try {
-      const result = await saveUserToDatabase(user);
-      setTestResult(result ? '✅ User save test successful!' : '❌ User save test failed');
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        setTestResult('❌ No auth token found');
+        return;
+      }
+
+      const response = await fetch(apiConfig.endpoints.auth.verify(), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTestResult(`✅ User verification successful! User: ${data.user.email}`);
+      } else {
+        setTestResult('❌ User verification failed');
+      }
     } catch (error) {
       setTestResult(`❌ Error: ${error.message}`);
     } finally {
@@ -42,7 +65,7 @@ const DatabaseTest = () => {
 
   return (
     <div className="p-4 border rounded-lg bg-gray-50">
-      <h3 className="text-lg font-semibold mb-4">Database Test</h3>
+      <h3 className="text-lg font-semibold mb-4">Lambda & Database Test</h3>
       
       <div className="space-y-4">
         <div>
@@ -51,7 +74,7 @@ const DatabaseTest = () => {
             disabled={isTesting}
             className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
           >
-            Test Firestore Connection
+            Test Lambda Connection
           </button>
         </div>
 
@@ -61,9 +84,9 @@ const DatabaseTest = () => {
             disabled={isTesting || !user}
             className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50"
           >
-            Test User Save
+            Test User Verification
           </button>
-          {!user && <p className="text-sm text-gray-600 mt-1">(Login first to test user save)</p>}
+          {!user && <p className="text-sm text-gray-600 mt-1">(Login first to test user verification)</p>}
         </div>
 
         <div className="p-3 bg-white border rounded">

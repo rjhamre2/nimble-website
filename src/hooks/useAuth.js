@@ -1,37 +1,69 @@
 import { useState, useEffect } from 'react';
-import { auth } from '../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { getCurrentUser, isAuthenticated, verifyTokenLambda } from '../services/authService';
 import { getCurrentUserData, updateUserData } from '../services/userService';
-import { saveUserToDatabase } from '../firebase';
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      
-      if (firebaseUser) {
-        // Save user data to database first
-        try {
-          await saveUserToDatabase(firebaseUser);
-        } catch (error) {
-          console.error('Failed to save user data:', error);
+  const checkAuth = async () => {
+    try {
+      // Check if user is authenticated using our Lambda service
+      if (isAuthenticated()) {
+        const currentUser = getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          
+          // Verify token with Lambda
+          const verifiedUser = await verifyTokenLambda();
+          if (verifiedUser) {
+            setUser(verifiedUser);
+            // Get additional user data from database
+            const data = await getCurrentUserData();
+            setUserData(data);
+          } else {
+            // Token is invalid, clear user
+            setUser(null);
+            setUserData(null);
+          }
         }
-        
-        // Then get user data from database
-        const data = await getCurrentUserData();
-        setUserData(data);
       } else {
+        setUser(null);
         setUserData(null);
       }
-      
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setUser(null);
+      setUserData(null);
+    } finally {
       setLoading(false);
-    });
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    checkAuth();
+
+    // Listen for storage changes to detect sign in/out
+    const handleStorageChange = (e) => {
+      if (e.key === 'authToken' || e.key === 'userData') {
+        checkAuth();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also listen for custom auth events
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+
+    window.addEventListener('authStateChanged', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('authStateChanged', handleAuthChange);
+    };
   }, []);
 
   const updateUser = async (updates) => {

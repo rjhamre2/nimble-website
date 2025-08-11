@@ -191,7 +191,6 @@ const KnowledgeBase = () => {
         }
       );
 
-      console.log('Training response:', response.data);
       
       // Show success message
       alert('AI Agent training completed successfully!');

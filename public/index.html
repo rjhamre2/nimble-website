@@ -32,6 +32,9 @@
     -->
     <title>Nimble AI</title>
     
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
     <!-- Facebook SDK with Enhanced Security -->
     <script>
       window.fbAsyncInit = function() {
@@ -45,9 +48,6 @@
           secure          : true, // Force HTTPS
           oauth           : true  // Enable OAuth
         });
-        
-        // Log Facebook SDK initialization
-        console.log('Facebook SDK initialized with secure settings');
       };
       
       // Enhanced error handling for Facebook SDK
