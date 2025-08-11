@@ -46,6 +46,16 @@ const AUTH_CONFIG = {
   }
 };
 
+// WhatsApp Embedded Signup Lambda configuration
+const WA_ES_CONFIG = {
+  development: {
+    baseURL: 'http://localhost:5001',
+  },
+  production: {
+    baseURL: process.env.REACT_APP_WA_ES_LAMBDA || 'https://your-wa-es-lambda-url.amazonaws.com',
+  }
+};
+
 // Determine current environment
 const getCurrentEnvironment = () => {
   // Force production mode for testing Lambda
@@ -71,6 +81,12 @@ const getAuthConfig = () => {
   return AUTH_CONFIG[env];
 };
 
+// Get current WhatsApp Embedded Signup configuration
+const getWaEsConfig = () => {
+  const env = getCurrentEnvironment();
+  return WA_ES_CONFIG[env];
+};
+
 // Helper function to build full API URLs
 const buildApiUrl = (endpoint) => {
   const config = getApiConfig();
@@ -89,6 +105,15 @@ const buildAuthUrl = (authEndpoint) => {
   return `${config.baseURL}${authEndpoints[authEndpoint]}`;
 };
 
+// Helper function to build WhatsApp Embedded Signup API URLs
+const buildWaEsUrl = (endpoint) => {
+  const config = getWaEsConfig();
+  const waEsEndpoints = {
+    exchange: '/api/whatsapp/exchange-code'
+  };
+  return `${config.baseURL}${waEsEndpoints[endpoint] || endpoint}`;
+};
+
 // Export configuration and helper functions
 export const apiConfig = {
   // Current environment
@@ -97,14 +122,16 @@ export const apiConfig = {
   // Current configuration
   config: getApiConfig(),
   authConfig: getAuthConfig(),
+  waEsConfig: getWaEsConfig(),
   
   // Helper functions
   buildUrl: buildApiUrl,
   buildAuthUrl: buildAuthUrl,
+  buildWaEsUrl: buildWaEsUrl,
   
   // Direct endpoint access
   endpoints: {
-    whatsapp: () => buildApiUrl('whatsapp'),
+    whatsapp: () => buildWaEsUrl('exchange'), // Now uses the new WA_ES_LAMBDA
     health: () => buildApiUrl('health'),
     onboard: () => buildApiUrl('onboard'),
     // Authentication endpoints
