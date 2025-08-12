@@ -17,15 +17,18 @@ export const onboardUser = async (company, specialization) => {
       throw new Error('No authenticated user found');
     }
 
-    // Get the user's ID token for authentication
+    // Get the user's authentication token
     const idToken = localStorage.getItem('authToken');
+    if (!idToken) {
+      throw new Error('No authentication token available');
+    }
     
     // Build the proxy URL for the onboarding endpoint
     const proxyUrl = `${apiConfig.config.baseURL}/api/proxy/onboard_user`;
     
     console.log('Calling onboarding API for user:', user.uid);
     console.log('Full URL being called:', proxyUrl);
-    console.log('User ID token length:', idToken.length);
+    console.log('User ID token length:', idToken ? idToken.length : 'undefined');
     console.log('Company:', company);
     console.log('Specialization:', specialization);
     

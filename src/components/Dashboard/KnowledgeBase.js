@@ -118,7 +118,11 @@ const KnowledgeBase = () => {
     setUploadError(null); // Reset previous errors
 
     try {
-      const token = await user.getIdToken();
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        setUploadError('Authentication token not found. Please sign in again.');
+        return;
+      }
 
       const formData = new FormData();
       formData.append('file', file);
@@ -177,7 +181,11 @@ const KnowledgeBase = () => {
     setTrainingError(null);
 
     try {
-      const token = await user.getIdToken();
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        setTrainingError('Authentication token not found. Please sign in again.');
+        return;
+      }
       
       const apiUrl = `${process.env.REACT_APP_DASHBOARD2EC2LAMBDA_BASE_URL}/api/proxy/train`;
       
