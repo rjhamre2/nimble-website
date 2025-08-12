@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import apiConfig from '../config/api';
 
-const WhatsAppEmbeddedSignup = ({ isDarkMode, user }) => {
+const WhatsAppEmbeddedSignup = ({ isDarkMode, user, onSetupComplete }) => {
   const [isSDKReady, setIsSDKReady] = useState(false);
   const [signupData, setSignupData] = useState(null);
   const [error, setError] = useState(null);
@@ -11,6 +11,7 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode, user }) => {
   const [whatsappData, setWhatsappData] = useState(null);
   const [authCode, setAuthCode] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Configuration - Replace with your actual values
   const CONFIG = {
@@ -111,13 +112,13 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode, user }) => {
       
       // Validate required fields before proceeding
       if (!whatsappData.phone_number_id) {
-        console.error('❌ Missing phone_number_id in whatsappData:', whatsappData);
+        console.error('âŒ Missing phone_number_id in whatsappData:', whatsappData);
         setError('Setup incomplete: Phone number ID not received from Facebook. Please try again.');
         return;
       }
       
       if (!whatsappData.waba_id) {
-        console.error('❌ Missing waba_id in whatsappData:', whatsappData);
+        console.error('âŒ Missing waba_id in whatsappData:', whatsappData);
         setError('Setup incomplete: WhatsApp Business Account ID not received. Please try again.');
         return;
       }
@@ -133,13 +134,22 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode, user }) => {
           setAuthCode(null);
           setPendingCode(null);
           setIsProcessing(false);
+          
+          // Notify parent component that setup is complete with a small delay
+          // to ensure backend has processed the data
+          if (onSetupComplete) {
+            console.log('🔄 Notifying parent component of successful setup');
+            setTimeout(() => {
+              onSetupComplete();
+            }, 2000); // 2 second delay to allow backend processing
+          }
         })
         .catch(error => {
           console.error('Failed to send code to Lambda backend:', error);
           setIsProcessing(false);
         });
     }
-  }, [whatsappData, authCode, isProcessing]);
+  }, [whatsappData, authCode, isProcessing, onSetupComplete]);
 
   const sendCodeToServer = async (code, wabaId, phoneNumberId) => {
     try {
@@ -271,22 +281,24 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode, user }) => {
 
         {signupData && (
           <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-            <h4 className="font-semibold mb-2">✅ Setup Successful!</h4>
-            <div className="text-sm space-y-1">
-              <p><strong>Phone Number ID:</strong> {signupData.phone_number_id}</p>
-              <p><strong>WABA ID:</strong> {signupData.waba_id}</p>
-              <p><strong>Business ID:</strong> {signupData.business_id}</p>
-              <p><strong>Event:</strong> {signupData.event}</p>
-            </div>
-            {pendingCode && (
-              <div className="mt-2 p-2 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded text-xs">
-                ⏳ Processing authorization code...
-              </div>
-            )}
-            {isProcessing && (
-              <div className="mt-2 p-2 bg-blue-100 border border-blue-400 text-blue-700 rounded text-xs">
-                🔄 Sending data to Lambda backend...
-              </div>
+            {isProcessing ? (
+              <>
+                <h4 className="font-semibold mb-2">✅ Setup Completed!</h4>
+                <p className="text-sm">We're finalizing your WhatsApp Business integration. This will take a moment...</p>
+                <div className="mt-2 p-2 bg-blue-100 border border-blue-400 text-blue-700 rounded text-xs">
+                  🔄 Finalizing integration... Please wait while we complete the setup.
+                </div>
+              </>
+            ) : (
+              <>
+                <h4 className="font-semibold mb-2">✅ Setup Successful!</h4>
+                <p className="text-sm">Your WhatsApp Business Account has been created successfully!</p>
+                {pendingCode && (
+                  <div className="mt-2 p-2 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded text-xs">
+                    ⏳ Processing authorization code...
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -307,12 +319,7 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode, user }) => {
         </button>
       </div>
 
-      <div className={`mt-4 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-        <p>• This will open Facebook's WhatsApp Business setup flow</p>
-        <p>• You'll need to complete the verification process</p>
-        <p>• Your WhatsApp Business Account will be created</p>
-        <p>• You can then use WhatsApp with Nimble AI</p>
-      </div>
+
     </div>
   );
 };

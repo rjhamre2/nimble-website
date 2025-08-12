@@ -56,6 +56,16 @@ const WA_ES_CONFIG = {
   }
 };
 
+// Firebase Lambda configuration (for checking WhatsApp status)
+const FIREBASE_LAMBDA_CONFIG = {
+  development: {
+    baseURL: process.env.REACT_APP_FRONTEND2FIREBASE || 'https://your-firebase-lambda-url.amazonaws.com',
+  },
+  production: {
+    baseURL: process.env.REACT_APP_FRONTEND2FIREBASE || 'https://your-firebase-lambda-url.amazonaws.com',
+  }
+};
+
 // Determine current environment
 const getCurrentEnvironment = () => {
   // Force production mode for testing Lambda
@@ -87,6 +97,12 @@ const getWaEsConfig = () => {
   return WA_ES_CONFIG[env];
 };
 
+// Get current Firebase Lambda configuration
+const getFirebaseLambdaConfig = () => {
+  const env = getCurrentEnvironment();
+  return FIREBASE_LAMBDA_CONFIG[env];
+};
+
 // Helper function to build full API URLs
 const buildApiUrl = (endpoint) => {
   const config = getApiConfig();
@@ -114,6 +130,23 @@ const buildWaEsUrl = (endpoint) => {
   return `${config.baseURL}${waEsEndpoints[endpoint] || endpoint}`;
 };
 
+// Helper function to build Firebase Lambda API URLs
+const buildFirebaseLambdaUrl = (endpoint) => {
+  const config = getFirebaseLambdaConfig();
+  const firebaseEndpoints = {
+    checkWhatsappStatus: '/api/check_whatsapp_status',
+    getWhatsappLink: '/api/get_whatsapp_link'
+  };
+  const url = `${config.baseURL}${firebaseEndpoints[endpoint] || endpoint}`;
+  console.log('🔧 Building Firebase Lambda URL:', {
+    endpoint,
+    baseURL: config.baseURL,
+    fullURL: url,
+    env: process.env.REACT_APP_FRONTEND2FIREBASE
+  });
+  return url;
+};
+
 // Export configuration and helper functions
 export const apiConfig = {
   // Current environment
@@ -123,11 +156,13 @@ export const apiConfig = {
   config: getApiConfig(),
   authConfig: getAuthConfig(),
   waEsConfig: getWaEsConfig(),
+  firebaseLambdaConfig: getFirebaseLambdaConfig(),
   
   // Helper functions
   buildUrl: buildApiUrl,
   buildAuthUrl: buildAuthUrl,
   buildWaEsUrl: buildWaEsUrl,
+  buildFirebaseLambdaUrl: buildFirebaseLambdaUrl,
   
   // Direct endpoint access
   endpoints: {
@@ -140,6 +175,11 @@ export const apiConfig = {
       logout: () => buildAuthUrl('logout'),
       verify: () => buildAuthUrl('verify'),
       health: () => buildAuthUrl('health')
+    },
+    // Firebase Lambda endpoints
+    firebase: {
+      checkWhatsappStatus: () => buildFirebaseLambdaUrl('checkWhatsappStatus'),
+      getWhatsappLink: () => buildFirebaseLambdaUrl('getWhatsappLink')
     }
   }
 };
