@@ -6,6 +6,7 @@ import WhatsAppEmbeddedSignup from './components/WhatsAppEmbeddedSignup';
 import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
 import SignInButton from './components/SignInButton';
 import Dashboard from './components/Dashboard/Dashboard';
+import LiveChat from './components/LiveChat';
 import { useAuth } from './hooks/useAuth';
 
 // Custom Hook for Intersection Observer to trigger animations on scroll
@@ -229,6 +230,11 @@ function App() {
 					<Route path="/dashboard" element={
 						<ProtectedRoute>
 							<Dashboard />
+						</ProtectedRoute>
+					} />
+					<Route path="/livechat" element={
+						<ProtectedRoute>
+							<LiveChat isDarkMode={isDarkMode} />
 						</ProtectedRoute>
 					} />
 					<Route path="/privacy-policy" element={<PrivacyPolicy isDarkMode={isDarkMode} />} />

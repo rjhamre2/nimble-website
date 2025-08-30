@@ -13,7 +13,7 @@ import {
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const menuItems = [
     { id: 'dashboard', name: 'Dashboard', icon: HomeIcon },
-    // { id: 'chats', name: 'Chats & Conversations', icon: ChatBubbleLeftRightIcon },
+    { id: 'live-chat', name: 'Live Chat', icon: ChatBubbleLeftRightIcon },
     { id: 'integrations', name: 'Integrations', icon: PuzzlePieceIcon },
     { id: 'knowledge', name: 'Knowledge Base', icon: BookOpenIcon },
     // { id: 'analytics', name: 'Analytics & Reports', icon: ChartBarIcon },

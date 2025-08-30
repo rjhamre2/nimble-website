@@ -1,8 +1,9 @@
 // API Configuration for different environments
 const API_CONFIG = {
-  // Development environment (local Express server)
+  // Development environment (same as production - Lambda URLs)
   development: {
-    baseURL: 'http://localhost:5001',
+    // Use environment variable for Lambda Function URL (same as production)
+    baseURL: process.env.REACT_APP_DASHBOARD2EC2LAMBDA_BASE_URL || 'https://your-lambda-function-url.amazonaws.com',
     endpoints: {
       whatsapp: '/api/whatsapp/exchange-code',
       health: '/api/health',
@@ -39,7 +40,7 @@ const API_CONFIG = {
 // Authentication Lambda configuration (separate from main Lambda)
 const AUTH_CONFIG = {
   development: {
-    baseURL: 'http://localhost:5001',
+    baseURL: process.env.REACT_APP_AUTH_LAMBDA_BASE_URL || 'https://mp74jdohju4t5773wfvwmfnoza0gvckw.lambda-url.ap-south-1.on.aws',
   },
   production: {
     baseURL: process.env.REACT_APP_AUTH_LAMBDA_BASE_URL || 'https://mp74jdohju4t5773wfvwmfnoza0gvckw.lambda-url.ap-south-1.on.aws',
@@ -49,7 +50,7 @@ const AUTH_CONFIG = {
 // WhatsApp Embedded Signup Lambda configuration
 const WA_ES_CONFIG = {
   development: {
-    baseURL: 'http://localhost:5001',
+    baseURL: process.env.REACT_APP_WA_ES_LAMBDA || 'https://your-wa-es-lambda-url.amazonaws.com',
   },
   production: {
     baseURL: process.env.REACT_APP_WA_ES_LAMBDA || 'https://your-wa-es-lambda-url.amazonaws.com',
@@ -68,15 +69,11 @@ const FIREBASE_LAMBDA_CONFIG = {
 
 // Determine current environment
 const getCurrentEnvironment = () => {
-  // Force production mode for testing Lambda
-  // TODO: Change this back to normal detection after testing
-  return 'production';
-  
   // Check if we're in development (localhost) or production
-  // if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-  //   return 'development';
-  // }
-  // return 'production';
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'development';
+  }
+  return 'production';
 };
 
 // Get current API configuration

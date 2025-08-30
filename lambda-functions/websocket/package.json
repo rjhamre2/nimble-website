@@ -1,0 +1,9 @@
+{
+  "name": "nimbleai-websocket-lambda",
+  "version": "1.0.0",
+  "description": "WebSocket Lambda functions for NimbleAI",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1450.0"
+  }
+}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { checkWhatsAppStatus } from '../../services/firebaseService';
+import { useNavigate } from 'react-router-dom';
 import OnboardingBanner from './OnboardingBanner';
 import Sidebar from './Sidebar';
 import OverviewCards from './OverviewCards';
@@ -18,6 +19,17 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [whatsappStatus, setWhatsappStatus] = useState(null);
   const [isCheckingWhatsapp, setIsCheckingWhatsapp] = useState(false);
+  const navigate = useNavigate();
+
+  // Handle tab changes
+  const handleTabChange = (tabId) => {
+    if (tabId === 'live-chat') {
+      // Navigate to the LiveChat page
+      navigate('/livechat');
+    } else {
+      setActiveTab(tabId);
+    }
+  };
 
   // Call Firebase Lambda to check WhatsApp status when user is authenticated
   useEffect(() => {
@@ -134,7 +146,7 @@ const Dashboard = () => {
       */}
       <div className="flex">
         {/* Left Sidebar */}
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} />
         {/* Main Content */}
         <div className="flex-1 p-6">
           <div className="max-w-7xl mx-auto">

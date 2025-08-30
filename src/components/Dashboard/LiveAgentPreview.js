@@ -36,7 +36,7 @@ const LiveAgentPreview = () => {
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold mb-4">Live Agent Preview</h2>
+      {/* <h2 className="text-xl font-semibold mb-4">Live Agent Preview</h2>
       
       <div className="space-y-4">
         <div className="border rounded p-4">
@@ -82,7 +82,7 @@ const LiveAgentPreview = () => {
             {feedback.message}
           </div>
         )}
-      </div>
+      </div> */}
     </div>
   );
 };

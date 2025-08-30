@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from '../hooks/useChat';
+import websocketService from '../services/websocketService';
+import { useAuth } from '../hooks/useAuth';
 
 const ChatWidget = ({ isDarkMode }) => {
 	const {
@@ -10,8 +12,11 @@ const ChatWidget = ({ isDarkMode }) => {
 		chatInput,
 		setChatInput,
 		chatHistory,
+		setChatHistory,
 		isChatLoading,
+		setIsChatLoading,
 		showTyping,
+		setShowTyping,
 		chatInputRef,
 		chatWindowRef,
 		chatPosition,
@@ -21,6 +26,64 @@ const ChatWidget = ({ isDarkMode }) => {
 		handleInputKeyDown,
 		quickReplies,
 	} = useChat();
+
+	const { user } = useAuth();
+	const [wsConnected, setWsConnected] = useState(false);
+
+	// WebSocket connection and message handling
+	useEffect(() => {
+		if (!user?.uid) return;
+
+		// Connect to WebSocket
+		websocketService.connect(user.uid);
+
+		// Handle connection status
+		const connectionHandler = (status) => {
+			setWsConnected(status === 'connected');
+		};
+		const connectionId = websocketService.onConnection(connectionHandler);
+
+		// Handle database messages
+		const handleDatabaseMessages = (data) => {
+			if (data.messages && data.messages.length > 0) {
+				const history = data.messages.map(msg => ({
+					sender: msg.sender_name === 'AI Assistant' ? 'bot' : 'user',
+					text: msg.message,
+					ts: new Date(msg.created_at || msg.time_stamp * 1000).getTime()
+				}));
+				setChatHistory(history);
+			}
+		};
+
+		// Handle new message stored in database
+		const handleNewMessage = (data) => {
+			if (data.message) {
+				const newMessage = {
+					sender: data.sender_name === 'AI Assistant' ? 'bot' : 'user',
+					text: data.message,
+					ts: new Date(data.created_at || data.time_stamp * 1000).getTime()
+				};
+				setChatHistory(prev => [...prev, newMessage]);
+			}
+		};
+
+		const handleConnectionStatus = (data) => {
+			console.log('WebSocket connection status:', data);
+		};
+
+		// Register message handlers
+		websocketService.onMessage('database_messages', handleDatabaseMessages);
+		websocketService.onMessage('new_message', handleNewMessage);
+		websocketService.onMessage('connection_status', handleConnectionStatus);
+
+		// Cleanup on unmount
+		return () => {
+			websocketService.offConnection(connectionId);
+			websocketService.offMessage('database_messages', handleDatabaseMessages);
+			websocketService.offMessage('new_message', handleNewMessage);
+			websocketService.offMessage('connection_status', handleConnectionStatus);
+		};
+	}, [user?.uid]);
 
 	// Animation for big icon to corner
 	const [showIntroAnim, setShowIntroAnim] = useState(true);
@@ -68,177 +131,96 @@ const ChatWidget = ({ isDarkMode }) => {
 		}
 	}, [chatHistory, isChatOpen]);
 
+	// WebSocket connection indicator
+	const ConnectionIndicator = () => (
+		<div className={`absolute top-2 right-2 w-3 h-3 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`} 
+			 title={wsConnected ? 'Connected' : 'Disconnected'} />
+	);
+
 	return (
 		<>
-			{/* Custom styles for smooth chat window and icon animation */}
-			<style>{`
-        @keyframes chatWindowSlideIn {
-          from { opacity: 0; transform: translateY(40px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .animate-chatWindowSlideIn {
-          animation: chatWindowSlideIn 0.5s cubic-bezier(0.4,0,0.2,1) forwards;
-        }
-        @keyframes chatIconFadeIn {
-          from { opacity: 0; transform: scale(0.8); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        .animate-chatIconFadeIn {
-          animation: chatIconFadeIn 0.5s cubic-bezier(0.4,0,0.2,1) forwards;
-        }
-        @keyframes chatMsgSlideIn {
-          from { opacity: 0; transform: translateY(16px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-chatMsgSlideIn {
-          animation: chatMsgSlideIn 0.4s cubic-bezier(0.4,0,0.2,1) forwards;
-        }
-        /* Custom scrollbar for chat window */
-        .chat-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        .chat-scrollbar::-webkit-scrollbar-thumb {
-          background: #e5e7eb;
-          border-radius: 4px;
-        }
-        .dark .chat-scrollbar::-webkit-scrollbar-thumb {
-          background: #374151;
-        }
-        .chat-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-      `}</style>
-			{/* Big center chat icon animation */}
+			{/* Intro animation */}
 			{showIntroAnim && (
-				<div className='fixed inset-0 z-[999] flex items-center justify-center'>
-					{/* Blur overlay */}
-					<div className='absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-700' style={{ opacity: blurOpacity }} />
-					<span ref={iconRef} className='will-change-transform' style={iconAnimDone ? { ...iconStyle } : { transition: 'opacity 0.5s', opacity: 1 }}>
-						<button
-							className={`rounded-full shadow-2xl p-12 sm:p-16 bg-opacity-90 transition-colors duration-300 focus:outline-none
-                ${isDarkMode ? 'bg-indigo-600' : 'bg-blue-600'}`}
-							style={{ pointerEvents: 'none' }}
-							aria-label='Chatbot Intro Icon'
-						>
-							<svg
-								className={`w-32 h-32 sm:w-40 sm:h-40 ${isDarkMode ? 'text-gray-100' : 'text-white'}`}
-								fill='none'
-								stroke='currentColor'
-								strokeWidth='2'
-								viewBox='0 0 24 24'
-								xmlns='http://www.w3.org/2000/svg'
-							>
-								<path
-									strokeLinecap='round'
-									strokeLinejoin='round'
-									d='M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6A8.38 8.38 0 0112.5 3c4.7 0 8.5 3.8 8.5 8.5z'
-								/>
-							</svg>
-						</button>
-					</span>
+				<div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+					<div
+						ref={iconRef}
+						style={iconStyle}
+						className={`w-32 h-32 rounded-full flex items-center justify-center text-4xl ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-900'} shadow-2xl`}
+					>
+						<span className={`text-4xl ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>◎</span>
+					</div>
+					<div
+						className="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity duration-500"
+						style={{ opacity: blurOpacity }}
+					></div>
 				</div>
 			)}
 
-			{/* Floating Chatbot Icon */}
-			{!isChatOpen && showFloatingButton && (
+			{/* Floating button */}
+			{showFloatingButton && (
 				<button
-					className={`fixed bottom-5 right-5 z-50 rounded-full shadow-lg p-4 transition-colors duration-300 focus:outline-none animate-chatIconFadeIn
-            ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-blue-600 hover:bg-blue-700'}
-          `}
-					aria-label='Open Chatbot'
-					onClick={() => {
-						setIsChatOpen(true);
-						setIsChatMinimized(false);
-					}}
+					onClick={() => setIsChatOpen(true)}
+					className={`fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full shadow-lg transition-all duration-200 hover:scale-110 ${
+						isDarkMode ? 'bg-gray-800 text-gray-100 hover:bg-gray-700' : 'bg-white text-gray-900 hover:bg-gray-50'
+					} border-2 ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}
+					aria-label="Open chat"
 				>
-					<svg
-						className={`w-7 h-7 ${isDarkMode ? 'text-gray-100' : 'text-white'}`}
-						fill='none'
-						stroke='currentColor'
-						strokeWidth='2'
-						viewBox='0 0 24 24'
-						xmlns='http://www.w3.org/2000/svg'
-					>
-						<path
-							strokeLinecap='round'
-							strokeLinejoin='round'
-							d='M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6A8.38 8.38 0 0112.5 3c4.7 0 8.5 3.8 8.5 8.5z'
-						/>
-					</svg>
+					<span className="text-2xl">◎</span>
 				</button>
 			)}
 
-			{/* Floating Chat Window */}
+			{/* Chat window */}
 			{isChatOpen && (
 				<div
-					className={`fixed bottom-5 right-5 z-50 w-[95vw] max-w-xs sm:max-w-sm md:max-w-md ${
-						isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
-					} rounded-xl shadow-2xl flex flex-col animate-chatWindowSlideIn ${isChatMinimized ? 'h-16' : 'h-[420px]'}`}
+					className={`fixed bottom-5 right-5 z-50 w-80 h-96 rounded-xl shadow-2xl border-2 ${
+						isDarkMode ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
+					} flex flex-col`}
 					style={{
 						transform: `translate(${chatPosition.x}px, ${chatPosition.y}px)`,
-						transition: isDragging ? 'none' : 'transform 0.2s',
+						cursor: isDragging ? 'grabbing' : 'default',
 					}}
-					role='dialog'
-					aria-modal='true'
-					aria-label='Nimble AI Chat'
 				>
-					{/* Header with branding, drag, minimize, close */}
+					{/* Header */}
 					<div
-						className={`flex items-center justify-between px-4 py-2 border-b ${
-							isDarkMode ? 'border-gray-700 bg-gray-800' : 'bg-white border-gray-200'
-						} cursor-move select-none rounded-t-xl`}
+						className={`flex items-center justify-between p-3 rounded-t-xl cursor-grab ${
+							isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
+						} ${isDragging ? 'cursor-grabbing' : ''}`}
 						onMouseDown={handleDragStart}
-						onTouchStart={handleDragStart}
 					>
-						<div className='flex items-center gap-2'>
-							<div className='flex flex-row justify-center'>
-							<span className={`text-2xl sm:text-3xl ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>◎</span>
-								<span className={`flex ml-2 items-center font-semibold text-base align-center ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}> Nimble AI Assistant</span>
-								{/* <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>How can I help you?</span> */}
-							</div>
+						<div className="flex items-center space-x-2">
+							<span className={`text-lg ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>◎</span>
+							<span className={`font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Nimble AI</span>
 						</div>
-						<div className='flex items-center gap-1'>
-							{/* <button
-                onClick={() => setIsChatMinimized((v) => !v)}
-                className={`p-1 rounded-full ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-                aria-label={isChatMinimized ? 'Expand chat' : 'Minimize chat'}
-              >
-                <svg className={`w-5 h-5 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`} fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                  {isChatMinimized ? (
-                    // Horizontal line for minimize
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M20 12H4' />
-                  ) : (
-                    // Cross for expand/close
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M6 18L18 6M6 6l12 12' />
-                  )}
-                </svg>
-              </button> */}
+						<div className="flex items-center space-x-1">
+							<ConnectionIndicator />
 							<button
-								onClick={() => {
-									setIsChatOpen(false);
-									setIsChatMinimized(false);
-								}}
-								className={`p-1 rounded-full ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-								aria-label='Close chat'
+								onClick={() => setIsChatMinimized(!isChatMinimized)}
+								className={`p-1 rounded ${isDarkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-200'}`}
+								aria-label={isChatMinimized ? 'Expand chat' : 'Minimize chat'}
 							>
-								<svg
-									className={`w-5 h-5 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}
-									fill='none'
-									stroke='currentColor'
-									viewBox='0 0 24 24'
-								>
-									<path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M6 18L18 6M6 6l12 12' />
+								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+								</svg>
+							</button>
+							<button
+								onClick={() => setIsChatOpen(false)}
+								className={`p-1 rounded ${isDarkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-200'}`}
+								aria-label="Close chat"
+							>
+								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
 								</svg>
 							</button>
 						</div>
 					</div>
+
 					{/* Chat body */}
 					{!isChatMinimized && (
 						<>
 							<div
 								ref={chatWindowRef}
 								className={`flex-1 overflow-y-auto px-3 py-2 space-y-2 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} chat-scrollbar`}
-								abIndex={0}
+								tabIndex={0}
 								aria-live='polite'
 							>
 								{chatHistory.length === 0 && (
@@ -271,31 +253,32 @@ const ChatWidget = ({ isDarkMode }) => {
 									</div>
 								))}
 								{showTyping && (
-									<div className='flex justify-start animate-fadeIn'>
-										<div
-											className={`px-3 py-2 rounded-lg max-w-[80%] text-sm shadow-sm flex items-center gap-2 ${
-												isDarkMode ? 'bg-gray-700 text-gray-100 border-gray-600' : 'bg-white text-gray-900 border border-gray-200'
-											}`}
-										>
-											<span className='w-2 h-2 bg-current rounded-full animate-bounce'></span>
-											<span className='w-2 h-2 bg-current rounded-full animate-bounce delay-100'></span>
-											<span className='w-2 h-2 bg-current rounded-full animate-bounce delay-200'></span>
-											<span className={`ml-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Typing...</span>
+									<div className="flex justify-start animate-chatMsgSlideIn">
+										<div className={`p-2 sm:p-3 rounded-lg shadow-sm border ${
+											isDarkMode ? 'bg-gray-700 text-gray-100 border-gray-600' : 'bg-white text-gray-800 border-gray-200'
+										}`}>
+											<div className="flex space-x-1">
+												<div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+												<div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+												<div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+											</div>
 										</div>
 									</div>
 								)}
-								{/* Quick replies */}
-								{chatHistory.length < 2 && quickReplies && quickReplies.length > 0 && (
-									<div className='flex flex-wrap gap-2 mt-2 animate-chatMsgSlideIn'>
+								{quickReplies.length > 0 && (
+									<div className="flex flex-wrap gap-2 mt-2">
 										{quickReplies.map((qr, i) => (
 											<button
 												key={i}
-												className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+												onClick={() => {
+													setChatInput(qr);
+													handleChatSend({ preventDefault: () => {} });
+												}}
+												className={`px-3 py-1 text-xs rounded-full border transition-colors ${
 													isDarkMode
-														? 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700'
-														: 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100'
+														? 'border-gray-600 text-gray-300 hover:bg-gray-700'
+														: 'border-gray-300 text-gray-600 hover:bg-gray-100'
 												}`}
-												onClick={() => setChatInput(qr)}
 											>
 												{qr}
 											</button>

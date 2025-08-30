@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'DynamoDB table for NimbleAI WebSocket connections'
+
+Parameters:
+  Stage:
+    Type: String
+    Default: prod
+    Description: Deployment stage
+
+Resources:
+  ConnectionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'nimbleai-connections-${Stage}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: connectionId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: connectionId
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+Outputs:
+  ConnectionsTableName:
+    Description: 'Connections table name'
+    Value: !Ref ConnectionsTable
+    Export:
+      Name: !Sub 'nimbleai-connections-table-${Stage}'

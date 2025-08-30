@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import websocketService from '../services/websocketService';
 
 export function useChat() {
 	const [isChatOpen, setIsChatOpen] = useState(false);
@@ -12,29 +13,6 @@ export function useChat() {
 	const dragOffset = useRef({ x: 0, y: 0 });
 	const [chatPosition, setChatPosition] = useState({ x: 0, y: 0 });
 	const [isDragging, setIsDragging] = useState(false);
-
-	// // Persist chat history in localStorage
-	// useEffect(() => {
-	// 	const saved = localStorage.getItem('nimble-chat-history');
-	// 	if (saved) {
-	// 		try {
-	// 			setChatHistory(JSON.parse(saved));
-	// 		} catch {}
-	// 	}
-	// }, []);
-	// useEffect(() => {
-	// 	localStorage.setItem('nimble-chat-history', JSON.stringify(chatHistory));
-	// }, [chatHistory]);
-
-	useEffect(() => {
-		fetch('https://re40cbsv70.execute-api.ap-south-1.amazonaws.com/sendMessage', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				question: 'tet',
-			}),
-		});
-	}, []);
 
 	// Auto-focus input when chat opens
 	useEffect(() => {
@@ -50,75 +28,79 @@ export function useChat() {
 				setChatHistory([{ sender: 'bot', text: 'Hi! I am Nimble AI Assistant. How can I help you today?', ts: Date.now() }]);
 			}, 300);
 		}
-	}, [isChatOpen]);
+	}, [isChatOpen, chatHistory.length]);
 
 	// Drag handlers (desktop only)
 	const handleDragStart = (e) => {
-		if (window.innerWidth < 640) return; // Don't drag on mobile
-		setIsDragging(true);
-		const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
-		const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
-		dragOffset.current = {
-			x: clientX - chatPosition.x,
-			y: clientY - chatPosition.y,
-		};
-		document.body.style.userSelect = 'none';
+		if (e.type === 'mousedown') {
+			e.preventDefault();
+			const rect = e.currentTarget.getBoundingClientRect();
+			dragOffset.current = {
+				x: e.clientX - rect.left,
+				y: e.clientY - rect.top,
+			};
+			setIsDragging(true);
+			
+			const handleMouseMove = (e) => {
+				if (isDragging) {
+					const newX = e.clientX - dragOffset.current.x;
+					const newY = e.clientY - dragOffset.current.y;
+					setChatPosition({ x: newX, y: newY });
+				}
+			};
+			
+			const handleMouseUp = () => {
+				setIsDragging(false);
+				document.removeEventListener('mousemove', handleMouseMove);
+				document.removeEventListener('mouseup', handleMouseUp);
+			};
+			
+			document.addEventListener('mousemove', handleMouseMove);
+			document.addEventListener('mouseup', handleMouseUp);
+		}
 	};
-	const handleDrag = (e) => {
-		if (!isDragging) return;
-		const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-		const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-		setChatPosition({
-			x: clientX - dragOffset.current.x,
-			y: clientY - dragOffset.current.y,
-		});
-	};
-	const handleDragEnd = () => {
-		setIsDragging(false);
-		document.body.style.userSelect = '';
-	};
-	useEffect(() => {
-		if (!isDragging) return;
-		window.addEventListener('mousemove', handleDrag);
-		window.addEventListener('mouseup', handleDragEnd);
-		window.addEventListener('touchmove', handleDrag);
-		window.addEventListener('touchend', handleDragEnd);
-		return () => {
-			window.removeEventListener('mousemove', handleDrag);
-			window.removeEventListener('mouseup', handleDragEnd);
-			window.removeEventListener('touchmove', handleDrag);
-			window.removeEventListener('touchend', handleDragEnd);
-		};
-	}, [isDragging]);
 
 	const handleChatSend = async (e) => {
 		e.preventDefault();
-		if (!chatInput.trim()) return;
-		const userMessage = chatInput.trim();
-		setChatHistory((prev) => [...prev, { sender: 'user', text: userMessage, ts: Date.now() }]);
+		if (!chatInput.trim() || isChatLoading) return;
+
+		const message = chatInput.trim();
 		setChatInput('');
-		setShowTyping(true);
 		setIsChatLoading(true);
+		setShowTyping(true);
+
+		// Add user message to chat history immediately for UI responsiveness
+		const userMessage = {
+			sender: 'user',
+			text: message,
+			ts: Date.now()
+		};
+		setChatHistory(prev => [...prev, userMessage]);
+
 		try {
-			// Demo: send user message as 'userMessage' to the API
-			const response = await fetch('https://re40cbsv70.execute-api.ap-south-1.amazonaws.com/sendMessage', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					question: userMessage,
-				}),
-			});
-			if (response.ok) {
-				const data = await response.json();
-				setChatHistory((prev) => [...prev, { sender: 'bot', text: data.answer.metadata.answer || 'Message received!', ts: Date.now() }]);
-			} else {
-				setChatHistory((prev) => [...prev, { sender: 'bot', text: 'Sorry, there was an error.', ts: Date.now() }]);
+			// Send message to database via WebSocket
+			const success = websocketService.sendMessageToDatabase(
+				message,
+				'User',
+				'' // senderNumber - can be updated if needed
+			);
+
+			if (!success) {
+				throw new Error('WebSocket not connected');
 			}
+
+			// The message will be stored in database and broadcast back via WebSocket
+			// We don't need to manually add it here as it will come back from the database
+		} catch (error) {
+			console.error('Error sending message:', error);
+			// Add error message to chat
+			setChatHistory(prev => [...prev, {
+				sender: 'bot',
+				text: 'Sorry, I encountered an error. Please try again.',
+				ts: Date.now()
+			}]);
 			setShowTyping(false);
-			setIsChatLoading(false);
-		} catch {
-			setChatHistory((prev) => [...prev, { sender: 'bot', text: 'Sorry, there was an error.', ts: Date.now() }]);
-			setShowTyping(false);
+		} finally {
 			setIsChatLoading(false);
 		}
 	};
@@ -130,8 +112,13 @@ export function useChat() {
 		}
 	};
 
-	// Quick replies (example)
-	const quickReplies = ['What can you do?', 'How do I get started?', 'Can I talk to a human?'];
+	// Quick reply suggestions
+	const quickReplies = [
+		"How does it work?",
+		"What are the features?",
+		"Tell me about pricing",
+		"Contact support"
+	];
 
 	return {
 		isChatOpen,
@@ -149,9 +136,7 @@ export function useChat() {
 		chatInputRef,
 		chatWindowRef,
 		chatPosition,
-		setChatPosition,
 		isDragging,
-		setIsDragging,
 		handleDragStart,
 		handleChatSend,
 		handleInputKeyDown,
