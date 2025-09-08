@@ -13,9 +13,9 @@ import {
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const menuItems = [
     { id: 'dashboard', name: 'Dashboard', icon: HomeIcon },
-    { id: 'live-chat', name: 'Live Chat', icon: ChatBubbleLeftRightIcon },
     { id: 'integrations', name: 'Integrations', icon: PuzzlePieceIcon },
     { id: 'knowledge', name: 'Knowledge Base', icon: BookOpenIcon },
+    { id: 'live-chat', name: 'Live Chat', icon: ChatBubbleLeftRightIcon },
     // { id: 'analytics', name: 'Analytics & Reports', icon: ChartBarIcon },
     // { id: 'settings', name: 'Settings', icon: Cog6ToothIcon },
     // { id: 'billing', name: 'Billing & Plan', icon: CreditCardIcon },

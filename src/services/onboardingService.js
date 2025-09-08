@@ -65,4 +65,50 @@ export const onboardUser = async (company, specialization) => {
   }
 };
 
+// Function to check if user is already onboarded
+export const checkOnboardingStatus = async () => {
+  try {
+    const user = getCurrentUser();
+    if (!user) {
+      throw new Error('No authenticated user found');
+    }
+
+    const idToken = localStorage.getItem('authToken');
+    if (!idToken) {
+      throw new Error('No authentication token available');
+    }
+    
+    // Build the proxy URL for checking onboarding status
+    const proxyUrl = `${apiConfig.config.baseURL}/api/proxy/get_user_onboarding_status`;
+    
+    console.log('Checking onboarding status for user:', user.uid);
+    
+    const response = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: user.uid
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Response status:', response.status);
+      console.error('Response body:', errorText);
+      throw new Error(`Onboarding status check failed: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('Onboarding status check result:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('Onboarding status check failed:', error);
+    throw error;
+  }
+};
+
  

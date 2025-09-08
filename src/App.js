@@ -240,6 +240,9 @@ function App() {
 					<Route path="/privacy-policy" element={<PrivacyPolicy isDarkMode={isDarkMode} />} />
 					<Route path="/terms-of-service" element={<TermsOfService isDarkMode={isDarkMode} />} />
 					<Route path="/delete-user-data" element={<UserDataDeletion isDarkMode={isDarkMode} />} />
+					<Route path="/pricing-policy" element={<PricingPolicy isDarkMode={isDarkMode} />} />
+					<Route path="/shipping-policy" element={<ShippingPolicy isDarkMode={isDarkMode} />} />
+					<Route path="/cancellation-refund-policy" element={<CancellationRefundPolicy isDarkMode={isDarkMode} />} />
 				</Routes>
 				{/* Footer Component */}
 				<Footer isDarkMode={isDarkMode} />
@@ -732,6 +735,33 @@ function Footer({ isDarkMode }) {
 					</a>
 					<span className={`hidden sm:inline text-gray-400`}>|</span>
 					<a
+						href="/pricing-policy"
+						className={`text-xs sm:text-sm underline hover:no-underline transition-colors duration-200 ${isDarkMode ? 'text-gray-200 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						Pricing Policy
+					</a>
+					<span className={`hidden sm:inline text-gray-400`}>|</span>
+					<a
+						href="/shipping-policy"
+						className={`text-xs sm:text-sm underline hover:no-underline transition-colors duration-200 ${isDarkMode ? 'text-gray-200 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						Shipping Policy
+					</a>
+					<span className={`hidden sm:inline text-gray-400`}>|</span>
+					<a
+						href="/cancellation-refund-policy"
+						className={`text-xs sm:text-sm underline hover:no-underline transition-colors duration-200 ${isDarkMode ? 'text-gray-200 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						Cancellation/Refund Policy
+					</a>
+					<span className={`hidden sm:inline text-gray-400`}>|</span>
+					<a
 						href="/delete-user-data"
 						className={`text-xs sm:text-sm underline hover:no-underline transition-colors duration-200 ${isDarkMode ? 'text-gray-200 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}
 						target="_blank"
@@ -1075,7 +1105,7 @@ function UserDataDeletion({ isDarkMode }) {
 				<ul className="list-disc list-inside mb-4 ml-4">
 					<li>Data deletion is <strong>permanent and cannot be undone</strong>.</li>
 					<li>We may retain anonymized, non-personal usage data for analytics.</li>
-					<li>If you're a business customer, deleting data may affect your chat agent’s performance or training.</li>
+					<li>If you're a business customer, deleting data may affect your chat agent's performance or training.</li>
 				</ul>
 
 				<h2 className="text-2xl font-semibold mt-8 mb-3">Compliance</h2>
@@ -1083,10 +1113,159 @@ function UserDataDeletion({ isDarkMode }) {
 				<ul className="list-disc list-inside mb-4 ml-4">
 					<li>GDPR (General Data Protection Regulation – EU)</li>
 					<li>CCPA (California Consumer Privacy Act – US)</li>
-					<li>India’s Draft DPDP Bill (Digital Personal Data Protection Bill)</li>
+					<li>India's Draft DPDP Bill (Digital Personal Data Protection Bill)</li>
 				</ul>
 
 				<p className="mb-8">For further information, you can contact us at <a href="mailto:contact@nimbleai.in" className="underline">contact@nimbleai.in</a>.</p>
+			</div>
+		</div>
+	);
+}
+
+function PricingPolicy({ isDarkMode }) {
+	return (
+		<div className={`min-h-screen py-12 px-4 ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'}`}>
+			<div className="max-w-2xl mx-auto">
+				<h1 className="text-3xl font-bold mb-6">Pricing Policy – NimbleAI</h1>
+
+				<p className="mb-4">This pricing policy outlines our commitment to transparent and fair pricing for all NimbleAI services.</p>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Pricing Structure</h2>
+				<p className="mb-4">Our pricing is based on usage and features. We offer flexible plans to accommodate businesses of all sizes:</p>
+				<ul className="list-disc list-inside mb-4 ml-4">
+					<li><strong>Free Tier:</strong> Basic features with limited usage</li>
+					<li><strong>Pro Plan:</strong> Advanced features with higher usage limits</li>
+					<li><strong>Enterprise Plan:</strong> Custom solutions for large organizations</li>
+				</ul>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Price Changes</h2>
+				<p className="mb-4">We reserve the right to modify our pricing at any time. However, we will:</p>
+				<ul className="list-disc list-inside mb-4 ml-4">
+					<li>Provide at least 30 days notice for any price increases</li>
+					<li>Honor existing pricing for current subscribers during their billing cycle</li>
+					<li>Clearly communicate any changes through email and our website</li>
+				</ul>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Billing and Payment</h2>
+				<ul className="list-disc list-inside mb-4 ml-4">
+					<li>All prices are in USD unless otherwise specified</li>
+					<li>Billing occurs monthly or annually based on your selected plan</li>
+					<li>Payment is due in advance for each billing period</li>
+					<li>We accept major credit cards and other payment methods as available</li>
+				</ul>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Taxes</h2>
+				<p className="mb-4">All prices are exclusive of applicable taxes. You are responsible for any taxes, duties, or fees imposed by your local jurisdiction.</p>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Contact</h2>
+				<p className="mb-8">For questions about pricing, please contact us at <a href="mailto:contact@nimbleai.in" className="underline">contact@nimbleai.in</a>.</p>
+			</div>
+		</div>
+	);
+}
+
+function ShippingPolicy({ isDarkMode }) {
+	return (
+		<div className={`min-h-screen py-12 px-4 ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'}`}>
+			<div className="max-w-2xl mx-auto">
+				<h1 className="text-3xl font-bold mb-6">Shipping Policy – NimbleAI</h1>
+
+				<p className="mb-4">Since NimbleAI provides digital services and software solutions, this policy covers the delivery and activation of our services.</p>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Digital Service Delivery</h2>
+				<p className="mb-4">Our services are delivered digitally and include:</p>
+				<ul className="list-disc list-inside mb-4 ml-4">
+					<li>AI chatbot setup and configuration</li>
+					<li>Integration with your existing platforms (WhatsApp, website, etc.)</li>
+					<li>Training and onboarding support</li>
+					<li>Access to our dashboard and analytics</li>
+				</ul>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Service Activation Timeline</h2>
+				<ul className="list-disc list-inside mb-4 ml-4">
+					<li><strong>Free Tier:</strong> Immediate activation upon signup</li>
+					<li><strong>Pro Plan:</strong> Setup within 24-48 hours of payment confirmation</li>
+					<li><strong>Enterprise Plan:</strong> Custom timeline based on requirements (typically 1-2 weeks)</li>
+				</ul>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Delivery Method</h2>
+				<p className="mb-4">All services are delivered through:</p>
+				<ul className="list-disc list-inside mb-4 ml-4">
+					<li>Email notifications with setup instructions</li>
+					<li>Access credentials sent to your registered email</li>
+					<li>Dashboard access provided immediately upon activation</li>
+					<li>Integration links and API keys delivered securely</li>
+				</ul>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Support and Onboarding</h2>
+				<p className="mb-4">We provide comprehensive support to ensure successful service delivery:</p>
+				<ul className="list-disc list-inside mb-4 ml-4">
+					<li>Setup assistance via email and chat support</li>
+					<li>Documentation and tutorials</li>
+					<li>Training sessions for Pro and Enterprise customers</li>
+					<li>Ongoing technical support</li>
+				</ul>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Contact</h2>
+				<p className="mb-8">For questions about service delivery, please contact us at <a href="mailto:contact@nimbleai.in" className="underline">contact@nimbleai.in</a>.</p>
+			</div>
+		</div>
+	);
+}
+
+function CancellationRefundPolicy({ isDarkMode }) {
+	return (
+		<div className={`min-h-screen py-12 px-4 ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'}`}>
+			<div className="max-w-2xl mx-auto">
+				<h1 className="text-3xl font-bold mb-6">Cancellation & Refund Policy – NimbleAI</h1>
+
+				<p className="mb-4">This policy outlines the terms and conditions for canceling your NimbleAI subscription and requesting refunds.</p>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Cancellation Policy</h2>
+				<p className="mb-4">You may cancel your subscription at any time:</p>
+				<ul className="list-disc list-inside mb-4 ml-4">
+					<li><strong>Free Tier:</strong> No cancellation required - simply stop using the service</li>
+					<li><strong>Pro Plan:</strong> Cancel through your dashboard or by contacting support</li>
+					<li><strong>Enterprise Plan:</strong> Contact your account manager or support team</li>
+				</ul>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Refund Policy</h2>
+				<p className="mb-4">We offer refunds under the following conditions:</p>
+				<ul className="list-disc list-inside mb-4 ml-4">
+					<li><strong>30-Day Money-Back Guarantee:</strong> Full refund within 30 days of initial purchase</li>
+					<li><strong>Pro-rated Refunds:</strong> For annual subscriptions, refunds are calculated based on unused months</li>
+					<li><strong>Service Issues:</strong> Refunds for technical problems we cannot resolve</li>
+				</ul>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Refund Process</h2>
+				<p className="mb-2">To request a refund:</p>
+				<ul className="list-disc list-inside mb-4 ml-4">
+					<li>Email us at <a href="mailto:contact@nimbleai.in" className="underline">contact@nimbleai.in</a></li>
+					<li>Include your account details and reason for refund</li>
+					<li>We will process your request within 5-7 business days</li>
+					<li>Refunds will be issued to the original payment method</li>
+				</ul>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Non-Refundable Items</h2>
+				<p className="mb-4">The following are not eligible for refunds:</p>
+				<ul className="list-disc list-inside mb-4 ml-4">
+					<li>Usage-based charges already incurred</li>
+					<li>Custom development work completed</li>
+					<li>Third-party integration costs</li>
+					<li>Services used beyond the 30-day guarantee period</li>
+				</ul>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Service Termination</h2>
+				<p className="mb-4">Upon cancellation or refund:</p>
+				<ul className="list-disc list-inside mb-4 ml-4">
+					<li>Your service will remain active until the end of your current billing period</li>
+					<li>Data will be retained for 30 days after termination</li>
+					<li>You may export your data before the retention period expires</li>
+					<li>After 30 days, all data will be permanently deleted</li>
+				</ul>
+
+				<h2 className="text-2xl font-semibold mt-8 mb-3">Contact</h2>
+				<p className="mb-8">For questions about cancellations or refunds, please contact us at <a href="mailto:contact@nimbleai.in" className="underline">contact@nimbleai.in</a>.</p>
 			</div>
 		</div>
 	);

@@ -130,10 +130,15 @@ const buildWaEsUrl = (endpoint) => {
 // Helper function to build Firebase Lambda API URLs
 const buildFirebaseLambdaUrl = (endpoint) => {
   const config = getFirebaseLambdaConfig();
-  const firebaseEndpoints = {
-    checkWhatsappStatus: '/api/check_whatsapp_status',
-    getWhatsappLink: '/api/get_whatsapp_link'
-  };
+      const firebaseEndpoints = {
+      checkWhatsappStatus: '/api/check_whatsapp_status',
+      getWhatsappLink: '/api/get_whatsapp_link',
+      getUserDashboardStatus: '/api/get_user_dashboard_status',
+      updateTrainingStatus: '/api/update_training_status',
+      getUserOnboardingStatus: '/api/get_user_onboarding_status',
+      getUserTrainingStatus: '/api/get_user_training_status',
+      getUserSubscriptionDetails: '/api/get_user_subscription_details'
+    };
   const url = `${config.baseURL}${firebaseEndpoints[endpoint] || endpoint}`;
   console.log('🔧 Building Firebase Lambda URL:', {
     endpoint,
@@ -176,7 +181,12 @@ export const apiConfig = {
     // Firebase Lambda endpoints
     firebase: {
       checkWhatsappStatus: () => buildFirebaseLambdaUrl('checkWhatsappStatus'),
-      getWhatsappLink: () => buildFirebaseLambdaUrl('getWhatsappLink')
+      getWhatsappLink: () => buildFirebaseLambdaUrl('getWhatsappLink'),
+      getUserDashboardStatus: () => buildFirebaseLambdaUrl('getUserDashboardStatus'),
+      updateTrainingStatus: () => buildFirebaseLambdaUrl('updateTrainingStatus'),
+      getUserOnboardingStatus: () => buildFirebaseLambdaUrl('getUserOnboardingStatus'),
+      getUserTrainingStatus: () => buildFirebaseLambdaUrl('getUserTrainingStatus'),
+      getUserSubscriptionDetails: () => buildFirebaseLambdaUrl('getUserSubscriptionDetails')
     }
   }
 };

@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../hooks/useAuth';
+import websocketService from '../../services/websocketService';
+import { formatRelativeTime } from '../../services/chatService';
 import {
   ChatBubbleLeftRightIcon,
   CheckCircleIcon,
@@ -9,62 +12,83 @@ import {
 } from '@heroicons/react/24/outline';
 
 const RecentChats = () => {
+  const { user } = useAuth();
   const [sortBy, setSortBy] = useState('time');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [recentChats, setRecentChats] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock recent chats data
-  const recentChats = [
-    {
-      id: 1,
-      customer: 'John Doe',
-      customerNumber: '+1 (555) 123-4567',
-      query: 'I have a question about my order #12345',
-      channel: 'WhatsApp',
-      status: 'resolved',
-      timestamp: '2 hours ago',
-      duration: '3 min'
-    },
-    {
-      id: 2,
-      customer: 'Sarah Wilson',
-      customerNumber: '+1 (555) 987-6543',
-      query: 'When will my refund be processed?',
-      channel: 'Instagram',
-      status: 'open',
-      timestamp: '4 hours ago',
-      duration: '5 min'
-    },
-    {
-      id: 3,
-      customer: 'Mike Johnson',
-      customerNumber: '+1 (555) 456-7890',
-      query: 'Need help with account login',
-      channel: 'Website',
-      status: 'escalated',
-      timestamp: '6 hours ago',
-      duration: '8 min'
-    },
-    {
-      id: 4,
-      customer: 'Emily Davis',
-      customerNumber: '+1 (555) 321-0987',
-      query: 'Product return policy question',
-      channel: 'WhatsApp',
-      status: 'resolved',
-      timestamp: '1 day ago',
-      duration: '2 min'
-    },
-    {
-      id: 5,
-      customer: 'David Brown',
-      customerNumber: '+1 (555) 654-3210',
-      query: 'Shipping delay inquiry',
-      channel: 'Instagram',
-      status: 'open',
-      timestamp: '1 day ago',
-      duration: '4 min'
-    }
-  ];
+  // Fetch recent chats from the same source as Live Chat (WebSocket DB messages)
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    // Connect if not already connected; this will also request messages
+    websocketService.connect(user.uid);
+
+    const handleDatabaseMessages = (data) => {
+      try {
+        if (data.messages && data.messages.length > 0) {
+          // Group by sender and derive last message info
+          const groupedBySender = data.messages.reduce((acc, msg) => {
+            const senderKey = msg.sender_number || msg.sender_name || 'Unknown';
+            if (!acc[senderKey]) {
+              acc[senderKey] = {
+                sender_name: msg.sender_name || 'Unknown',
+                sender_number: msg.sender_number || '',
+                messages: []
+              };
+            }
+            acc[senderKey].messages.push(msg);
+            return acc;
+          }, {});
+
+          const chats = Object.values(groupedBySender).map((entry) => {
+            const sorted = entry.messages.sort((a, b) => new Date(a.created_at || a.time_stamp) - new Date(b.created_at || b.time_stamp));
+            const last = sorted[sorted.length - 1];
+            return {
+              id: `${entry.sender_number}-${sorted[0]?.conversation_id || 'conv'}`,
+              customer: entry.sender_name || 'Unknown',
+              customerNumber: entry.sender_number || '',
+              query: last?.message || '',
+              channel: entry.sender_number ? 'WhatsApp' : 'Website',
+              status: 'open',
+              timestamp: last?.created_at || last?.time_stamp,
+              duration: ''
+            };
+          })
+          // Sort most recent first
+          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+          // Limit to latest 5-10
+          .slice(0, 10);
+
+          setRecentChats(chats);
+        } else {
+          setRecentChats([]);
+        }
+      } catch (e) {
+        console.error('Error processing database messages for recent chats:', e);
+        setRecentChats([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const handleNewMessage = (data) => {
+      // Re-request messages for freshness when a new one arrives
+      websocketService.requestUserMessages(user.uid);
+    };
+
+    websocketService.onMessage('database_messages', handleDatabaseMessages);
+    websocketService.onMessage('new_message', handleNewMessage);
+
+    // Initial fetch in case already connected
+    websocketService.requestUserMessages(user.uid);
+
+    return () => {
+      websocketService.offMessage('database_messages', handleDatabaseMessages);
+      websocketService.offMessage('new_message', handleNewMessage);
+    };
+  }, [user?.uid]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -98,10 +122,9 @@ const RecentChats = () => {
       Instagram: 'bg-pink-500',
       Website: 'bg-blue-500'
     };
-    
     return (
-      <div className={`w-6 h-6 rounded-full ${channelColors[channel]} flex items-center justify-center`}>
-        <span className="text-white text-xs font-bold">{channel.charAt(0)}</span>
+      <div className={`w-6 h-6 rounded-full ${channelColors[channel] || 'bg-gray-400'} flex items-center justify-center`}>
+        <span className="text-white text-xs font-bold">{(channel || '?').charAt(0)}</span>
       </div>
     );
   };
@@ -128,6 +151,17 @@ const RecentChats = () => {
       )}
     </button>
   );
+
+  const sortedChats = [...recentChats].sort((a, b) => {
+    const dir = sortOrder === 'asc' ? 1 : -1;
+    if (sortBy === 'customer') return a.customer.localeCompare(b.customer) * dir;
+    if (sortBy === 'query') return a.query.localeCompare(b.query) * dir;
+    if (sortBy === 'channel') return a.channel.localeCompare(b.channel) * dir;
+    if (sortBy === 'status') return a.status.localeCompare(b.status) * dir;
+    if (sortBy === 'time') return (new Date(a.timestamp) - new Date(b.timestamp)) * dir;
+    if (sortBy === 'duration') return (a.duration || '').localeCompare(b.duration || '') * dir;
+    return 0;
+  });
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -162,7 +196,7 @@ const RecentChats = () => {
 
       {/* Table Body */}
       <div className="space-y-2">
-        {recentChats.map((chat) => (
+        {!loading && sortedChats.map((chat) => (
           <div
             key={chat.id}
             className="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
@@ -197,7 +231,7 @@ const RecentChats = () => {
 
             {/* Time */}
             <div className="col-span-2">
-              <p className="text-sm text-gray-600">{chat.timestamp}</p>
+              <p className="text-sm text-gray-600">{formatRelativeTime(chat.timestamp)}</p>
             </div>
 
             {/* Duration */}
@@ -206,16 +240,19 @@ const RecentChats = () => {
             </div>
           </div>
         ))}
-      </div>
 
-      {/* Empty State */}
-      {recentChats.length === 0 && (
-        <div className="text-center py-8">
-          <ChatBubbleLeftRightIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No recent conversations</p>
-          <p className="text-sm text-gray-400">Chats will appear here as customers reach out</p>
-        </div>
-      )}
+        {!loading && sortedChats.length === 0 && (
+          <div className="text-center py-8">
+            <ChatBubbleLeftRightIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No recent conversations</p>
+            <p className="text-sm text-gray-400">Chats will appear here as customers reach out</p>
+          </div>
+        )}
+
+        {loading && (
+          <div className="text-center py-8 text-gray-500">Loading...</div>
+        )}
+      </div>
     </div>
   );
 };

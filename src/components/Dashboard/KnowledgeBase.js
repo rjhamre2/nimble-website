@@ -1,6 +1,7 @@
 import { useAuth } from '../../hooks/useAuth';
 import axios from 'axios';
 import React, { useState } from 'react';
+import { updateTrainingStatus } from '../../services/firebaseService';
 
 
 import {
@@ -187,9 +188,10 @@ const KnowledgeBase = () => {
         return;
       }
       
+      // Step 1: Call the training API on the backend
       const apiUrl = `${process.env.REACT_APP_DASHBOARD2EC2LAMBDA_BASE_URL}/api/proxy/train`;
       
-      const response = await axios.post(apiUrl, 
+      const trainingResponse = await axios.post(apiUrl, 
         { user_id: user.uid },
         {
           headers: {
@@ -199,9 +201,20 @@ const KnowledgeBase = () => {
         }
       );
 
+      console.log('Training API response:', trainingResponse.data);
+      
+      // Step 2: Update Firebase with training status
+      const trainingData = {
+        filesCount: uploadedFiles.length,
+        faqsCount: faqs.length,
+        lastTrainingDate: new Date().toISOString(),
+        trainingResponse: trainingResponse.data
+      };
+      
+      await updateTrainingStatus(user.uid, trainingData);
       
       // Show success message
-      alert('AI Agent training completed successfully!');
+      alert('AI Agent training completed successfully! Training status updated in dashboard.');
       
     } catch (err) {
       console.error('Training failed:', err);
