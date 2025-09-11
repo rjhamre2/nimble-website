@@ -157,126 +157,87 @@ const Dashboard = () => {
         return (
           <div className="space-y-6">
             {/* Status Indicators Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* WhatsApp Integration Status */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* WhatsApp Status */}
               <div 
-                className={`p-4 rounded-lg border cursor-pointer ${
-                  whatsappStatus?.success && whatsappStatus?.isIntegrated 
-                    ? 'bg-green-50 border-green-200 hover:bg-green-100' 
-                    : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
-                }`}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
                 onClick={handleWhatsAppClick}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleWhatsAppClick(); }}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-3 h-3 rounded-full ${
-                      whatsappStatus?.success && whatsappStatus?.isIntegrated 
-                        ? 'bg-green-500' 
-                        : 'bg-blue-500'
-                    }`}></div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">
-                        WhatsApp Business Integration
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {isCheckingWhatsapp 
-                          ? 'Checking status...' 
-                          : whatsappStatus?.success 
-                            ? (whatsappStatus?.isIntegrated 
-                                ? '✅ Integration is active' 
-                                : '⚠️ Integration not active')
-                            : `❌ Error: ${whatsappStatus?.error || 'Not checked'}`
-                        }
-                      </p>
-                    </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">WhatsApp</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {whatsappStatus ? '✅ Connected' : '❌ Not Connected'}
+                    </p>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {isCheckingWhatsapp ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                    ) : (
-                      <div className={`w-5 h-5 ${
-                        whatsappStatus?.success && whatsappStatus?.isIntegrated 
-                          ? 'text-green-500' 
-                          : 'text-blue-500'
-                      }`}>→</div>
-                    )}
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <span className="text-xl">📱</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Training Status */}
+              <div 
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={handleTrainingClick}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Training</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {trainingStatus ? '✅ Complete' : '⏳ Pending'}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <span className="text-xl">🧠</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Subscription Details */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Subscription</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {subscriptionDetails?.plan || 'No Plan Selected'}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <span className="text-xl">💳</span>
                   </div>
                 </div>
               </div>
 
               {/* Onboarding Status */}
-              <div
-                className="p-4 rounded-lg border bg-yellow-50 border-yellow-200 cursor-pointer hover:bg-yellow-100"
+              <div 
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
                 onClick={handleOnboardingClick}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleOnboardingClick(); }}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">
-                        Onboarding Status
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {onboardingStatus?.status === 'completed' ? '✅ Complete' : '⚠️ Pending completion'}
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Onboarding</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {onboardingStatus ? '✅ Complete' : '⏳ Pending'}
+                    </p>
+                    {onboardingStatus && userData?.company && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {userData.company} • {userData.specialization}
                       </p>
-                    </div>
+                    )}
                   </div>
-                  <div className="w-5 h-5"></div>
-                </div>
-              </div>
-
-              {/* Training Status */}
-              <div
-                className="p-4 rounded-lg border bg-purple-50 border-purple-200 cursor-pointer hover:bg-purple-100"
-                onClick={handleTrainingClick}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleTrainingClick(); }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">
-                        Training Status
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {trainingStatus?.status === 'completed' ? '✅ Complete' : '⚠️ Not started'}
-                      </p>
-                    </div>
+                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <span className="text-xl">🚀</span>
                   </div>
-                  <div className="w-5 h-5 text-purple-500">→</div>
-                </div>
-              </div>
-
-              {/* Subscription Details */}
-              <div className="p-4 rounded-lg border bg-indigo-50 border-indigo-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">
-                        Subscription Details
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {subscriptionDetails?.plan || 'No Plan Selected'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="w-5 h-5"></div>
                 </div>
               </div>
             </div>
-            
-            <OverviewCards />
-            <LiveAgentPreview />
-            <RecentChats />
+
+            {/* Main Content Grid */}
+            <div className="space-y-6">
+              <LiveAgentPreview />
+              <RecentChats />
+            </div>
           </div>
         );
       
@@ -288,14 +249,17 @@ const Dashboard = () => {
         return <AnalyticsReports />;
       case 'billing':
         return <PlanBilling />;
+      case 'subscriptions':
+        return <PlanBilling />;
       case 'settings':
         return <Settings />;
       default:
         return (
           <div className="space-y-6">
-            <OverviewCards />
-            <LiveAgentPreview />
-            <RecentChats />
+            <div className="text-center py-12">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to NimbleAI Dashboard</h2>
+              <p className="text-gray-600">Select a section from the sidebar to get started.</p>
+            </div>
           </div>
         );
     }

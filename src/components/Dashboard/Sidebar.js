@@ -16,10 +16,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     { id: 'integrations', name: 'Integrations', icon: PuzzlePieceIcon },
     { id: 'knowledge', name: 'Knowledge Base', icon: BookOpenIcon },
     { id: 'live-chat', name: 'Live Chat', icon: ChatBubbleLeftRightIcon },
-    // { id: 'analytics', name: 'Analytics & Reports', icon: ChartBarIcon },
-    // { id: 'settings', name: 'Settings', icon: Cog6ToothIcon },
-    // { id: 'billing', name: 'Billing & Plan', icon: CreditCardIcon },
-    // { id: 'support', name: 'Support', icon: QuestionMarkCircleIcon }
+    { id: 'subscriptions', name: 'Manage Subscriptions', icon: CreditCardIcon }
   ];
 
   return (

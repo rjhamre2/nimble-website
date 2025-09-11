@@ -67,6 +67,15 @@ const FIREBASE_LAMBDA_CONFIG = {
   }
 };
 
+// Pricing Lambda configuration
+const PRICING_LAMBDA_CONFIG = {
+  development: {
+    baseURL: process.env.REACT_APP_PRICING_LAMBDA || 'https://your-pricing-lambda-url.amazonaws.com',
+  },
+  production: {
+    baseURL: process.env.REACT_APP_PRICING_LAMBDA || 'https://your-pricing-lambda-url.amazonaws.com',
+  }
+};
 // Determine current environment
 const getCurrentEnvironment = () => {
   // Check if we're in development (localhost) or production
@@ -100,6 +109,12 @@ const getFirebaseLambdaConfig = () => {
   return FIREBASE_LAMBDA_CONFIG[env];
 };
 
+// Get current Pricing Lambda configuration
+const getPricingLambdaConfig = () => {
+  const env = getCurrentEnvironment();
+  return PRICING_LAMBDA_CONFIG[env];
+};
+
 // Helper function to build full API URLs
 const buildApiUrl = (endpoint) => {
   const config = getApiConfig();
@@ -130,21 +145,34 @@ const buildWaEsUrl = (endpoint) => {
 // Helper function to build Firebase Lambda API URLs
 const buildFirebaseLambdaUrl = (endpoint) => {
   const config = getFirebaseLambdaConfig();
-      const firebaseEndpoints = {
-      checkWhatsappStatus: '/api/check_whatsapp_status',
-      getWhatsappLink: '/api/get_whatsapp_link',
-      getUserDashboardStatus: '/api/get_user_dashboard_status',
-      updateTrainingStatus: '/api/update_training_status',
-      getUserOnboardingStatus: '/api/get_user_onboarding_status',
-      getUserTrainingStatus: '/api/get_user_training_status',
-      getUserSubscriptionDetails: '/api/get_user_subscription_details'
-    };
+  const firebaseEndpoints = {
+    checkWhatsappStatus: '/api/check_whatsapp_status',
+    getWhatsappLink: '/api/get_whatsapp_link',
+    getUserDashboardStatus: '/api/get_user_dashboard_status',
+    updateTrainingStatus: '/api/update_training_status'
+  };
   const url = `${config.baseURL}${firebaseEndpoints[endpoint] || endpoint}`;
   console.log('🔧 Building Firebase Lambda URL:', {
     endpoint,
     baseURL: config.baseURL,
     fullURL: url,
     env: process.env.REACT_APP_FRONTEND2FIREBASE
+  });
+  return url;
+};
+
+// Helper function to build Pricing Lambda API URLs
+const buildPricingLambdaUrl = (endpoint) => {
+  const config = getPricingLambdaConfig();
+  const pricingEndpoints = {
+    fetchProductsAndPricing: '/api/fetch_products_and_pricing'
+  };
+  const url = `${config.baseURL}${pricingEndpoints[endpoint] || endpoint}`;
+  console.log('🔧 Building Pricing Lambda URL:', {
+    endpoint,
+    baseURL: config.baseURL,
+    fullURL: url,
+    env: process.env.REACT_APP_PRICING_LAMBDA
   });
   return url;
 };
@@ -159,12 +187,14 @@ export const apiConfig = {
   authConfig: getAuthConfig(),
   waEsConfig: getWaEsConfig(),
   firebaseLambdaConfig: getFirebaseLambdaConfig(),
+  pricingLambdaConfig: getPricingLambdaConfig(),
   
   // Helper functions
   buildUrl: buildApiUrl,
   buildAuthUrl: buildAuthUrl,
   buildWaEsUrl: buildWaEsUrl,
   buildFirebaseLambdaUrl: buildFirebaseLambdaUrl,
+  buildPricingLambdaUrl: buildPricingLambdaUrl,
   
   // Direct endpoint access
   endpoints: {
@@ -183,10 +213,11 @@ export const apiConfig = {
       checkWhatsappStatus: () => buildFirebaseLambdaUrl('checkWhatsappStatus'),
       getWhatsappLink: () => buildFirebaseLambdaUrl('getWhatsappLink'),
       getUserDashboardStatus: () => buildFirebaseLambdaUrl('getUserDashboardStatus'),
-      updateTrainingStatus: () => buildFirebaseLambdaUrl('updateTrainingStatus'),
-      getUserOnboardingStatus: () => buildFirebaseLambdaUrl('getUserOnboardingStatus'),
-      getUserTrainingStatus: () => buildFirebaseLambdaUrl('getUserTrainingStatus'),
-      getUserSubscriptionDetails: () => buildFirebaseLambdaUrl('getUserSubscriptionDetails')
+      updateTrainingStatus: () => buildFirebaseLambdaUrl('updateTrainingStatus')
+    },
+    // Pricing Lambda endpoints
+    pricing: {
+      fetchProductsAndPricing: () => buildPricingLambdaUrl('fetchProductsAndPricing')
     }
   }
 };
