@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
 import websocketService from '../services/websocketService';
 
 const LiveChat = ({ isDarkMode }) => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [conversations, setConversations] = useState([]);
   const [selectedSender, setSelectedSender] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -225,19 +223,6 @@ const LiveChat = ({ isDarkMode }) => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                isDarkMode 
-                  ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              <span>Back to Dashboard</span>
-            </button>
             <h1 className="text-3xl font-bold">Live Chat Dashboard</h1>
           </div>
         </div>

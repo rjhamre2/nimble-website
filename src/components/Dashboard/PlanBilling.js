@@ -52,6 +52,42 @@ const PlanBilling = () => {
     fetchProducts();
   };
 
+  const handleSubscribe = async (productId) => {
+    if (!user?.uid) {
+      setError('User not authenticated');
+      return;
+    }
+
+    try {
+      console.log(`User ${user.uid} requested to subscribe to product ${productId}`);
+      
+      const response = await fetch(apiConfig.endpoints.pricing.subscribe(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          product_id: productId,
+          user_id: user.uid
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log(`Successfully subscribed to product ${productId}`);
+        // Refresh products to update status
+        fetchProducts();
+      } else {
+        console.error('Subscription failed:', data.error);
+        setError(data.error || 'Failed to subscribe to product');
+      }
+    } catch (err) {
+      console.error('Error subscribing to product:', err);
+      setError('Failed to subscribe to product. Please try again.');
+    }
+  };
+
   const getStatusColor = (status) => {
     const s = (status || '').toLowerCase();
     if (s === 'active') return 'bg-green-100 text-green-800';
@@ -246,6 +282,7 @@ const PlanBilling = () => {
                   ) : (
                     <button
                       disabled={isComingSoon}
+                      onClick={() => product.status === 'available' && handleSubscribe(product.id)}
                       className={`w-full px-4 py-2 rounded-lg text-sm font-medium ${
                         isComingSoon
                           ? 'bg-gray-300 text-gray-600 cursor-not-allowed'

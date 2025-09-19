@@ -16,6 +16,7 @@ import KnowledgeBase from './KnowledgeBase';
 import AnalyticsReports from './AnalyticsReports';
 import PlanBilling from './PlanBilling';
 import Settings from './Settings';
+import LiveChat from '../LiveChat';
 
 const Dashboard = () => {
   const { user, userData } = useAuth();
@@ -54,12 +55,7 @@ const Dashboard = () => {
 
   // Handle tab changes
   const handleTabChange = (tabId) => {
-    if (tabId === 'live-chat') {
-      // Navigate to the LiveChat page
-      navigate('/livechat');
-    } else {
-      setActiveTab(tabId);
-    }
+    setActiveTab(tabId);
   };
 
   // Handle onboarding status click
@@ -241,18 +237,20 @@ const Dashboard = () => {
           </div>
         );
       
-      case 'integrations':
-        return <IntegrationsPage />;
-      case 'knowledge':
-        return <KnowledgeBase />;
-      case 'analytics':
-        return <AnalyticsReports />;
-      case 'billing':
-        return <PlanBilling />;
-      case 'subscriptions':
-        return <PlanBilling />;
-      case 'settings':
-        return <Settings />;
+        case 'integrations':
+          return <IntegrationsPage />;
+        case 'knowledge':
+          return <KnowledgeBase />;
+        case 'live-chat':
+          return <LiveChat />;
+        case 'analytics':
+          return <AnalyticsReports />;
+        case 'billing':
+          return <PlanBilling />;
+        case 'subscriptions':
+          return <PlanBilling />;
+        case 'settings':
+          return <Settings />;
       default:
         return (
           <div className="space-y-6">

@@ -165,7 +165,8 @@ const buildFirebaseLambdaUrl = (endpoint) => {
 const buildPricingLambdaUrl = (endpoint) => {
   const config = getPricingLambdaConfig();
   const pricingEndpoints = {
-    fetchProductsAndPricing: '/api/fetch_products_and_pricing'
+    fetchProductsAndPricing: '/api/fetch_products_and_pricing',
+    subscribe: '/api/subscribe'
   };
   const url = `${config.baseURL}${pricingEndpoints[endpoint] || endpoint}`;
   console.log('🔧 Building Pricing Lambda URL:', {
@@ -217,7 +218,8 @@ export const apiConfig = {
     },
     // Pricing Lambda endpoints
     pricing: {
-      fetchProductsAndPricing: () => buildPricingLambdaUrl('fetchProductsAndPricing')
+      fetchProductsAndPricing: () => buildPricingLambdaUrl('fetchProductsAndPricing'),
+      subscribe: () => buildPricingLambdaUrl('subscribe')
     }
   }
 };
