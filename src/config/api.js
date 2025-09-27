@@ -166,7 +166,8 @@ const buildPricingLambdaUrl = (endpoint) => {
   const config = getPricingLambdaConfig();
   const pricingEndpoints = {
     fetchProductsAndPricing: '/api/fetch_products_and_pricing',
-    subscribe: '/api/subscribe'
+    subscribe: '/api/subscribe',
+    fetchSubscriptionStatus: '/api/fetch_subscription_status'
   };
   const url = `${config.baseURL}${pricingEndpoints[endpoint] || endpoint}`;
   console.log('🔧 Building Pricing Lambda URL:', {
@@ -219,7 +220,8 @@ export const apiConfig = {
     // Pricing Lambda endpoints
     pricing: {
       fetchProductsAndPricing: () => buildPricingLambdaUrl('fetchProductsAndPricing'),
-      subscribe: () => buildPricingLambdaUrl('subscribe')
+      subscribe: () => buildPricingLambdaUrl('subscribe'),
+      fetchSubscriptionStatus: () => buildPricingLambdaUrl('fetchSubscriptionStatus')
     }
   }
 };

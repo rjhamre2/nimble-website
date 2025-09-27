@@ -7,6 +7,12 @@ const PlanBilling = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState(null);
+  const [subscribingProductId, setSubscribingProductId] = useState(null);
+  const [activeSubscriptionId, setActiveSubscriptionId] = useState(null);
+  const [activatedProductId, setActivatedProductId] = useState(null);
 
   const fetchProducts = async () => {
     if (!user?.uid) {
@@ -44,12 +50,97 @@ const PlanBilling = () => {
     }
   };
 
+  const fetchSubscriptionStatus = async () => {
+    if (!user?.uid) {
+      setSubscriptionError('User not authenticated');
+      return;
+    }
+
+    setSubscriptionLoading(true);
+    setSubscriptionError(null);
+
+    try {
+      const response = await fetch(apiConfig.endpoints.pricing.fetchSubscriptionStatus(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user.uid
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSubscriptionStatus(data);
+      } else {
+        setSubscriptionError(data.error || 'Failed to fetch subscription status');
+      }
+    } catch (err) {
+      console.error('Error fetching subscription status:', err);
+      setSubscriptionError('Failed to fetch subscription status. Please try again.');
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchSubscriptionStatus();
+    
+    // Check if user returned from payment
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment') === 'success') {
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Refresh subscription status after successful payment
+      setTimeout(() => {
+        fetchSubscriptionStatus();
+        fetchProducts();
+      }, 1000);
+    }
   }, [user?.uid]);
 
   const handleRefresh = () => {
     fetchProducts();
+    fetchSubscriptionStatus();
+  };
+
+  const handleAuthenticate = (subscriptionId) => {
+    if (!subscriptionId) {
+      setError('No subscription ID available for authentication');
+      return;
+    }
+
+    const rzpKey = process.env.REACT_APP_RP_ID;
+    if (!rzpKey) {
+      setError('Razorpay key not configured');
+      return;
+    }
+
+    const options = {
+      key: rzpKey,
+      subscription_id: subscriptionId,
+      name: "NimbleAI",
+      description: "Subscription Authentication",
+      prefill: {
+        name: user?.displayName || user?.email || "",
+        email: user?.email || "",
+      },
+      theme: {
+        color: "#2563eb"
+      },
+      handler: function (response) {
+        // Handle successful payment
+        console.log('Payment successful:', response);
+        // Redirect to dashboard with success parameter
+        window.location.href = window.location.origin + "/dashboard?payment=success";
+      }
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
   };
 
   const handleSubscribe = async (productId) => {
@@ -57,6 +148,9 @@ const PlanBilling = () => {
       setError('User not authenticated');
       return;
     }
+
+    setSubscribingProductId(productId);
+    setError(null);
 
     try {
       console.log(`User ${user.uid} requested to subscribe to product ${productId}`);
@@ -74,17 +168,29 @@ const PlanBilling = () => {
 
       const data = await response.json();
       
-      if (data.success) {
-        console.log(`Successfully subscribed to product ${productId}`);
+      if (response.ok) {
+        console.log(`Successfully created subscription for product ${productId}`, data);
+        // Automatically trigger authentication if subscription ID is available
+        if (data && data.id) {
+          setActiveSubscriptionId(data.id);
+          setActivatedProductId(productId);
+          // Automatically open Razorpay checkout
+          setTimeout(() => {
+            handleAuthenticate(data.id);
+          }, 500); // Small delay to ensure UI updates
+        }
         // Refresh products to update status
         fetchProducts();
       } else {
-        console.error('Subscription failed:', data.error);
-        setError(data.error || 'Failed to subscribe to product');
+        const errorMessage = (data && data.error && (data.error.description || data.error.message)) || data.error || 'Failed to subscribe to product';
+        console.error('Subscription failed:', errorMessage, data);
+        setError(errorMessage);
       }
     } catch (err) {
       console.error('Error subscribing to product:', err);
       setError('Failed to subscribe to product. Please try again.');
+    } finally {
+      setSubscribingProductId(null);
     }
   };
 
@@ -170,6 +276,24 @@ const PlanBilling = () => {
               <h3 className="text-sm font-medium text-red-800">Error</h3>
               <div className="mt-2 text-sm text-red-700">
                 <p>{error}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {subscribingProductId && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">Subscription in Progress</h3>
+              <div className="mt-2 text-sm text-blue-700">
+                <p>Please allow popup to complete the subscription process.</p>
               </div>
             </div>
           </div>
@@ -280,17 +404,32 @@ const PlanBilling = () => {
                       </button>
                     </>
                   ) : (
-                    <button
-                      disabled={isComingSoon}
-                      onClick={() => product.status === 'available' && handleSubscribe(product.id)}
-                      className={`w-full px-4 py-2 rounded-lg text-sm font-medium ${
-                        isComingSoon
-                          ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                          : 'bg-green-600 text-white hover:bg-green-700'
-                      }`}
-                    >
-                      Activate
-                    </button>
+                    // Show Activate and Authenticate buttons
+                    !(['authenticated', 'active'].includes((subscriptionStatus?.status || '').toLowerCase())) && (
+                      <>
+                        <button
+                          disabled={isComingSoon || subscribingProductId === product.id}
+                          onClick={() => product.status === 'available' && handleSubscribe(product.id)}
+                          className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center ${
+                            isComingSoon || subscribingProductId === product.id
+                              ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                        >
+                          {subscribingProductId === product.id ? (
+                            <>
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Activating...
+                            </>
+                          ) : (
+                            'Activate'
+                          )}
+                        </button>
+                      </>
+                    )
                   )}
                 </div>
               </div>
@@ -301,21 +440,80 @@ const PlanBilling = () => {
 
       {/* Current Subscription Status */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Subscription Status</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">Active Plan</p>
-            <p className="text-lg font-semibold text-gray-900">Free Plan</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Subscription Details</h3>
+        
+        {subscriptionLoading && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading subscription details...</p>
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">Next Billing</p>
-            <p className="text-lg font-semibold text-gray-900">N/A</p>
+        )}
+
+        {subscriptionError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{subscriptionError}</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">Status</p>
-            <p className="text-lg font-semibold text-green-600">Active</p>
+        )}
+
+        {!subscriptionLoading && !subscriptionError && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">Active Plan</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {subscriptionStatus?.status === 'authenticated' ? 'Premium Plan' : 'Free Plan'}
+              </p>
+            </div>
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">Next Billing</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {subscriptionStatus?.current_end ? 
+                  new Date(subscriptionStatus.current_end * 1000).toLocaleDateString() : 
+                  'N/A'
+                }
+              </p>
+            </div>
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">Status</p>
+              <p className={`text-lg font-semibold ${
+                subscriptionStatus?.status === 'authenticated' ? 'text-green-600' : 
+                subscriptionStatus?.status === 'not_created' ? 'text-gray-600' : 
+                'text-yellow-600'
+              }`}>
+                {subscriptionStatus?.status === 'authenticated' ? 'Active' :
+                 subscriptionStatus?.status === 'not_created' ? 'No Subscription' :
+                 subscriptionStatus?.status || 'Unknown'}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
+
+        {subscriptionStatus?.status === 'created' && (
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h4 className="text-sm font-medium text-blue-900 mb-2">Subscription Details</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-blue-700"><span className="font-medium">Plan ID:</span> {subscriptionStatus.plan_id}</p>
+                <p className="text-blue-700"><span className="font-medium">Customer ID:</span> {subscriptionStatus.customer_id}</p>
+              </div>
+              <div>
+                <p className="text-blue-700"><span className="font-medium">Created:</span> {new Date(subscriptionStatus.created_at * 1000).toLocaleDateString()}</p>
+                <p className="text-blue-700"><span className="font-medium">Remaining:</span> {subscriptionStatus.remaining_count || 'Unlimited'}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
