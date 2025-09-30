@@ -53,6 +53,11 @@ const Dashboard = () => {
     }
   };
 
+  // Handle subscription status click
+  const handleSubscriptionClick = () => {
+    setActiveTab('subscriptions');
+  };
+
   // Handle tab changes
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -163,7 +168,7 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">WhatsApp</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {whatsappStatus ? '✅ Connected' : '❌ Not Connected'}
+                      {whatsappStatus?.success && whatsappStatus?.isIntegrated ? '✅ Connected' : '⏳ Pending'}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -181,26 +186,17 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Training</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {trainingStatus ? '✅ Complete' : '⏳ Pending'}
+                      {trainingStatus?.status === 'completed' ? '✅ Complete' : 
+                       trainingStatus?.status === 'not_started' ? '⏳ Not Started' : '⏳ Pending'}
                     </p>
+                    {trainingStatus?.progress > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {trainingStatus.progress}% Complete
+                      </p>
+                    )}
                   </div>
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                     <span className="text-xl">🧠</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Subscription Details */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Subscription</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {subscriptionDetails?.plan || 'No Plan Selected'}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <span className="text-xl">💳</span>
                   </div>
                 </div>
               </div>
@@ -214,9 +210,9 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Onboarding</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {onboardingStatus ? '✅ Complete' : '⏳ Pending'}
+                      {onboardingStatus?.status === 'completed' ? '✅ Complete' : '⏳ Pending'}
                     </p>
-                    {onboardingStatus && userData?.company && (
+                    {onboardingStatus?.status === 'completed' && userData?.company && (
                       <p className="text-xs text-gray-500 mt-1">
                         {userData.company} • {userData.specialization}
                       </p>
@@ -224,6 +220,30 @@ const Dashboard = () => {
                   </div>
                   <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                     <span className="text-xl">🚀</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Subscription Details */}
+              <div 
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={handleSubscriptionClick}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Subscription</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {subscriptionDetails?.plan || 'No Plan Selected'}
+                    </p>
+                    {subscriptionDetails?.status && subscriptionDetails.status !== 'created' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {subscriptionDetails.status === 'active' ? '✅ Active' : 
+                         subscriptionDetails.status === 'inactive' ? '⏳ Inactive' : subscriptionDetails.status}
+                      </p>
+                    )}
+                  </div>
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <span className="text-xl">💳</span>
                   </div>
                 </div>
               </div>

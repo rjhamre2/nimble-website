@@ -124,6 +124,7 @@ const PlanBilling = () => {
       subscription_id: subscriptionId,
       name: "NimbleAI",
       description: "Subscription Authentication",
+      image: window.location.origin + "/logo.png",
       prefill: {
         name: user?.displayName || user?.email || "",
         email: user?.email || "",
@@ -467,53 +468,90 @@ const PlanBilling = () => {
           </div>
         )}
 
-        {!subscriptionLoading && !subscriptionError && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">Active Plan</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {subscriptionStatus?.status === 'authenticated' ? 'Premium Plan' : 'Free Plan'}
-              </p>
+        {!subscriptionLoading && !subscriptionError && subscriptionStatus && (
+          <div className="space-y-4">
+            {/* Simplified Subscription Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Status - Most Important */}
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm font-medium text-blue-900 mb-2">Status</p>
+                <p className={`text-lg font-semibold ${
+                  subscriptionStatus?.status === 'authenticated' ? 'text-green-600' : 
+                  subscriptionStatus?.status === 'not_created' ? 'text-gray-600' : 
+                  'text-yellow-600'
+                }`}>
+                  {subscriptionStatus?.status === 'authenticated' ? 'Active' :
+                   subscriptionStatus?.status === 'not_created' ? 'No Subscription' :
+                   subscriptionStatus?.status || 'Unknown'}
+                </p>
+              </div>
+
+              {/* Plan Name */}
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm font-medium text-blue-900 mb-2">Plan Name</p>
+                <p className="text-lg font-semibold text-blue-700">
+                  {(() => {
+                    // Prefer plan name from backend; fallback to product lookup by legacy plan_id
+                    if (subscriptionStatus?.plan_name) return subscriptionStatus.plan_name;
+                    const plan = products.find(p => p.id === subscriptionStatus?.plan_id);
+                    return plan?.name || 'N/A';
+                  })()}
+                </p>
+              </div>
+
+              {/* Quantity */}
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm font-medium text-blue-900 mb-2">Quantity</p>
+                <p className="text-lg font-semibold text-blue-700">
+                  {subscriptionStatus?.quantity || 'N/A'}
+                </p>
+              </div>
+
+              {/* Billing amount */}
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm font-medium text-blue-900 mb-2">Billing amount</p>
+                <p className="text-lg font-semibold text-blue-700">
+                  {(() => {
+                    const amount = subscriptionStatus?.plan_unit_amount;
+                    const currency = (subscriptionStatus?.plan_currency || '').toUpperCase();
+                    if (typeof amount === 'number') {
+                      if (currency === 'INR') {
+                        return `₹${(amount / 100).toFixed(2)}`;
+                      }
+                      if (currency === 'USD') {
+                        return `$${(amount / 100).toFixed(2)}`;
+                      }
+                      if (currency === 'EUR') {
+                        return `€${(amount / 100).toFixed(2)}`;
+                      }
+                      return `${(amount / 100).toFixed(2)} ${currency || ''}`.trim();
+                    }
+                    return 'N/A';
+                  })()}
+                </p>
+              </div>
             </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">Next Billing</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {subscriptionStatus?.current_end ? 
-                  new Date(subscriptionStatus.current_end * 1000).toLocaleDateString() : 
-                  'N/A'
-                }
-              </p>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">Status</p>
-              <p className={`text-lg font-semibold ${
-                subscriptionStatus?.status === 'authenticated' ? 'text-green-600' : 
-                subscriptionStatus?.status === 'not_created' ? 'text-gray-600' : 
-                'text-yellow-600'
-              }`}>
-                {subscriptionStatus?.status === 'authenticated' ? 'Active' :
-                 subscriptionStatus?.status === 'not_created' ? 'No Subscription' :
-                 subscriptionStatus?.status || 'Unknown'}
-              </p>
+
+            {/* Next Billing Date */}
+            <div className="grid grid-cols-1 gap-4">
+              {/* Next Billing Date */}
+              <div className="p-4 bg-green-50 rounded-lg">
+                <p className="text-sm font-medium text-green-900 mb-2">Next billing date</p>
+                <p className="text-sm text-green-700">
+                  {subscriptionStatus?.charge_at ? 
+                    new Date(subscriptionStatus.charge_at * 1000).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    }) : 
+                    'N/A'
+                  }
+                </p>
+              </div>
             </div>
           </div>
         )}
 
-        {subscriptionStatus?.status === 'created' && (
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">Subscription Details</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-blue-700"><span className="font-medium">Plan ID:</span> {subscriptionStatus.plan_id}</p>
-                <p className="text-blue-700"><span className="font-medium">Customer ID:</span> {subscriptionStatus.customer_id}</p>
-              </div>
-              <div>
-                <p className="text-blue-700"><span className="font-medium">Created:</span> {new Date(subscriptionStatus.created_at * 1000).toLocaleDateString()}</p>
-                <p className="text-blue-700"><span className="font-medium">Remaining:</span> {subscriptionStatus.remaining_count || 'Unlimited'}</p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
