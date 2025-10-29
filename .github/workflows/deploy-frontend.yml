@@ -1,68 +1,61 @@
-name: Deploy Frontend to AWS S3/CloudFront
+# Permissions required for secure OIDC authentication with AWS
+permissions:
+  id-token: write
+  contents: read
 
-on:
-  push:
-    # Trigger on push to the master branch
-    branches:
-      - master 
-  workflow_dispatch:
-    # Allows manual runs
+steps:
+  - name: ⬇️ Checkout Code
+    uses: actions/checkout@v4
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    environment: production 
-    
-    # Permissions required for secure OIDC authentication with AWS
-    permissions:
-      id-token: write 
-      contents: read 
+  # --- 1. Continuous Integration (CI) / Build Phase ---
 
-    steps:
-      - name: ⬇️ Checkout Code
-        uses: actions/checkout@v4
+  - name: 🛠️ Setup Node.js Environment
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'
+      cache: 'npm'
 
-      # --- 1. Continuous Integration (CI) / Build Phase ---
+  - name: 📦 Install Dependencies
+    # If you don't use npm/Node.js, you can remove this step.
+    run: npm ci
 
-      - name: 🛠️ Setup Node.js Environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20' 
-          cache: 'npm'
+  - name: 🏗️ Build Static Assets
+    # Change 'npm run build' if your build command is different.
+    run: npm run build
+    # Note: We are using a simple environment variable here for the build path.
+    env:
+      BUILD_DIR: build # The folder containing the final static files
 
-      - name: 📦 Install Dependencies
-        # If you don't use npm/Node.js, you can remove this step.
-        run: npm ci
+  # --- 2. Continuous Delivery (CD) to AWS ---
 
-      - name: 🏗️ Build Static Assets
-        # Change 'npm run build' if your build command is different. 
-        # The output path 'dist' must match what your build command produces.
-        run: npm run build 
-        id: build_path
-        env:
-          BUILD_DIR: build # The folder containing the final static files
+  # Step 1: Securely assume the AWS IAM Role using the OIDC secret
+  - name: 🔐 Configure AWS Credentials
+    # This action is correct and handles authentication via OIDC
+    uses: aws-actions/configure-aws-credentials@v4
+    with:
+      role-to-assume: ${{ secrets.AWS_FRONTEND_DEPLOY_ROLE }}
+      aws-region: ${{ vars.AWS_REGION }}
 
-      # --- 2. Continuous Delivery (CD) to AWS ---
-      
-      # Step 1: Securely assume the AWS IAM Role using the OIDC secret
-      - name: 🔐 Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_FRONTEND_DEPLOY_ROLE }} 
-          aws-region: ${{ vars.AWS_REGION }} 
+  # Step 2: Sync the built files to the S3 bucket
+  - name: 🚀 Deploy to S3 (Using jakejarvis/s3-sync-action)
+    # Replaced the non-existent 'aws-actions/amazon-s3-deploy'
+    uses: jakejarvis/s3-sync-action@v0.5.1
+    with:
+      # Inputs are passed via 'with' block, but configuration is via environment variables
+      # We pass the required values as ENV variables to the action's execution context
+      args: --acl public-read --follow-symlinks --delete --cache-control max-age=86400
+    env:
+      # These ENV variables map to the inputs required by jakejarvis/s3-sync-action
+      AWS_S3_BUCKET: ${{ vars.S3_BUCKET_NAME }}
+      SOURCE_DIR: ${{ env.BUILD_DIR }}
 
-      # Step 2: Sync the built files to the S3 bucket
-      - name: 🚀 Deploy to S3
-        uses: aws-actions/amazon-s3-deploy@v1
-        with:
-          bucket: ${{ vars.S3_BUCKET_NAME }} 
-          directory: ${{ env.BUILD_DIR }} # Uses the path defined in the build step
-          s3-uploader-options: --delete
-          cache-control: 'max-age=86400'
-
-      # Step 3: Clear the CDN cache
-      - name: 💨 Invalidate CloudFront Cache
-        uses: aws-actions/cloudfront-invalidate-action@v3
-        env:
-          DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
-          PATHS: '/*'
+  # Step 3: Clear the CDN cache
+  - name: 💨 Invalidate CloudFront Cache (Using chetan/invalidate-cloudfront-action)
+    # Replaced the non-existent 'aws-actions/cloudfront-invalidate-action'
+    uses: chetan/invalidate-cloudfront-action@v2
+    env:
+      # Configuration for this action is typically passed via ENV
+      DISTRIBUTION: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      PATHS: '/*'
+      # This action often requires the AWS_REGION to be set explicitly in its ENV context
+      AWS_REGION: ${{ vars.AWS_REGION }}
