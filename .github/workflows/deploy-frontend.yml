@@ -1,64 +1,50 @@
-name: Deploy Frontend
+steps:
+  - name: ⬇️ Checkout Code
+    uses: actions/checkout@v4
 
-on:
-  push:
-    branches: ["master"]
-  workflow_dispatch:
+  # --- 1. Continuous Integration (CI) / Build Phase ---
 
-permissions:
-  id-token: write
-  contents: read
+  - name: 🛠️ Setup Node.js Environment
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'
+      cache: 'npm'
 
-jobs:
-  build-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: ⬇️ Checkout Code
-        uses: actions/checkout@v4
+  - name: 📦 Install Dependencies
+    run: npm ci
 
-      # --- 1. Continuous Integration (CI) / Build Phase ---
+  - name: 🏗️ Build Static Assets
+    # IMPORTANT: This sets the environment variable BUILD_DIR for subsequent steps
+    run: npm run build
+    env:
+      BUILD_DIR: build # The folder containing the final static files
 
-      - name: 🛠️ Setup Node.js Environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
+  # --- 2. Continuous Delivery (CD) to AWS ---
 
-      - name: 📦 Install Dependencies
-        run: npm ci
+  - name: 🔐 Configure AWS Credentials
+    # This action uses OIDC authentication (id-token: write)
+    uses: aws-actions/configure-aws-credentials@v4
+    with:
+      role-to-assume: ${{ secrets.AWS_FRONTEND_DEPLOY_ROLE }}
+      aws-region: ${{ vars.AWS_REGION }}
 
-      - name: 🏗️ Build Static Assets
-        # The 'build' directory is defined here and used in the S3 deployment step.
-        run: npm run build
-        env:
-          CI: false
-          BUILD_DIR: build # The folder containing the final static files
-
-      # --- 2. Continuous Delivery (CD) to AWS ---
-
-      - name: 🔐 Configure AWS Credentials
-        # This action uses OIDC authentication configured via 'permissions' above
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          # Assumes you have defined this secret and variable in your GitHub repository settings
-          role-to-assume: ${{ secrets.AWS_FRONTEND_DEPLOY_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-
-      - name: 🚀 Deploy to S3 (Sync build files)
-        # Uses jakejarvis/s3-sync-action to upload, delete old files, and set cache headers
-        uses: jakejarvis/s3-sync-action@v0.5.1
-        with:
-          args: --follow-symlinks --delete --cache-control max-age=86400
-        env:
-          # Configuration for the S3 sync action
-          AWS_S3_BUCKET: ${{ vars.S3_BUCKET_NAME }}
-          SOURCE_DIR: ${{ env.BUILD_DIR }} # Uses the path set in the build step's env
-
-      - name: 💨 Invalidate CloudFront Cache
-        # Uses chetan/invalidate-cloudfront-action to ensure the new files are served immediately
-        uses: chetan/invalidate-cloudfront-action@v2
-        env:
-          # Configuration for the CloudFront action
-          DISTRIBUTION: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
-          PATHS: '/*' # Invalidate all paths for a clean update
-          AWS_REGION: ${{ vars.AWS_REGION }}
+  - name: 🚀 Deploy to S3 (Sync build files)
+    # Uses jakejarvis/s3-sync-action to upload, delete old files, and set cache headers
+    uses: jakejarvis/s3-sync-action@v0.5.1
+    with:
+      # Pass the source directory via 'with' for better Docker action compatibility
+      source_dir: ${{ env.BUILD_DIR }} 
+      # Access is controlled solely by the Bucket Policy and CloudFront OAC/OAI (no --acl public-read)
+      args: --follow-symlinks --delete --cache-control max-age=86400
+    env:
+      # Configuration for the S3 sync action
+      AWS_S3_BUCKET: ${{ vars.S3_BUCKET_NAME }}
+      
+  - name: 💨 Invalidate CloudFront Cache
+    # Uses chetan/invalidate-cloudfront-action to ensure the new files are served immediately
+    uses: chetan/invalidate-cloudfront-action@v2
+    env:
+      # Configuration for the CloudFront action
+      DISTRIBUTION: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      PATHS: '/*' # Invalidate all paths for a clean update
+      AWS_REGION: ${{ vars.AWS_REGION }}
