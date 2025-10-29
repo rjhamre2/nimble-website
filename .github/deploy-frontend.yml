@@ -1,0 +1,68 @@
+name: Deploy Frontend to AWS S3/CloudFront
+
+on:
+  push:
+    # Trigger on push to the master branch
+    branches:
+      - master 
+  workflow_dispatch:
+    # Allows manual runs
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production 
+    
+    # Permissions required for secure OIDC authentication with AWS
+    permissions:
+      id-token: write 
+      contents: read 
+
+    steps:
+      - name: ⬇️ Checkout Code
+        uses: actions/checkout@v4
+
+      # --- 1. Continuous Integration (CI) / Build Phase ---
+
+      - name: 🛠️ Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' 
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        # If you don't use npm/Node.js, you can remove this step.
+        run: npm ci
+
+      - name: 🏗️ Build Static Assets
+        # Change 'npm run build' if your build command is different. 
+        # The output path 'dist' must match what your build command produces.
+        run: npm run build 
+        id: build_path
+        env:
+          BUILD_DIR: build # The folder containing the final static files
+
+      # --- 2. Continuous Delivery (CD) to AWS ---
+      
+      # Step 1: Securely assume the AWS IAM Role using the OIDC secret
+      - name: 🔐 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_FRONTEND_DEPLOY_ROLE }} 
+          aws-region: ${{ vars.AWS_REGION }} 
+
+      # Step 2: Sync the built files to the S3 bucket
+      - name: 🚀 Deploy to S3
+        uses: aws-actions/amazon-s3-deploy@v1
+        with:
+          bucket: ${{ vars.S3_BUCKET_NAME }} 
+          directory: ${{ env.BUILD_DIR }} # Uses the path defined in the build step
+          s3-uploader-options: --delete
+          cache-control: 'max-age=86400'
+
+      # Step 3: Clear the CDN cache
+      - name: 💨 Invalidate CloudFront Cache
+        uses: aws-actions/cloudfront-invalidate-action@v3
+        env:
+          DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+          PATHS: '/*'
