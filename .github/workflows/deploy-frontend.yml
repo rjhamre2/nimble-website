@@ -2,7 +2,7 @@ name: Deploy Frontend
 
 on:
   push:
-    branches: ["prod"]
+    branches: ["master"]
   workflow_dispatch:
 
 permissions:
