@@ -2,7 +2,7 @@ name: Deploy Frontend
 
 on:
   push:
-    branches: ["master"]
+    branches: ["prod"]
   workflow_dispatch:
 
 permissions:
@@ -46,25 +46,18 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: 🔎 Verify AWS identity
-        run: aws sts get-caller-identity
+        run: |
+          aws sts get-caller-identity
+          aws s3api list-buckets --query 'Buckets[].Name'
+          aws s3 ls s3://${{ vars.S3_BUCKET_NAME }} || true
 
       - name: 🚀 Deploy to S3 (Sync build files)
-        # Uses jakejarvis/s3-sync-action to upload, delete old files, and set cache headers
-        uses: jakejarvis/s3-sync-action@v0.5.1
-        with:
-          # Explicitly pass the source directory to the action
-          source_dir: ${{ env.BUILD_DIR }}
-          args: --follow-symlinks --delete --cache-control max-age=86400
-        env:
-          # Configuration for the S3 sync action
-          AWS_S3_BUCKET: ${{ vars.S3_BUCKET_NAME }}
-          SOURCE_DIR: ${{ env.BUILD_DIR }}
+        run: |
+          aws s3 sync "${BUILD_DIR}/" "s3://${{ vars.S3_BUCKET_NAME }}/" \
+            --follow-symlinks --delete --cache-control max-age=86400
 
       - name: 💨 Invalidate CloudFront Cache
-        # Uses chetan/invalidate-cloudfront-action to ensure the new files are served immediately
-        uses: chetan/invalidate-cloudfront-action@v2
-        env:
-          # Configuration for the CloudFront action
-          DISTRIBUTION: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
-          PATHS: '/*' # Invalidate all paths for a clean update
-          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/*"
