@@ -43,7 +43,6 @@ jobs:
           REACT_APP_PRICING_LAMBDA: "https://api.nimbleai.in/api/pricing"
           REACT_APP_WEBSOCKET_API_GATEWAY: "wss://s687z96fob.execute-api.ap-south-1.amazonaws.com/prod"
           REACT_APP_RP_ID: "rzp_live_RWPVPdgjJN0s7P"
-          REACT_APP_GOOGLE_CLIENT_ID: "919316988485-au1an6s2v1j3sfh9n163ehb728hkd661.apps.googleusercontent.com"
       # --- 2. Continuous Delivery (CD) to AWS ---
 
       - name: 🔐 Configure AWS Credentials
