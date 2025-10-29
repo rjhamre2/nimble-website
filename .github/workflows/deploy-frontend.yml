@@ -31,6 +31,7 @@ jobs:
         # The 'build' directory is defined here and used in the S3 deployment step.
         run: npm run build
         env:
+          CI: false
           BUILD_DIR: build # The folder containing the final static files
 
       # --- 2. Continuous Delivery (CD) to AWS ---
@@ -47,7 +48,7 @@ jobs:
         # Uses jakejarvis/s3-sync-action to upload, delete old files, and set cache headers
         uses: jakejarvis/s3-sync-action@v0.5.1
         with:
-          args: --acl public-read --follow-symlinks --delete --cache-control max-age=86400
+          args: --follow-symlinks --delete --cache-control max-age=86400
         env:
           # Configuration for the S3 sync action
           AWS_S3_BUCKET: ${{ vars.S3_BUCKET_NAME }}
