@@ -12,6 +12,8 @@ permissions:
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
+    env:
+      BUILD_DIR: build
     steps:
       - name: ⬇️ Checkout Code
         uses: actions/checkout@v4
@@ -43,10 +45,15 @@ jobs:
           role-to-assume: ${{ secrets.AWS_FRONTEND_DEPLOY_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
 
+      - name: 🔎 Verify AWS identity
+        run: aws sts get-caller-identity
+
       - name: 🚀 Deploy to S3 (Sync build files)
         # Uses jakejarvis/s3-sync-action to upload, delete old files, and set cache headers
         uses: jakejarvis/s3-sync-action@v0.5.1
         with:
+          # Explicitly pass the source directory to the action
+          source_dir: ${{ env.BUILD_DIR }}
           args: --follow-symlinks --delete --cache-control max-age=86400
         env:
           # Configuration for the S3 sync action
