@@ -67,3 +67,75 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
             --paths "/*"
+
+      - name: 📧 Send Success Notification
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "✅ Frontend Deployment Successful - NimbleAI"
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: ${{ secrets.EMAIL_USERNAME }}
+          body: |
+            🎉 Frontend deployment completed successfully!
+            
+            📊 Deployment Details:
+            • Repository: ${{ github.repository }}
+            • Branch: ${{ github.ref_name }}
+            • Commit: ${{ github.sha }}
+            • Author: ${{ github.actor }}
+            • Timestamp: ${{ github.event.head_commit.timestamp }}
+            • Workflow: ${{ github.workflow }}
+            • Run ID: ${{ github.run_id }}
+            
+            🚀 Deployment Actions:
+            • ✅ Code checkout completed
+            • ✅ Dependencies installed
+            • ✅ Static assets built
+            • ✅ AWS credentials configured
+            • ✅ Files synced to S3 bucket: ${{ vars.S3_BUCKET_NAME }}
+            • ✅ CloudFront cache invalidated
+            
+            🔗 View the deployment: https://${{ vars.S3_BUCKET_NAME }}.s3-website.${{ vars.AWS_REGION }}.amazonaws.com
+            
+            Best regards,
+            NimbleAI Deployment Bot 🤖
+
+      - name: 📧 Send Failure Notification
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "❌ Frontend Deployment Failed - NimbleAI"
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: ${{ secrets.EMAIL_USERNAME }}
+          body: |
+            🚨 Frontend deployment failed!
+            
+            📊 Deployment Details:
+            • Repository: ${{ github.repository }}
+            • Branch: ${{ github.ref_name }}
+            • Commit: ${{ github.sha }}
+            • Author: ${{ github.actor }}
+            • Timestamp: ${{ github.event.head_commit.timestamp }}
+            • Workflow: ${{ github.workflow }}
+            • Run ID: ${{ github.run_id }}
+            
+            🔍 Please check the GitHub Actions logs for more details:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            ⚠️ Common failure reasons:
+            • Build errors in the React application
+            • AWS credentials or permissions issues
+            • S3 bucket access problems
+            • CloudFront distribution issues
+            • Environment variable misconfigurations
+            
+            Best regards,
+            NimbleAI Deployment Bot 🤖
