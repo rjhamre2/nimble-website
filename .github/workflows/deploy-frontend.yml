@@ -1,4 +1,19 @@
 steps:
+name: Deploy Frontend
+
+on:
+  push:
+    branches: ["prod"]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
   - name: ⬇️ Checkout Code
     uses: actions/checkout@v4
 
