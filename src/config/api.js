@@ -125,10 +125,10 @@ const buildApiUrl = (endpoint) => {
 const buildAuthUrl = (authEndpoint) => {
   const config = getAuthConfig();
   const authEndpoints = {
-    google: '/api/proxy/auth/google',
-    logout: '/api/proxy/auth/logout',
-    verify: '/api/proxy/auth/verify',
-    health: '/api/proxy/auth/health'
+    google: '/google',
+    logout: '/logout',
+    verify: '/verify',
+    health: '/health'
   };
   return `${config.baseURL}${authEndpoints[authEndpoint]}`;
 };
@@ -146,10 +146,10 @@ const buildWaEsUrl = (endpoint) => {
 const buildFirebaseLambdaUrl = (endpoint) => {
   const config = getFirebaseLambdaConfig();
   const firebaseEndpoints = {
-    checkWhatsappStatus: '/api/check_whatsapp_status',
-    getWhatsappLink: '/api/get_whatsapp_link',
-    getUserDashboardStatus: '/api/get_user_dashboard_status',
-    updateTrainingStatus: '/api/update_training_status'
+    checkWhatsappStatus: '/check_whatsapp_status',
+    getWhatsappLink: '/get_whatsapp_link',
+    getUserDashboardStatus: '/get_user_dashboard_status',
+    updateTrainingStatus: '/update_training_status'
   };
   const url = `${config.baseURL}${firebaseEndpoints[endpoint] || endpoint}`;
   console.log('🔧 Building Firebase Lambda URL:', {
@@ -165,9 +165,9 @@ const buildFirebaseLambdaUrl = (endpoint) => {
 const buildPricingLambdaUrl = (endpoint) => {
   const config = getPricingLambdaConfig();
   const pricingEndpoints = {
-    fetchProductsAndPricing: '/api/fetch_products_and_pricing',
-    subscribe: '/api/subscribe',
-    fetchSubscriptionStatus: '/api/fetch_subscription_status'
+    fetchProductsAndPricing: '/fetch_products_and_pricing',
+    subscribe: '/subscribe',
+    fetchSubscriptionStatus: '/fetch_subscription_status'
   };
   const url = `${config.baseURL}${pricingEndpoints[endpoint] || endpoint}`;
   console.log('🔧 Building Pricing Lambda URL:', {

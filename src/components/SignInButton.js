@@ -11,11 +11,16 @@ function SignInButton() {
   const handleGoogleSignIn = async () => {
     setIsGoogleSigningIn(true);
     try {
-      await signInWithGoogle();
+      // Add timeout to handle case where user cancels popup
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Sign-in cancelled or timed out')), 5000); // 5 second timeout
+      });
+      
+      await Promise.race([signInWithGoogle(), timeoutPromise]);
       // PublicRoute will automatically redirect to dashboard
     } catch (error) {
       console.error('Google sign in error:', error);
-    } finally {
+      // Reset the signing in state on any error (including cancellation)
       setIsGoogleSigningIn(false);
     }
   };

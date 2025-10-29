@@ -2,14 +2,13 @@ import React, { useState } from 'react';
 
 const HeroSection = ({ isDarkMode }) => {
 	const [email, setEmail] = useState('');
-	const [status, setStatus] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
 	const [showInput, setShowInput] = useState(false);
 
 	const handleContactUs = (e) => {
 		e.preventDefault();
 		if (!email) {
-			setStatus('Please enter your email address.');
+			alert('Please enter your email address.');
 			return;
 		}
 		setIsLoading(true);
@@ -21,17 +20,17 @@ const HeroSection = ({ isDarkMode }) => {
 		})
 			.then(async (response) => {
 				if (response.ok) {
-					setStatus('Message sent successfully!');
+					alert('Message sent successfully!');
 					setEmail('');
 				} else {
 					const errorData = await response.json();
 					console.error('Failed to send email:', errorData);
-					setStatus('Failed to send message. Please try again.');
+					alert('Failed to send message. Please try again.');
 				}
 			})
 			.catch((error) => {
 				console.error('Error sending email:', error);
-				setStatus('An error occurred. Please try again later.');
+				alert('An error occurred. Please try again later.');
 			})
 			.finally(() => setIsLoading(false));
 	};
@@ -50,10 +49,30 @@ const HeroSection = ({ isDarkMode }) => {
 					Deliver real-time support with a human-like touch — our intelligent chat service understands, responds, and resolves just like your best
 					agents.
 				</p>
-				<div className='flex items-center justify-center gap-4 mb-6'>
+				<div className='flex flex-col sm:flex-row items-center justify-center gap-4 mb-6'>
 					<button
-						onClick={() => document.getElementById('pricing-section').scrollIntoView({ behavior: 'smooth' })}
-						className={`px-6 py-3 rounded-full font-semibold shadow-md transition-all duration-500 transform ${showInput ? '-translate-x-3' : ''} ${
+						onClick={() => {
+							const whatsappSection = document.getElementById('whatsapp-ai-agent-section');
+							if (whatsappSection) {
+								// Find the CTA button within the section
+								const ctaButton = whatsappSection.querySelector('button');
+								if (ctaButton) {
+									// Calculate position to center the button
+									const buttonRect = ctaButton.getBoundingClientRect();
+									const windowHeight = window.innerHeight;
+									const scrollTop = window.pageYOffset + buttonRect.top - (windowHeight / 2) + (buttonRect.height / 2);
+									
+									window.scrollTo({
+										top: scrollTop,
+										behavior: 'smooth'
+									});
+								} else {
+									// Fallback to section scroll
+									whatsappSection.scrollIntoView({ behavior: 'smooth' });
+								}
+							}
+						}}
+						className={`px-6 py-3 rounded-full font-semibold shadow-md transition-all duration-500 transform ${showInput ? 'sm:-translate-x-3' : ''} ${
 							isDarkMode ? 'bg-green-400 text-gray-900 hover:bg-green-300' : 'bg-green-600 text-white hover:bg-green-700'
 						}`}
 					>
@@ -61,7 +80,7 @@ const HeroSection = ({ isDarkMode }) => {
 					</button>
 					<div
 						className={`flex items-center justify-center rounded-full overflow-hidden transition-all duration-500 ${
-							showInput ? 'w-[320px]' : 'w-[140px]'
+							showInput ? 'w-[280px] sm:w-[320px]' : 'w-[140px]'
 						} h-[48px] shadow-md ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}
 					>
 						<input

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { apiConfig } from '../../config/api';
 
-const PlanBilling = () => {
+const PlanBilling = ({ onSubscriptionActivated }) => {
   const { user } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -16,7 +16,7 @@ const PlanBilling = () => {
 
   const fetchProducts = async () => {
     if (!user?.uid) {
-      setError('User not authenticated');
+      console.log('User not available yet, skipping fetchProducts');
       return;
     }
 
@@ -52,7 +52,7 @@ const PlanBilling = () => {
 
   const fetchSubscriptionStatus = async () => {
     if (!user?.uid) {
-      setSubscriptionError('User not authenticated');
+      console.log('User not available yet, skipping fetchSubscriptionStatus');
       return;
     }
 
@@ -86,19 +86,10 @@ const PlanBilling = () => {
   };
 
   useEffect(() => {
-    fetchProducts();
-    fetchSubscriptionStatus();
-    
-    // Check if user returned from payment
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('payment') === 'success') {
-      // Clear the URL parameter
-      window.history.replaceState({}, document.title, window.location.pathname);
-      // Refresh subscription status after successful payment
-      setTimeout(() => {
-        fetchSubscriptionStatus();
-        fetchProducts();
-      }, 1000);
+    // Only fetch data if user is available
+    if (user?.uid) {
+      fetchProducts();
+      fetchSubscriptionStatus();
     }
   }, [user?.uid]);
 
@@ -135,8 +126,21 @@ const PlanBilling = () => {
       handler: function (response) {
         // Handle successful payment
         console.log('Payment successful:', response);
-        // Redirect to dashboard with success parameter
-        window.location.href = window.location.origin + "/dashboard?payment=success";
+        // Close the Razorpay modal first
+        rzp.close();
+        // Notify parent Dashboard component to refresh all statuses
+        if (onSubscriptionActivated) {
+          onSubscriptionActivated();
+        }
+        // Use a more reliable redirect method
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 100);
+      },
+      modal: {
+        ondismiss: function() {
+          console.log('Payment modal dismissed');
+        }
       }
     };
 
@@ -249,6 +253,11 @@ const PlanBilling = () => {
     }
   };
 
+  const isWhatsappBusiness = (name) => {
+    const n = (name || '').trim().toLowerCase();
+    return n === 'whatsapp business' || n === 'whatsapp';
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -319,7 +328,7 @@ const PlanBilling = () => {
       )}
 
       {!loading && !error && products.length > 0 && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => {
             const isComingSoon = (product.status || '').toLowerCase() === 'coming soon';
             return (
@@ -362,15 +371,43 @@ const PlanBilling = () => {
                     <div className={`rounded-lg p-3 ${
                       isComingSoon ? 'bg-gray-100' : 'bg-gray-50'
                     }`}>
-                      <p className={`text-sm ${isComingSoon ? 'text-gray-500' : 'text-gray-600'}`}>Base Price</p>
                       <div className="space-y-2">
-                        <p className={`text-2xl font-bold ${isComingSoon ? 'text-gray-600' : 'text-gray-900'}`}>₹{product.base_price}</p>
+                        {isWhatsappBusiness(product.name) && (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-baseline space-x-2">
+                              <span className="text-sm text-gray-500 line-through">₹3500</span>
+                              <span className={`text-2xl font-bold ${isComingSoon ? 'text-gray-600' : 'text-gray-900'}`}>₹{product.base_price}</span>
+                            </div>
+                            {(() => {
+                              const mrp = 3500;
+                              const discount = Math.max(0, Math.round(((mrp - product.base_price) / mrp) * 100));
+                              return (
+                                <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-1 rounded">
+                                  {discount}% off
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        )}
+                        {!isWhatsappBusiness(product.name) && (
+                          <>
+                            <p className={`text-sm ${isComingSoon ? 'text-gray-500' : 'text-gray-600'}`}>Base Price</p>
+                            <p className={`text-2xl font-bold ${isComingSoon ? 'text-gray-600' : 'text-gray-900'}`}>₹{product.base_price}</p>
+                          </>
+                        )}
                         <div className="flex justify-between text-sm">
                           <span className={`${isComingSoon ? 'text-gray-500' : 'text-gray-600'}`}>${convertCurrency(product.base_price).usd}</span>
                           <span className={`${isComingSoon ? 'text-gray-500' : 'text-gray-600'}`}>€{convertCurrency(product.base_price).eur}</span>
                         </div>
+                        <div className="flex items-center justify-between">
+                          <p className={`text-xs ${isComingSoon ? 'text-gray-400' : 'text-gray-500'}`}>per month</p>
+                          {isWhatsappBusiness(product.name) && (
+                            <span className="text-sm font-semibold text-blue-700 bg-blue-100 px-2 py-1 rounded">
+                              One month free trial
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <p className={`text-xs ${isComingSoon ? 'text-gray-400' : 'text-gray-500'}`}>per month</p>
                     </div>
                   ) : (
                     <div className={`rounded-lg p-3 ${isComingSoon ? 'bg-gray-100' : 'bg-gray-50'}`}>
@@ -405,8 +442,8 @@ const PlanBilling = () => {
                       </button>
                     </>
                   ) : (
-                    // Show Activate and Authenticate buttons
-                    !(['authenticated', 'active'].includes((subscriptionStatus?.status || '').toLowerCase())) && (
+                    // Hide activate until subscription status finishes loading
+                    !subscriptionLoading && !(['authenticated', 'active'].includes((subscriptionStatus?.status || '').toLowerCase())) && (
                       <>
                         <button
                           disabled={isComingSoon || subscribingProductId === product.id}
@@ -468,23 +505,33 @@ const PlanBilling = () => {
           </div>
         )}
 
-        {!subscriptionLoading && !subscriptionError && subscriptionStatus && (
+        {!subscriptionLoading && !subscriptionError && subscriptionStatus && subscriptionStatus.status === 'created' && (
+          <div className="text-center py-8">
+            <div className="text-gray-400 text-6xl mb-4">📋</div>
+            <h4 className="text-lg font-medium text-gray-900 mb-2">No Active Subscription</h4>
+            <p className="text-gray-600">You don't have an active subscription yet.</p>
+          </div>
+        )}
+
+        {!subscriptionLoading && !subscriptionError && subscriptionStatus && subscriptionStatus.status !== 'created' && (
           <div className="space-y-4">
             {/* Simplified Subscription Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Status - Most Important */}
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm font-medium text-blue-900 mb-2">Status</p>
-                <p className={`text-lg font-semibold ${
-                  subscriptionStatus?.status === 'authenticated' ? 'text-green-600' : 
-                  subscriptionStatus?.status === 'not_created' ? 'text-gray-600' : 
-                  'text-yellow-600'
-                }`}>
-                  {subscriptionStatus?.status === 'authenticated' ? 'Active' :
-                   subscriptionStatus?.status === 'not_created' ? 'No Subscription' :
-                   subscriptionStatus?.status || 'Unknown'}
-                </p>
-              </div>
+              {subscriptionStatus?.status && subscriptionStatus.status !== 'created' && (
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm font-medium text-blue-900 mb-2">Status</p>
+                  <p className={`text-lg font-semibold ${
+                    subscriptionStatus?.status === 'authenticated' ? 'text-green-600' : 
+                    subscriptionStatus?.status === 'not_created' ? 'text-gray-600' : 
+                    'text-yellow-600'
+                  }`}>
+                    {subscriptionStatus?.status === 'authenticated' ? 'Active' :
+                     subscriptionStatus?.status === 'not_created' ? 'No Subscription' :
+                     subscriptionStatus?.status || 'Unknown'}
+                  </p>
+                </div>
+              )}
 
               {/* Plan Name */}
               <div className="p-4 bg-blue-50 rounded-lg">

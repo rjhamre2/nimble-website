@@ -11,7 +11,7 @@ import {
   ChevronDownIcon
 } from '@heroicons/react/24/outline';
 
-const RecentChats = () => {
+const RecentChats = ({ onNavigateToLiveChat }) => {
   const { user } = useAuth();
   const [sortBy, setSortBy] = useState('time');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -167,13 +167,16 @@ const RecentChats = () => {
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-bold text-gray-900">Recent Customer Chats</h3>
-        <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+        <button 
+          onClick={() => onNavigateToLiveChat && onNavigateToLiveChat()}
+          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+        >
           View All
         </button>
       </div>
 
-      {/* Table Header */}
-      <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 rounded-lg text-sm font-medium text-gray-700 mb-4">
+      {/* Desktop Table Header */}
+      <div className="hidden lg:grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 rounded-lg text-sm font-medium text-gray-700 mb-4">
         <div className="col-span-3">
           <SortButton field="customer">Customer</SortButton>
         </div>
@@ -197,46 +200,76 @@ const RecentChats = () => {
       {/* Table Body */}
       <div className="space-y-2">
         {!loading && sortedChats.map((chat) => (
-          <div
-            key={chat.id}
-            className="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
-          >
-            {/* Customer */}
-            <div className="col-span-3">
-              <div>
-                <p className="font-medium text-gray-900">{chat.customer}</p>
-                <p className="text-sm text-gray-500">{chat.customerNumber}</p>
+          <div key={chat.id}>
+            {/* Desktop Layout */}
+            <div className="hidden lg:grid grid-cols-12 gap-4 px-4 py-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
+              {/* Customer */}
+              <div className="col-span-3">
+                <div>
+                  <p className="font-medium text-gray-900">{chat.customer}</p>
+                  <p className="text-sm text-gray-500">{chat.customerNumber}</p>
+                </div>
+              </div>
+
+              {/* Query */}
+              <div className="col-span-4">
+                <p className="text-sm text-gray-700 truncate" title={chat.query}>
+                  {chat.query}
+                </p>
+              </div>
+
+              {/* Channel */}
+              <div className="col-span-1 flex items-center">
+                {getChannelIcon(chat.channel)}
+              </div>
+
+              {/* Status */}
+              <div className="col-span-1">
+                <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(chat.status)}`}>
+                  {getStatusIcon(chat.status)}
+                  <span className="capitalize">{chat.status}</span>
+                </span>
+              </div>
+
+              {/* Time */}
+              <div className="col-span-2">
+                <p className="text-sm text-gray-600">{formatRelativeTime(chat.timestamp)}</p>
+              </div>
+
+              {/* Duration */}
+              <div className="col-span-1">
+                <p className="text-sm text-gray-600">{chat.duration}</p>
               </div>
             </div>
 
-            {/* Query */}
-            <div className="col-span-4">
-              <p className="text-sm text-gray-700 truncate" title={chat.query}>
-                {chat.query}
-              </p>
-            </div>
-
-            {/* Channel */}
-            <div className="col-span-1 flex items-center">
-              {getChannelIcon(chat.channel)}
-            </div>
-
-            {/* Status */}
-            <div className="col-span-1">
-              <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(chat.status)}`}>
-                {getStatusIcon(chat.status)}
-                <span className="capitalize">{chat.status}</span>
-              </span>
-            </div>
-
-            {/* Time */}
-            <div className="col-span-2">
-              <p className="text-sm text-gray-600">{formatRelativeTime(chat.timestamp)}</p>
-            </div>
-
-            {/* Duration */}
-            <div className="col-span-1">
-              <p className="text-sm text-gray-600">{chat.duration}</p>
+            {/* Mobile Layout */}
+            <div className="lg:hidden bg-white border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <p className="font-medium text-gray-900 truncate">{chat.customer}</p>
+                    {getChannelIcon(chat.channel)}
+                  </div>
+                  <p className="text-sm text-gray-500 truncate">{chat.customerNumber}</p>
+                </div>
+                <div className="flex items-center space-x-2 ml-2">
+                  <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(chat.status)}`}>
+                    {getStatusIcon(chat.status)}
+                    <span className="capitalize">{chat.status}</span>
+                  </span>
+                </div>
+              </div>
+              
+              <div className="mb-3">
+                <p className="text-sm text-gray-700 line-clamp-2" title={chat.query}>
+                  {chat.query}
+                </p>
+              </div>
+              
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>{formatRelativeTime(chat.timestamp)}</span>
+                {chat.duration && <span>Duration: {chat.duration}</span>}
+              </div>
             </div>
           </div>
         ))}

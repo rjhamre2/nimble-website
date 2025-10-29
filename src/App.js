@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ChatWidget from './components/ChatWidget';
+// import ChatWidget from './components/ChatWidget';
 import FeaturesSection from './components/FeaturesSection';
 import HeroSection from './components/HeroSection';
 import WhatsAppEmbeddedSignup from './components/WhatsAppEmbeddedSignup';
@@ -8,6 +8,7 @@ import SignInButton from './components/SignInButton';
 import Dashboard from './components/Dashboard/Dashboard';
 import LiveChat from './components/LiveChat';
 import { useAuth } from './hooks/useAuth';
+import WhatsAppAIAgentSection from './components/WhatsAppAIAgentSection';
 
 // Custom Hook for Intersection Observer to trigger animations on scroll
 const useIntersectionObserver = (options) => {
@@ -219,7 +220,7 @@ function App() {
 
 								{/* FAQ Section Component */}
 								<FAQSection isDarkMode={isDarkMode} />
-								<PricingSection isDarkMode={isDarkMode} onPlanSelect={handlePlanSelect} />
+								<WhatsAppAIAgentSection isDarkMode={isDarkMode} />
 
 																{/* About Section Component */}
 								<AboutSection isDarkMode={isDarkMode} />
@@ -263,7 +264,7 @@ function App() {
 				)}
 
 				{/* Floating Chat Widget */}
-				<ChatWidget isDarkMode={isDarkMode} />
+				{/* <ChatWidget isDarkMode={isDarkMode} /> */}
 			</div>
 		</Router>
 	);
@@ -366,71 +367,6 @@ const pricingPlans = [
 	},
 ];
 
-function PricingSection({ isDarkMode, onPlanSelect }) {
-	return (
-		<section id='pricing-section' className={`py-20 px-4 ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'}`}>
-			<div className='max-w-7xl mx-auto text-center mb-12'>
-				<h2 className='text-4xl font-extrabold mb-4'>Plans that you grow with</h2>
-				<p className='text-lg max-w-2xl mx-auto'>Choose a plan that fits your business size, needs, and goals.</p>
-			</div>
-
-			<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto'>
-				{pricingPlans.map((plan, idx) => (
-					<div
-						key={idx}
-						className={`rounded-xl p-6 border-2 flex flex-col justify-between transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
-							plan.selected ? 'border-blue-500' : isDarkMode ? 'border-gray-700 hover:border-green-400' : 'border-gray-200 hover:border-green-600'
-						}`}
-					>
-						{/* Tag */}
-						{plan.tag && <span className='inline-block mb-2 px-2 py-1 text-xs font-semibold text-white bg-green-600 rounded-full'>{plan.tag}</span>}
-
-						{/* Top Content */}
-						<div className='flex-grow flex flex-col'>
-							<h3 className='text-xl font-semibold mb-1'>{plan.name}</h3>
-							<p className='text-sm mb-4'>{plan.description}</p>
-
-							<div className='text-3xl font-bold mb-1'>
-								{plan.price} <span className='text-base font-medium'>{plan.duration}</span>
-							</div>
-							<p className='text-xs text-gray-500 mb-4'>{plan.includes}</p>
-
-							{/* Feature list */}
-							<ul className='text-sm space-y-2 text-left mt-2'>
-								{plan.features.map((feature, i) => (
-									<li key={i} className='flex items-start gap-2'>
-										<svg
-											className='w-5 h-5 flex-shrink-0 text-green-500'
-											fill='none'
-											stroke='currentColor'
-											strokeWidth='2'
-											viewBox='0 0 24 24'
-										>
-											<path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7' />
-										</svg>
-										{feature}
-									</li>
-								))}
-							</ul>
-						</div>
-
-						{/* Bottom Button Block */}
-						<div className='mt-6'>
-							<button
-								onClick={() => onPlanSelect(plan)}
-								className={`w-full py-3 rounded-md font-medium text-sm transition transform duration-300 ${
-									plan.selected ? 'bg-gray-100 text-gray-400 cursor-default' : 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105'
-								}`}
-							>
-								{plan.buttonText}
-							</button>
-						</div>
-					</div>
-				))}
-			</div>
-		</section>
-	);
-}
 
 const SeamlessIntegrations = ({ isDarkMode, user }) => {
 	const integrations = [
@@ -986,11 +922,11 @@ function PrivacyPolicy({ isDarkMode }) {
 				<h2 className="text-2xl font-semibold mt-8 mb-3">6. Third-Party Services</h2>
 				<p>Our website and chat services may link to third-party tools (e.g., Meta, WhatsApp). We are not responsible for the privacy practices of those platforms. Please refer to their privacy policies for more information.</p>
 
-				<h2 className="text-2xl font-semibold mt-8 mb-3">7. Children’s Privacy</h2>
+				<h2 className="text-2xl font-semibold mt-8 mb-3">7. Children's Privacy</h2>
 				<p>NimbleAI is not intended for use by individuals under the age of 13. We do not knowingly collect personal data from children.</p>
 
 				<h2 className="text-2xl font-semibold mt-8 mb-3">8. Changes to This Policy</h2>
-				<p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with a revised “Effective Date.”</p>
+				<p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with a revised "Effective Date."</p>
 
 				<h2 className="text-2xl font-semibold mt-8 mb-3">9. Contact Us</h2>
 				<p>If you have questions or concerns about this policy, please contact:</p>
@@ -1048,13 +984,13 @@ function TermsOfService({ isDarkMode }) {
 				<p className="mb-4">NimbleAI may integrate with platforms like Meta, OpenAI, or WhatsApp. We are not responsible for third-party services' performance or policies.</p>
 
 				<h2 className="text-2xl font-semibold mt-8 mb-3">10. Disclaimers</h2>
-				<p className="mb-4">The Service is provided “as is” without warranties of any kind. We do not guarantee that it will always be secure, error-free, or available.</p>
+				<p className="mb-4">The Service is provided "as is" without warranties of any kind. We do not guarantee that it will always be secure, error-free, or available.</p>
 
 				<h2 className="text-2xl font-semibold mt-8 mb-3">11. Limitation of Liability</h2>
 				<p className="mb-4">To the fullest extent permitted by law, NimbleAI is not liable for any indirect, incidental, or consequential damages arising from your use of the Service.</p>
 
 				<h2 className="text-2xl font-semibold mt-8 mb-3">12. Changes to These Terms</h2>
-				<p className="mb-4">We may update these Terms from time to time. We’ll notify you of significant changes. Continued use of the Service after changes means you accept the new Terms.</p>
+				<p className="mb-4">We may update these Terms from time to time. We'll notify you of significant changes. Continued use of the Service after changes means you accept the new Terms.</p>
 
 				<h2 className="text-2xl font-semibold mt-8 mb-3">13. Governing Law</h2>
 				<p className="mb-4">These Terms are governed by the laws of India. Any disputes shall be resolved in the courts of Indore, India.</p>

@@ -1,8 +1,30 @@
 import { apiConfig } from '../config/api';
 
+// Retry utility function for API calls
+const retryApiCall = async (apiCall, maxRetries = 3, delay = 1000) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await apiCall();
+      if (result && result.success !== false) {
+        return result;
+      }
+      throw new Error(`API returned unsuccessful response: ${JSON.stringify(result)}`);
+    } catch (error) {
+      console.log(`🔄 Attempt ${attempt}/${maxRetries} failed:`, error.message);
+      
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay * attempt));
+    }
+  }
+};
+
 // Check WhatsApp integration status for a user
 export const checkWhatsAppStatus = async (userId) => {
-  try {
+  return retryApiCall(async () => {
     const url = apiConfig.endpoints.firebase.checkWhatsappStatus();
     console.log('🌐 Calling URL:', url);
     console.log('📤 Request body:', { user_id: userId });
@@ -29,10 +51,7 @@ export const checkWhatsAppStatus = async (userId) => {
     const data = await response.json();
     console.log('✅ Response data:', data);
     return data;
-  } catch (error) {
-    console.error('❌ Error checking WhatsApp status:', error);
-    throw error;
-  }
+  });
 };
 
 // Get WhatsApp link for a user
@@ -72,7 +91,7 @@ export const getWhatsAppLink = async (userId) => {
 
 // Get user dashboard status (onboarding, training, subscription)
 export const getUserDashboardStatus = async (userId) => {
-  try {
+  return retryApiCall(async () => {
     const url = apiConfig.endpoints.firebase.getUserDashboardStatus();
     console.log('🌐 Calling Dashboard Status URL:', url);
     console.log('📤 Request body:', { user_id: userId });
@@ -97,10 +116,7 @@ export const getUserDashboardStatus = async (userId) => {
     const data = await response.json();
     console.log('✅ Dashboard status response data:', data);
     return data;
-  } catch (error) {
-    console.error('❌ Error getting dashboard status:', error);
-    throw error;
-  }
+  });
 };
 
 // Update training status in Firebase

@@ -1,7 +1,7 @@
 import { useAuth } from '../../hooks/useAuth';
 import axios from 'axios';
-import React, { useState } from 'react';
-import { updateTrainingStatus } from '../../services/firebaseService';
+import React, { useState, useEffect } from 'react';
+import { updateTrainingStatus, getUserDashboardStatus } from '../../services/firebaseService';
 
 
 import {
@@ -10,13 +10,11 @@ import {
   PencilIcon,
   TrashIcon,
   PlusIcon,
-  DocumentTextIcon,
-  CloudArrowUpIcon,
   CheckIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
 
-const KnowledgeBase = () => {
+const KnowledgeBase = ({ onTrainingComplete }) => {
   const [faqs, setFaqs] = useState([
     {
       id: 1,
@@ -52,13 +50,12 @@ const KnowledgeBase = () => {
     }
   ]);
 
-  const [uploadError, setUploadError] = useState(null);
-  const [newFaq, setNewFaq] = useState({ question: '', answer: '', link: '' });
-  const [isAddingFaq, setIsAddingFaq] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [isUploading, setIsUploading] = useState(false);
+  const [trainingText, setTrainingText] = useState('');
   const [isTraining, setIsTraining] = useState(false);
   const [trainingError, setTrainingError] = useState(null);
+  const [trainingSuccess, setTrainingSuccess] = useState(false);
+  const [trainingDetails, setTrainingDetails] = useState(null);
+  const [isLoadingTrainingDetails, setIsLoadingTrainingDetails] = useState(false);
   const { user } = useAuth(); // <-- ADDED to get the signed-in user
 
   // FAQ Management Functions
@@ -92,94 +89,28 @@ const KnowledgeBase = () => {
     }
   };
 
-  const addNewFaq = () => {
-    if (newFaq.question.trim() && newFaq.answer.trim()) {
-      const newId = Math.max(...faqs.map(f => f.id)) + 1;
-      setFaqs([...faqs, {
-        id: newId,
-        question: newFaq.question,
-        answer: newFaq.answer,
-        link: newFaq.link,
-        isExpanded: true,
-        isEditing: false
-      }]);
-      setNewFaq({ question: '', answer: '', link: '' });
-      setIsAddingFaq(false);
-    }
-  };
 
-  // File Upload Functions
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0]; // Assuming one file
-    if (!file || !user) {
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadError(null); // Reset previous errors
-
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        setUploadError('Authentication token not found. Please sign in again.');
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('user_id', user.uid); // Add user_id to FormData
-
-      const apiUrl = `${process.env.REACT_APP_DASHBOARD2EC2LAMBDA_BASE_URL}/api/proxy/faqs/upload`;
-
-      const response = await axios.post(apiUrl, formData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      const newFile = {
-        id: Date.now(),
-        name: file.name,
-        size: file.size,
-        uploadDate: new Date().toISOString(),
-        status: 'uploaded',
-        backendMessage: response.data.message
-      };
-      
-      setUploadedFiles(prevFiles => [...prevFiles, newFile]);
-
-    } catch (err) {
-      console.error(`Failed to upload ${file.name}:`, err);
-      const errorMessage = err.response?.data?.message || 'The upload failed. Please try again.';
-      setUploadError(errorMessage);
-    } finally {
-      setIsUploading(false);
-      event.target.value = ''; // Reset file input
-    }
-  };
-
-  const deleteFile = (id) => {
-    if (window.confirm('Are you sure you want to delete this file?')) {
-      setUploadedFiles(uploadedFiles.filter(file => file.id !== id));
-    }
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  // Training Functions
+  const handleTrainingTextChange = (event) => {
+    setTrainingText(event.target.value);
+    setTrainingError(null);
+    setTrainingSuccess(false);
   };
 
   const handleRetrainAI = async () => {
     if (!user) {
-      setTrainingError('Please sign in to retrain the AI agent');
+      setTrainingError('Please sign in to train the AI agent');
+      return;
+    }
+
+    if (!trainingText.trim()) {
+      setTrainingError('Please enter some training content');
       return;
     }
 
     setIsTraining(true);
     setTrainingError(null);
+    setTrainingSuccess(false);
 
     try {
       const token = localStorage.getItem('authToken');
@@ -188,11 +119,14 @@ const KnowledgeBase = () => {
         return;
       }
       
-      // Step 1: Call the training API on the backend
+      // Call the new training API with text content
       const apiUrl = `${process.env.REACT_APP_DASHBOARD2EC2LAMBDA_BASE_URL}/api/proxy/train`;
       
       const trainingResponse = await axios.post(apiUrl, 
-        { user_id: user.uid },
+        { 
+          user_id: user.uid,
+          content: trainingText.trim()
+        },
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -203,9 +137,9 @@ const KnowledgeBase = () => {
 
       console.log('Training API response:', trainingResponse.data);
       
-      // Step 2: Update Firebase with training status
+      // Update Firebase with training status
       const trainingData = {
-        filesCount: uploadedFiles.length,
+        contentLength: trainingText.trim().length,
         faqsCount: faqs.length,
         lastTrainingDate: new Date().toISOString(),
         trainingResponse: trainingResponse.data
@@ -213,8 +147,22 @@ const KnowledgeBase = () => {
       
       await updateTrainingStatus(user.uid, trainingData);
       
-      // Show success message
-      alert('AI Agent training completed successfully! Training status updated in dashboard.');
+      // Show success message and clear text
+      setTrainingSuccess(true);
+      setTrainingText('');
+      
+      // Refetch training details to show updated last training time
+      await fetchTrainingDetails();
+      
+      // Notify parent Dashboard component to refresh all statuses
+      if (onTrainingComplete) {
+        onTrainingComplete();
+      }
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setTrainingSuccess(false);
+      }, 3000);
       
     } catch (err) {
       console.error('Training failed:', err);
@@ -224,6 +172,26 @@ const KnowledgeBase = () => {
       setIsTraining(false);
     }
   };
+
+  // Function to fetch training details
+  const fetchTrainingDetails = async () => {
+    if (!user?.uid) return;
+    
+    setIsLoadingTrainingDetails(true);
+    try {
+      const dashboardData = await getUserDashboardStatus(user.uid);
+      setTrainingDetails(dashboardData?.training || null);
+    } catch (error) {
+      console.error('Error fetching training details:', error);
+    } finally {
+      setIsLoadingTrainingDetails(false);
+    }
+  };
+
+  // Fetch training details on component mount
+  useEffect(() => {
+    fetchTrainingDetails();
+  }, [user?.uid]);
 
   return (
     <div className="space-y-6">
@@ -241,100 +209,98 @@ const KnowledgeBase = () => {
         </button> */}
       </div>
 
-      <div className="max-w-2xl mx-auto">
+      {/* Training Details Section - Show at the top */}
+      {trainingDetails && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-blue-900 mb-3">Last Training Details</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <div className="text-sm text-blue-700 font-medium">Status</div>
+              <div className="text-lg font-bold text-blue-900">
+                {trainingDetails.status === 'completed' ? '✅ Completed' : 
+                 trainingDetails.status === 'not_started' ? '⏳ Not Started' : 
+                 '⏳ In Progress'}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-blue-700 font-medium">Progress</div>
+              <div className="text-lg font-bold text-blue-900">
+                {typeof trainingDetails.progress === 'number' ? `${trainingDetails.progress}%` : '0%'}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-blue-700 font-medium">Last Trained</div>
+              <div className="text-lg font-bold text-blue-900">
+                {trainingDetails.lastTrainedAt ? 
+                  new Date(trainingDetails.lastTrainedAt).toLocaleString() : 
+                  'Never'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-        {/* Right Side - File Upload */}
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-0">
+        {/* Training Content Input */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Training Documents</h3>
-            <span className="text-sm text-gray-500">{uploadedFiles.length} files</span>
+            <h3 className="text-lg font-semibold text-gray-900">AI Training Content</h3>
+            <span className="text-sm text-gray-500">{trainingText.length} characters</span>
           </div>
 
-          {/* File Upload Area */}
-          <div className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-            <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h4 className="text-lg font-medium text-gray-900 mb-2">Upload Training Files</h4>
-            <p className="text-gray-600 mb-4">Upload .txt files to train your AI agent</p>
+          {/* Text Input Area */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 relative">
+            <h4 className="text-lg font-medium text-gray-900 mb-2">Training Content</h4>
+            <p className="text-gray-600 mb-4">Paste your training content here to train your AI agent</p>
             
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                multiple
-                accept=".txt"
-                onChange={handleFileUpload}
-                className="hidden"
-                disabled={isUploading}
-              />
-              <div className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center space-x-2">
-                <DocumentTextIcon className="h-5 w-5" />
-                <span>{isUploading ? 'Uploading...' : 'Choose Files'}</span>
+            <textarea
+              value={trainingText}
+              onChange={handleTrainingTextChange}
+              placeholder="Paste your training content here... (e.g., FAQ answers, product information, company policies, etc.)"
+              className="w-full h-48 sm:h-64 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm sm:text-base"
+              disabled={isTraining}
+            />
+            
+            <p className="text-xs text-gray-500 mt-2">
+              Enter detailed information about your business, products, or services to train the AI agent.
+            </p>
+
+            {/* Loading overlay */}
+            {isTraining && (
+              <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
+                <div className="flex flex-col items-center space-y-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="text-blue-600 font-medium">Training AI Agent...</span>
+                </div>
               </div>
-            </label>
-            
-            <p className="text-xs text-gray-500 mt-2">Maximum file size: 10MB</p>
+            )}
+
+            {/* Success message overlay */}
+            {trainingSuccess && (
+              <div className="absolute inset-0 bg-green-50 bg-opacity-95 flex items-center justify-center rounded-lg border border-green-200">
+                <div className="flex flex-col items-center space-y-3 text-center p-4">
+                  <div className="text-green-600 text-4xl">✅</div>
+                  <span className="text-green-800 font-medium text-lg">Training Completed Successfully!</span>
+                  <span className="text-green-700 text-sm">Your content has been processed.</span>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Uploaded Files List */}
-          {uploadedFiles.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-3">Uploaded Files</h4>
-              <div className="space-y-2">
-                {uploadedFiles.map((file) => (
-                  <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <DocumentTextIcon className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">{file.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {formatFileSize(file.size)} • {new Date(file.uploadDate).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                        {file.status}
-                      </span>
-                      <button
-                        onClick={() => deleteFile(file.id)}
-                        className="p-1 text-gray-400 hover:text-red-600"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Training Status */}
+          {/* Train AI Button */}
           <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h4 className="font-medium text-gray-900 mb-3">Training Status</h4>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Last trained</span>
-                <span className="text-sm font-medium">2 hours ago</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Training documents</span>
-                <span className="text-sm font-medium">{uploadedFiles.length} files</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">FAQ entries</span>
-                <span className="text-sm font-medium">{faqs.length} questions</span>
-              </div>
-            </div>
             <button 
               onClick={handleRetrainAI}
-              disabled={isTraining}
-              className="w-full mt-4 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isTraining || !trainingText.trim()}
+              className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isTraining ? 'Training...' : 'Train AI Agent'}
+              Train AI Agent
             </button>
-            
+
             {trainingError && (
-              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-800 text-sm">
-                {trainingError}
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-800 text-sm">
+                ❌ {trainingError}
               </div>
             )}
           </div>
