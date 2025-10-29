@@ -36,7 +36,14 @@ jobs:
           CI: false
           BUILD_DIR: build # The folder containing the final static files
           REACT_APP_GOOGLE_CLIENT_ID: "919316988485-au1an6s2v1j3sfh9n163ehb728hkd661.apps.googleusercontent.com"
-
+          REACT_APP_DASHBOARD2EC2LAMBDA_BASE_URL: "https://ody56t5fxdrceaqfxnfph2u3j40pamar.lambda-url.ap-south-1.on.aws"
+          REACT_APP_AUTH_LAMBDA_BASE_URL: "https://api.nimbleai.in/api/auth"
+          REACT_APP_WA_ES_LAMBDA: "https://ozpmzjnghswkf5fzen5rqle7p40wnxrk.lambda-url.ap-south-1.on.aws"
+          REACT_APP_FRONTEND2FIREBASE: "https://api.nimbleai.in/api/business"
+          REACT_APP_PRICING_LAMBDA: "https://api.nimbleai.in/api/pricing"
+          REACT_APP_WEBSOCKET_API_GATEWAY: "wss://s687z96fob.execute-api.ap-south-1.amazonaws.com/prod"
+          REACT_APP_RP_ID: "rzp_live_RWPVPdgjJN0s7P"
+          REACT_APP_GOOGLE_CLIENT_ID: "919316988485-au1an6s2v1j3sfh9n163ehb728hkd661.apps.googleusercontent.com"
       # --- 2. Continuous Delivery (CD) to AWS ---
 
       - name: 🔐 Configure AWS Credentials
