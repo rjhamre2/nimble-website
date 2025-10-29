@@ -35,6 +35,7 @@ jobs:
         env:
           CI: false
           BUILD_DIR: build # The folder containing the final static files
+          REACT_APP_GOOGLE_CLIENT_ID: "919316988485-au1an6s2v1j3sfh9n163ehb728hkd661.apps.googleusercontent.com""
 
       # --- 2. Continuous Delivery (CD) to AWS ---
 
