@@ -48,7 +48,6 @@ jobs:
       - name: 🔎 Verify AWS identity
         run: |
           aws sts get-caller-identity
-          aws s3api list-buckets --query 'Buckets[].Name'
           aws s3 ls s3://${{ vars.S3_BUCKET_NAME }} || true
 
       - name: 🚀 Deploy to S3 (Sync build files)
