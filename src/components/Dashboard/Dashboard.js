@@ -7,6 +7,7 @@ import {
 import { onboardUser } from '../../services/onboardingService';
 import { useNavigate } from 'react-router-dom';
 import { apiConfig } from '../../config/api';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import OnboardingBanner from './OnboardingBanner';
 import Sidebar from './Sidebar';
 import OverviewCards from './OverviewCards';
@@ -21,7 +22,7 @@ import LiveChat from '../LiveChat';
 
 const Dashboard = () => {
   const { user, userData, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('team-inbox');
   const [whatsappStatus, setWhatsappStatus] = useState(null);
   const [onboardingStatus, setOnboardingStatus] = useState(null);
   const [trainingStatus, setTrainingStatus] = useState(null);
@@ -29,6 +30,7 @@ const Dashboard = () => {
   const [pricingSubscriptionStatus, setPricingSubscriptionStatus] = useState(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(false);
   const [isCheckingWhatsapp, setIsCheckingWhatsapp] = useState(false);
+  const [broadcastView, setBroadcastView] = useState('new-broadcast');
   const [isLoadingOnboarding, setIsLoadingOnboarding] = useState(false);
   const [isLoadingTraining, setIsLoadingTraining] = useState(false);
   const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
@@ -275,7 +277,932 @@ const Dashboard = () => {
 
   const renderMainContent = () => {
     switch (activeTab) {
+      case 'team-inbox':
+        return <LiveChat />;
+      
+      case 'broadcast':
+        return (
+          <div className="w-full" style={{ height: 'calc(100vh - 64px)' }}>
+            <div className="pl-0 pr-4 w-full" style={{ height: 'calc(100vh - 64px)' }}>
+              <div className="grid grid-cols-1 lg:grid-cols-9 gap-0 w-full" style={{ height: 'calc(100vh - 64px)' }}>
+                <div className="lg:col-span-2 rounded-lg shadow-lg flex flex-col bg-white" style={{ height: 'calc(100vh - 64px)' }}>
+                <div className="pr-0 pl-0 pt-0 pb-0 border-b flex-shrink-0 border-gray-200">
+                  <div className="flex items-center gap-0">
+                    <div className="relative flex-1">
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search conversations..."
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <button
+                      className="w-10 h-10 flex items-center justify-center font-medium text-sm transition-colors flex-shrink-0 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                      title="New Chat"
+                    >
+                      <span className="text-lg">+</span>
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-2 px-0 py-2 border-t border-gray-200">
+                    <button 
+                      onClick={() => setBroadcastView('new-broadcast')}
+                      className={`w-full px-3 py-2 text-xs font-medium border rounded-lg transition-colors ${
+                        broadcastView === 'new-broadcast' 
+                          ? 'bg-blue-50 border-blue-300 text-blue-700' 
+                          : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      New Broadcast
+                    </button>
+                    <button 
+                      onClick={() => setBroadcastView('templates')}
+                      className={`w-full px-3 py-2 text-xs font-medium border rounded-lg transition-colors ${
+                        broadcastView === 'templates' 
+                          ? 'bg-blue-50 border-blue-300 text-blue-700' 
+                          : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      Templates
+                    </button>
+                    <button 
+                      onClick={() => setBroadcastView('analytics')}
+                      className={`w-full px-3 py-2 text-xs font-medium border rounded-lg transition-colors ${
+                        broadcastView === 'analytics' 
+                          ? 'bg-blue-50 border-blue-300 text-blue-700' 
+                          : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      Analytics
+                    </button>
+                  </div>
+                </div>
+                  <div className="flex-1 overflow-y-auto p-6">
+                  </div>
+                </div>
+                {/* Right Panel */}
+                <div className="lg:col-span-7 rounded-lg shadow-lg flex flex-col bg-white" style={{ height: 'calc(100vh - 64px)' }}>
+                  <div className="flex-1 overflow-y-auto p-6">
+                    {broadcastView === 'templates' && (
+                      <div className="space-y-6">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Template Library</h2>
+                            <p className="text-sm text-gray-600 mb-4">
+                              Select or create your template and submit it for WhatsApp approval. All templates must adhere to WhatsApp's guidelines.
+                            </p>
+                          </div>
+                          <button className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                            Watch Tutorial
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-between mb-4">
+                          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
+                            New Template Message
+                          </button>
+                          <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option>English</option>
+                          </select>
+                        </div>
+
+                        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
+                          <button className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium whitespace-nowrap">
+                            All
+                          </button>
+                          <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 whitespace-nowrap">
+                            Travel <span className="text-gray-500">(6)</span>
+                          </button>
+                          <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 whitespace-nowrap">
+                            Healthcare <span className="text-gray-500">(5)</span>
+                          </button>
+                          <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 whitespace-nowrap">
+                            E-Commerce <span className="text-gray-500">(14)</span>
+                          </button>
+                          <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 whitespace-nowrap">
+                            More...
+                          </button>
+                        </div>
+
+                        <div className="space-y-4">
+                          {/* Template 1 */}
+                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-semibold text-gray-900 mb-1">Login_Verification</h3>
+                                <span className="text-xs text-gray-500">Others</span>
+                              </div>
+                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
+                                Use sample
+                              </button>
+                            </div>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
+                              Hi {`{{name}}`},
+
+                              To verify your login attempt, please enter the following code in the login page:
+
+                              🔑 **Your Code**: [Verification Code]
+
+                              This code will expire in **[Time Duration]**.
+
+                              If this wasn't you, please reset your password or contact our support team at (support_method)
+                            </p>
+                          </div>
+
+                          {/* Template 2 */}
+                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-semibold text-gray-900 mb-1">Login_Verification</h3>
+                                <span className="text-xs text-gray-500">Others</span>
+                              </div>
+                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
+                                Use sample
+                              </button>
+                            </div>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
+                              Hi {`{{name}}`},
+
+                              To verify your login attempt, please enter the following code in the app or website:
+
+                              🔑 **Your Code**: [Verification Code]
+
+                              This code will expire in **[Time Duration]**.
+                              Please do not share this code with anyone for your safety.
+
+                              If this wasn't you, please reset your password or contact our support team at (support_method)
+                            </p>
+                          </div>
+
+                          {/* Template 3 */}
+                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-semibold text-gray-900 mb-1">Login_Verification</h3>
+                                <span className="text-xs text-gray-500">Others</span>
+                              </div>
+                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
+                                Use sample
+                              </button>
+                            </div>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
+                              "Hi {`{{name}}`},
+
+                              To complete your purchase, please enter the following OTP (One-Time Password) on our login page:
+
+                              🛍️ **Your OTP**: [OTP Code]
+                              Please do not share this code with anyone for your safety.
+                              This OTP is valid for **[Time Duration]**. If you didn't request this, please contact our support team for assistance at (support_method)."
+                            </p>
+                          </div>
+
+                          {/* Template 4 */}
+                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-semibold text-gray-900 mb-1">Two-Factor_Authentication (2FA) Code</h3>
+                                <span className="text-xs text-gray-500">Others</span>
+                              </div>
+                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
+                                Use sample
+                              </button>
+                            </div>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
+                              Hi {`{{name}}`},
+
+                              For added security, please use the following code to complete your login:
+
+                              🔑 **Your Code**: [Authentication Code]
+
+                              Please do not share this code with anyone for your safety.
+
+                              If you did not request this, please contact our support team immediately at (support_method).
+                            </p>
+                          </div>
+
+                          {/* Template 5 */}
+                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-semibold text-gray-900 mb-1">OTP_for_Checkout</h3>
+                                <span className="text-xs text-gray-500">Others</span>
+                              </div>
+                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
+                                Use sample
+                              </button>
+                            </div>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
+                              Hi {`{{name}}`},
+
+                              To complete your purchase, please enter the following OTP (One-Time Password) on our checkout page:
+
+                              🛍️ **Your OTP**: [OTP Code]
+
+                              This OTP is valid for **[Time Duration]**. If you didn't request this, please contact our support team for assistance at (support_method).
+                            </p>
+                          </div>
+
+                          {/* Template 6 */}
+                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-semibold text-gray-900 mb-1">Two-Factor_Authentication (2FA) Code</h3>
+                                <span className="text-xs text-gray-500">Others</span>
+                              </div>
+                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
+                                Use sample
+                              </button>
+                            </div>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
+                              Hi {`{{name}}`},
+
+                              For added security, please use the following code to complete your login:
+
+                              🔑 **Your Code**: [Authentication Code]
+
+                              If you did not request this, please contact our support team immediately at (support_method).
+                            </p>
+                          </div>
+
+                          {/* Template 7 */}
+                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-semibold text-gray-900 mb-1">Booking_Confirmation</h3>
+                                <span className="text-xs text-gray-500">Travel</span>
+                              </div>
+                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
+                                Use sample
+                              </button>
+                            </div>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
+                              Hi [Customer Name],
+
+                              Great news! Your trip to [Destination] is confirmed! 🎉 Here are your booking details:
+
+                              🌍 Destination: [Destination Name]
+
+                              📅 Travel Dates: [Start Date] - [End Date]
+
+                              ✈️ Flight Number: [Flight Number]
+
+                              🏨 Hotel: [Hotel Name]
+
+                              👉 You can access your full itinerary here: [Link]
+
+                              If you have any questions or need further assistance, feel free to reply to this message or contact us at [Phone Number].
+
+                              Safe travels and thank you for choosing [Travel Agency Name]!
+                            </p>
+                          </div>
+
+                          {/* Template 8 */}
+                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-semibold text-gray-900 mb-1">Prescription_Renewal_Reminder</h3>
+                                <span className="text-xs text-gray-500">Healthcare</span>
+                              </div>
+                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
+                                Use sample
+                              </button>
+                            </div>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
+                              Hi {`{{name}}`},
+
+                              This is a friendly reminder that it's time to renew your prescription for [Medication Name]. To ensure you don't run out of your medication, please submit a renewal request before [Date].
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {broadcastView === 'analytics' && (
+                      <div className="space-y-6">
+                        <div className="flex items-start justify-between">
+                          <h2 className="text-2xl font-semibold text-gray-900">Broadcast Analytics</h2>
+                          <button className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                            Watch Tutorial
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-end mb-4">
+                          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
+                            New Broadcast
+                          </button>
+                        </div>
+
+                        <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">Overview</h3>
+                            <div className="flex items-center gap-2">
+                              <button className="px-3 py-1 text-sm font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
+                                Export
+                              </button>
+                              <button className="px-3 py-1 text-sm font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
+                                Preview with sample data
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-900">Your daily Meta messaging limit</span>
+                              <button className="text-xs text-blue-600 hover:underline">What are limits?</button>
+                            </div>
+                            <p className="text-sm text-gray-700">
+                              <span className="font-semibold">250/250</span> unique contacts
+                            </p>
+                          </div>
+
+                          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-gray-600 mb-4">Consecutive days of messaging</p>
+                            <div className="text-xs text-gray-500">Messaging Quality</div>
+                            <div className="text-sm text-gray-700 font-medium mt-1">Quality Unavailable</div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-4 mb-6">
+                            <div className="text-center">
+                              <div className="text-2xl font-semibold text-gray-900 mb-1">0</div>
+                              <div className="text-xs text-gray-600">Sent</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-2xl font-semibold text-gray-900 mb-1">0</div>
+                              <div className="text-xs text-gray-600">Delivered</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-2xl font-semibold text-gray-900 mb-1">0</div>
+                              <div className="text-xs text-gray-600">Read</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-2xl font-semibold text-gray-900 mb-1">0</div>
+                              <div className="text-xs text-gray-600">Replied</div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-4">
+                            <div className="text-center">
+                              <div className="text-2xl font-semibold text-gray-900 mb-1">0</div>
+                              <div className="text-xs text-gray-600">Sending</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-2xl font-semibold text-gray-900 mb-1">0</div>
+                              <div className="text-xs text-gray-600">Failed</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-2xl font-semibold text-gray-900 mb-1">0</div>
+                              <div className="text-xs text-gray-600">Processing</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-2xl font-semibold text-gray-900 mb-1">0</div>
+                              <div className="text-xs text-gray-600">Queued</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border border-gray-200 rounded-lg bg-white">
+                          <div className="p-4 border-b border-gray-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-gray-900">Broadcast list</h3>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-600">Sorted by:</span>
+                                <select className="px-3 py-1 text-xs border border-gray-300 rounded text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                  <option>Latest</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-6 gap-4 text-xs font-medium text-gray-700 pb-2 border-b border-gray-200">
+                              <div>Broadcast name</div>
+                              <div>Total recipients</div>
+                              <div>Successful</div>
+                              <div>Read</div>
+                              <div>Replied</div>
+                              <div className="col-span-2 flex items-center justify-between">
+                                <span>Website clicks</span>
+                                <span>Actions</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="p-12 text-center">
+                            <div className="text-gray-400 mb-2">
+                              <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                            </div>
+                            <p className="text-sm font-medium text-gray-900 mb-1">No data</p>
+                            <p className="text-xs text-gray-500 mb-4">No Broadcasts here</p>
+                            <p className="text-xs text-gray-600 mb-4">
+                              Start sending broadcast messages on WhatsApp and monitor read rate, response rate, etc.
+                            </p>
+                            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
+                              New Broadcast
+                            </button>
+                          </div>
+
+                          <div className="p-4 border-t border-gray-200 bg-gray-50">
+                            <div className="flex items-center justify-between text-xs text-gray-600">
+                              <span>Rows per page:</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {broadcastView === 'new-broadcast' && (
+                      <div className="space-y-6">
+                        <div>
+                          <h2 className="text-xl font-semibold text-gray-900 mb-2">What message do you want to send?</h2>
+                          <p className="text-sm text-gray-600 mb-4">Add broadcast name and template below</p>
+                          
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Broadcast name</label>
+                            <input
+                              type="text"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter broadcast name"
+                            />
+                          </div>
+
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Select template message</label>
+                            <button className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left text-gray-700 hover:bg-gray-50 flex items-center justify-between">
+                              <span>Select a template</span>
+                              <span className="text-blue-600">+Add New Template</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="border-t pt-6">
+                          <h2 className="text-xl font-semibold text-gray-900 mb-2">Who is your audience?</h2>
+                          <p className="text-sm text-gray-600 mb-4">Choose from pre-built segments, imported contacts, or manual selection</p>
+                          
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Contact Segments</label>
+                            <div className="space-y-2">
+                              <button className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left hover:bg-gray-50 flex items-center gap-2">
+                                <span>New</span>
+                                <span className="text-gray-400 ml-auto">Share feedback</span>
+                              </button>
+                              <div className="grid grid-cols-2 gap-2">
+                                <button className="px-3 py-2 border border-gray-300 rounded-lg text-left hover:bg-gray-50">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span>🤑</span>
+                                    <span className="font-medium">Highly engaged</span>
+                                  </div>
+                                  <span className="text-xs text-gray-500">(0)</span>
+                                </button>
+                                <button className="px-3 py-2 border border-gray-300 rounded-lg text-left hover:bg-gray-50">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span>🚨</span>
+                                    <span className="font-medium">Winback</span>
+                                  </div>
+                                  <span className="text-xs text-gray-500">(0)</span>
+                                </button>
+                                <button className="px-3 py-2 border border-gray-300 rounded-lg text-left hover:bg-gray-50">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span>😴</span>
+                                    <span className="font-medium">At Risk</span>
+                                  </div>
+                                  <span className="text-xs text-gray-500">(0)</span>
+                                </button>
+                                <button className="px-3 py-2 border border-gray-300 rounded-lg text-left hover:bg-gray-50">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span>✅</span>
+                                    <span className="font-medium">All valid</span>
+                                  </div>
+                                  <span className="text-xs text-gray-500">(0)</span>
+                                </button>
+                              </div>
+                              <button className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-lg text-center text-gray-600 hover:bg-gray-50">
+                                Add another filter +
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-gray-700 mb-2">
+                              Selected: <span className="font-medium">0 / 250</span> Contacts remaining
+                            </p>
+                            <p className="text-sm text-gray-700">
+                              Daily limit: <span className="font-medium">250/Day</span>
+                            </p>
+                          </div>
+
+                          <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                              <div className="grid grid-cols-4 gap-4 text-xs font-medium text-gray-700">
+                                <div>Rupesh J</div>
+                                <div>918419922107</div>
+                                <div>TRUE</div>
+                                <div>success</div>
+                              </div>
+                            </div>
+                            <div className="bg-white px-4 py-3 border-b border-gray-200">
+                              <div className="grid grid-cols-4 gap-4 text-xs text-gray-600">
+                                <div>Rupesh J</div>
+                                <div>918419922107</div>
+                                <div>TRUE</div>
+                                <div>success</div>
+                              </div>
+                            </div>
+                            <div className="bg-white px-4 py-3 border-b border-gray-200">
+                              <div className="grid grid-cols-4 gap-4 text-xs text-gray-600">
+                                <div>WATI Test</div>
+                                <div>85264318721</div>
+                                <div>TRUE</div>
+                                <div>success</div>
+                              </div>
+                            </div>
+                            <div className="bg-gray-50 px-4 py-3">
+                              <div className="flex items-center justify-between text-xs text-gray-600">
+                                <span>Rows per page:</span>
+                                <span>1–2 of 2</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border-t pt-6">
+                          <h2 className="text-xl font-semibold text-gray-900 mb-4">When do you want to send it?</h2>
+                          <div className="space-y-3">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="send-time" value="now" defaultChecked className="w-4 h-4 text-blue-600" />
+                              <span className="text-sm text-gray-700">Send now</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="send-time" value="schedule" className="w-4 h-4 text-blue-600" />
+                              <span className="text-sm text-gray-700">Schedule for a specific time</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'contacts':
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Contacts</h2>
+                  <p className="text-sm text-gray-600">
+                    Contact list stores the list of numbers that you've interacted with. You can even manually export or import contacts.
+                  </p>
+                </div>
+                <button className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                  Watch Tutorial
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between mb-4">
+                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm flex items-center gap-2">
+                  <span>+</span>
+                  <span>Add Contact</span>
+                  <span className="text-xs bg-blue-700 px-2 py-1 rounded">2 in total</span>
+                </button>
+              </div>
+
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold text-gray-900">BUSINESS</span>
+                    </div>
+                    <p className="text-sm text-gray-700 mb-2">
+                      Secure customer interactions by masking phone numbers during support conversations.
+                    </p>
+                    <button className="px-3 py-1 text-xs font-medium bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors">
+                      Upgrade
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="p-4 bg-gray-50 border-b border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-600">Sorted by:</span>
+                      <select className="px-3 py-1 text-xs border border-gray-300 rounded text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option>Last Updated</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button className="px-3 py-1 text-xs font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
+                        Export
+                      </button>
+                      <button className="px-3 py-1 text-xs font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
+                        Import
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-4 text-xs font-medium text-gray-700 pb-2">
+                    <div>Basic info</div>
+                    <div>Phone number</div>
+                    <div>Source</div>
+                    <div>Contact Attributes</div>
+                    <div>Edit/Delete</div>
+                  </div>
+                </div>
+
+                <div className="divide-y divide-gray-200">
+                  {/* Contact 1 */}
+                  <div className="p-4 hover:bg-gray-50">
+                    <div className="grid grid-cols-5 gap-4 items-center">
+                      <div className="text-sm font-medium text-gray-900">Rupesh J</div>
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <span>🇮🇳</span>
+                        <span>(+91)8419922107</span>
+                      </div>
+                      <div className="text-sm text-gray-700">Wati</div>
+                      <div className="text-sm text-gray-700">
+                        <div>lead_stage: New Lead</div>
+                        <div>contact_owner:</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button className="px-2 py-1 text-xs text-blue-600 hover:underline">Edit</button>
+                        <button className="px-2 py-1 text-xs text-red-600 hover:underline">Delete</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact 2 */}
+                  <div className="p-4 hover:bg-gray-50">
+                    <div className="grid grid-cols-5 gap-4 items-center">
+                      <div className="text-sm font-medium text-gray-900">WATI Test</div>
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <span>🇭🇰</span>
+                        <span>(+852)64318721</span>
+                      </div>
+                      <div className="text-sm text-gray-700">Wati</div>
+                      <div className="text-sm text-gray-700">
+                        <div>allowbroadcast: TRUE</div>
+                        <div>allowsms: TRUE</div>
+                        <button className="mt-2 text-xs text-blue-600 hover:underline">Show all attributes</button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button className="px-2 py-1 text-xs text-blue-600 hover:underline">Edit</button>
+                        <button className="px-2 py-1 text-xs text-red-600 hover:underline">Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border-t border-gray-200 bg-gray-50">
+                  <div className="flex items-center justify-between text-xs text-gray-600">
+                    <span>Rows per page:</span>
+                    <span>1–2 of 2</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'automations':
+        return (
+          <div className="w-full" style={{ height: 'calc(100vh - 64px)' }}>
+            <div className="pl-0 pr-4 w-full" style={{ height: 'calc(100vh - 64px)' }}>
+              <div className="grid grid-cols-1 lg:grid-cols-9 gap-0 w-full" style={{ height: 'calc(100vh - 64px)' }}>
+                {/* Left Panel */}
+                <div className="lg:col-span-2 rounded-lg shadow-lg flex flex-col bg-white" style={{ height: 'calc(100vh - 64px)' }}>
+                  <div className="flex-1 overflow-y-auto p-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-4">Automations</h2>
+                    <div className="space-y-2">
+                      <button className="w-full px-3 py-2 text-sm font-medium bg-blue-50 text-blue-700 rounded-lg border border-blue-300 text-left">
+                        Triggers
+                      </button>
+                      <button className="w-full px-3 py-2 text-sm font-medium bg-white text-gray-700 rounded-lg border border-gray-300 hover:bg-gray-50 text-left">
+                        Rules
+                      </button>
+                      <button className="w-full px-3 py-2 text-sm font-medium bg-white text-gray-700 rounded-lg border border-gray-300 hover:bg-gray-50 text-left">
+                        Recommended
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                {/* Right Panel */}
+                <div className="lg:col-span-7 rounded-lg shadow-lg flex flex-col bg-white" style={{ height: 'calc(100vh - 64px)' }}>
+                  <div className="flex-1 overflow-y-auto p-6">
+                    <div className="space-y-6">
+
+              <div className="mb-6">
+                <div className="text-sm font-medium text-gray-900 mb-3">AI Support Agent</div>
+                <div className="p-4 border border-gray-200 rounded-lg mb-4">
+                  <div className="text-sm font-medium text-gray-900 mb-2">AI Support Agent</div>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="text-sm font-medium text-gray-900 mb-3">Actions Library</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                    <div className="text-sm font-medium text-gray-900">Chatbots</div>
+                  </button>
+                  <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                    <div className="text-sm font-medium text-gray-900">Sequence</div>
+                  </button>
+                  <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                    <div className="text-sm font-medium text-gray-900">WhatsApp Flows</div>
+                  </button>
+                  <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                    <div className="text-sm font-medium text-gray-900">Routing</div>
+                  </button>
+                  <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                    <div className="text-sm font-medium text-gray-900">Reply Material</div>
+                  </button>
+                  <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                    <div className="text-sm font-medium text-gray-900">Others</div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="p-3 border border-gray-200 rounded-lg mb-2">
+                  <div className="text-sm font-medium text-gray-900">Default Action</div>
+                  <div className="text-xs text-gray-500 mt-1">Legacy</div>
+                </div>
+                <div className="p-3 border border-gray-200 rounded-lg">
+                  <div className="text-sm font-medium text-gray-900">Keyword Action</div>
+                  <div className="text-xs text-gray-500 mt-1">Legacy</div>
+                </div>
+              </div>
+
+              <div className="border-t pt-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Rules</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Create Rules to trigger automated messages, chat assignments, chatbots and more.
+                  </p>
+                  <div className="flex items-center gap-4 mb-4">
+                    <button className="text-sm text-blue-600 hover:underline">How it works</button>
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
+                      + Create Rules
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">RULE NAME</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">TRIGGER TYPE</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">ACTION</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">STATUS</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">EXECUTED</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">LAST UPDATED</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">ACTIONS</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">WA Out of Office</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">
+                            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">Built-In</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">New WhatsApp message is received</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">Send message</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">Off</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">0</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">31/10/2025</td>
+                          <td className="px-4 py-3 text-sm text-gray-700"></td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">WA Welcome message</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">
+                            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">Built-In</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">New WhatsApp message is received</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">Send message</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">Off</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">0</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">31/10/2025</td>
+                          <td className="px-4 py-3 text-sm text-gray-700"></td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">Unsubscribe from broadcast</td>
+                          <td className="px-4 py-3 text-sm text-gray-700"></td>
+                          <td className="px-4 py-3 text-sm text-gray-700">New WhatsApp message is received</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">Update contact attribute</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">Off</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">0</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">31/10/2025</td>
+                          <td className="px-4 py-3 text-sm text-gray-700"></td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">WA Hello keyword sample rule</td>
+                          <td className="px-4 py-3 text-sm text-gray-700"></td>
+                          <td className="px-4 py-3 text-sm text-gray-700">New WhatsApp message is received</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">Send message</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">On</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">0</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">31/10/2025</td>
+                          <td className="px-4 py-3 text-sm text-gray-700"></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'ads':
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Ads</h2>
+              <p className="text-gray-600">Manage and track your advertising campaigns.</p>
+            </div>
+          </div>
+        );
+      
+      case 'analytics':
+        return <AnalyticsReports />;
+      
+      case 'team-management':
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Team Management</h2>
+              <p className="text-gray-600">Manage team members, roles, and permissions.</p>
+            </div>
+          </div>
+        );
+      
+      case 'integrations':
+        return <IntegrationsPage onWhatsAppSetupComplete={refreshAllStatuses} />;
+      
+      case 'webhooks':
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Webhooks</h2>
+              <p className="text-gray-600">Configure and manage webhooks for real-time event notifications.</p>
+            </div>
+          </div>
+        );
+      
+      case 'commerce':
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Commerce</h2>
+              <p className="text-gray-600">Manage products, orders, and e-commerce integrations.</p>
+            </div>
+          </div>
+        );
+      
+      case 'account-details':
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Account Details</h2>
+              <p className="text-gray-600">View and manage your account information and settings.</p>
+            </div>
+          </div>
+        );
+      
+      case 'channels':
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Channels</h2>
+              <p className="text-gray-600">Manage communication channels and integrations.</p>
+            </div>
+          </div>
+        );
+      
       case 'dashboard':
+      case 'knowledge':
+      case 'live-chat':
+      case 'billing':
+      case 'subscriptions':
+      case 'settings':
+        // Keep existing cases for backward compatibility
+        switch (activeTab) {
+          case 'dashboard':
         return (
           <div className="space-y-6">
             {/* Status Indicators Row */}
@@ -400,21 +1327,20 @@ const Dashboard = () => {
             </div>
           </div>
         );
-      
-        case 'integrations':
-          return <IntegrationsPage onWhatsAppSetupComplete={refreshAllStatuses} />;
         case 'knowledge':
           return <KnowledgeBase onTrainingComplete={refreshAllStatuses} />;
         case 'live-chat':
           return <LiveChat />;
-        case 'analytics':
-          return <AnalyticsReports />;
         case 'billing':
           return <PlanBilling onSubscriptionActivated={refreshAllStatuses} />;
         case 'subscriptions':
           return <PlanBilling onSubscriptionActivated={refreshAllStatuses} />;
         case 'settings':
           return <Settings />;
+          default:
+            break;
+        }
+        break;
       default:
         return (
           <div className="space-y-6">
@@ -610,8 +1536,8 @@ const Dashboard = () => {
           pricingSubscriptionStatus={pricingSubscriptionStatus}
         />
         {/* Main Content */}
-        <div className="flex-1 p-4 lg:p-6">
-          <div className="max-w-7xl mx-auto">
+        <div className={`flex-1 ${activeTab === 'team-inbox' || activeTab === 'broadcast' ? 'p-0 overflow-hidden' : 'p-4 lg:p-6'}`}>
+          <div className={activeTab === 'team-inbox' || activeTab === 'broadcast' ? 'w-full h-full' : 'max-w-7xl mx-auto'}>
             {renderMainContent()}
           </div>
         </div>

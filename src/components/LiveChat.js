@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import websocketService from '../services/websocketService';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 const LiveChat = ({ isDarkMode }) => {
   const { user } = useAuth();
@@ -8,6 +9,7 @@ const LiveChat = ({ isDarkMode }) => {
   const [selectedSender, setSelectedSender] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const selectedSenderRef = useRef(null);
@@ -216,38 +218,67 @@ const LiveChat = ({ isDarkMode }) => {
     }
   };
 
+  // Filter conversations based on search query
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return conversations;
+    }
+    const query = searchQuery.toLowerCase();
+    return conversations.filter(conv => 
+      conv.sender_name?.toLowerCase().includes(query) ||
+      conv.sender_number?.toLowerCase().includes(query) ||
+      conv.last_message?.toLowerCase().includes(query)
+    );
+  }, [conversations, searchQuery]);
+
 
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-3xl font-bold">Live Chat Dashboard</h1>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className={`w-full ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`} style={{ height: 'calc(100vh - 64px)' }}>
+      <div className="pl-0 pr-4 w-full" style={{ height: 'calc(100vh - 64px)' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-9 gap-0 w-full" style={{ height: 'calc(100vh - 64px)' }}>
           {/* Conversations List */}
-          <div className={`lg:col-span-1 rounded-lg shadow-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-            <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-              <h2 className="text-xl font-semibold">Conversations</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                {loading ? 'Loading...' : `${conversations.length} active conversations`}
-              </p>
+          <div className={`lg:col-span-2 rounded-lg shadow-lg flex flex-col ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`} style={{ height: 'calc(100vh - 64px)' }}>
+            <div className={`pr-0 pl-0 pt-0 pb-0 border-b flex-shrink-0 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-0">
+                <div className="relative flex-1">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search conversations..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
+                      isDarkMode 
+                        ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400' 
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                    } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  />
+                </div>
+                <button
+                  className={`w-10 h-10 flex items-center justify-center font-medium text-sm transition-colors flex-shrink-0 rounded-lg ${
+                    isDarkMode
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                  title="New Chat"
+                >
+                  <span className="text-lg">+</span>
+                </button>
+              </div>
             </div>
             
-            <div className="max-h-96 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto">
               {loading ? (
                 <div className="p-4 text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
                 </div>
-              ) : conversations.length === 0 ? (
+              ) : filteredConversations.length === 0 ? (
                 <div className="p-4 text-center text-gray-500">
-                  No conversations found
+                  {searchQuery ? 'No conversations match your search' : 'No conversations found'}
                 </div>
               ) : (
-                conversations.map((conversation, index) => (
+                filteredConversations.map((conversation, index) => (
                   <div
                     key={conversation.conversation_id || index}
                     onClick={() => handleSelectConversation(conversation)}
@@ -289,10 +320,10 @@ const LiveChat = ({ isDarkMode }) => {
           </div>
 
           {/* Messages Panel */}
-          <div className={`lg:col-span-2 rounded-lg shadow-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+          <div className={`lg:col-span-7 rounded-lg shadow-lg flex flex-col ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`} style={{ height: 'calc(100vh - 64px)' }}>
             {selectedSender ? (
               <>
-                <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <div className={`p-4 border-b flex-shrink-0 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <h2 className="text-xl font-semibold">{selectedSender.sender_name}</h2>
                   {selectedSender.sender_number && (
                     <p className="text-sm text-gray-500">{selectedSender.sender_number}</p>
@@ -302,7 +333,7 @@ const LiveChat = ({ isDarkMode }) => {
                   </p>
                 </div>
                 
-                <div ref={messagesContainerRef} className="h-96 overflow-y-auto p-4">
+                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4">
                   {messages.map((msg, index) => {
                     const isUserMessage = msg.message_type === 'user';
                     const isAIMessage = msg.message_type === 'ai';
@@ -331,7 +362,7 @@ const LiveChat = ({ isDarkMode }) => {
                 </div>
               </>
             ) : (
-              <div className="h-96 flex items-center justify-center">
+              <div className="flex-1 flex items-center justify-center">
                 <div className="text-center text-gray-500">
                   <p className="text-lg">Select a conversation to view messages</p>
                 </div>

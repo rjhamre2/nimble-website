@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import {
-  HomeIcon,
-  ChatBubbleLeftRightIcon,
-  BookOpenIcon,
-  PuzzlePieceIcon,
+  InboxIcon,
+  MegaphoneIcon,
+  UserGroupIcon,
+  BoltIcon,
+  SpeakerWaveIcon,
   ChartBarIcon,
-  Cog6ToothIcon,
-  CreditCardIcon,
-  QuestionMarkCircleIcon,
+  UserCircleIcon,
+  PuzzlePieceIcon,
+  LinkIcon,
+  ShoppingBagIcon,
+  IdentificationIcon,
+  ChatBubbleLeftRightIcon,
   Bars3Icon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
@@ -50,11 +54,18 @@ const Sidebar = ({ activeTab, setActiveTab, whatsappStatus, onboardingStatus, tr
   const progress = calculateProgress();
 
   const menuItems = [
-    { id: 'dashboard', name: 'Dashboard', icon: HomeIcon },
+    { id: 'team-inbox', name: 'Team inbox', icon: InboxIcon },
+    { id: 'broadcast', name: 'Broadcast', icon: MegaphoneIcon },
+    { id: 'contacts', name: 'Contacts', icon: UserGroupIcon },
+    { id: 'automations', name: 'Automations', icon: BoltIcon },
+    { id: 'ads', name: 'Ads', icon: SpeakerWaveIcon },
+    { id: 'analytics', name: 'Analytics', icon: ChartBarIcon },
+    { id: 'team-management', name: 'Team management', icon: UserCircleIcon },
     { id: 'integrations', name: 'Integrations', icon: PuzzlePieceIcon },
-    { id: 'knowledge', name: 'Knowledge Base', icon: BookOpenIcon },
-    { id: 'live-chat', name: 'Live Chat', icon: ChatBubbleLeftRightIcon },
-    { id: 'subscriptions', name: 'Manage Subscriptions', icon: CreditCardIcon }
+    { id: 'webhooks', name: 'Webhooks', icon: LinkIcon },
+    { id: 'commerce', name: 'Commerce', icon: ShoppingBagIcon },
+    { id: 'account-details', name: 'Account Details', icon: IdentificationIcon },
+    { id: 'channels', name: 'Channels', icon: ChatBubbleLeftRightIcon }
   ];
 
   return (
@@ -83,63 +94,63 @@ const Sidebar = ({ activeTab, setActiveTab, whatsappStatus, onboardingStatus, tr
 
       {/* Sidebar */}
       <div className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg min-h-screen
+        fixed lg:static left-0 z-50 w-40 bg-white shadow-lg
         transform transition-transform duration-300 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
+      `} style={{ height: 'calc(100vh - 64px)' }}>
         {/* Logo/Brand */}
-        <div className="p-4 lg:p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">N</span>
+        <div className="p-3 border-b border-gray-200">
+          <div className="flex items-center space-x-2">
+            <div className="w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-xs">N</span>
             </div>
-            <span className="text-xl font-bold text-gray-900">NimbleAI</span>
+            <span className="text-sm font-bold text-gray-900">NimbleAI</span>
           </div>
         </div>
 
       {/* Progress Bar */}
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="px-3 py-3 border-b border-gray-200">
         {progress.percentage < 100 ? (
           <button
             onClick={() => setActiveTab('dashboard')}
-            className="w-full text-left hover:bg-gray-50 rounded-lg p-3 transition-colors"
+            className="w-full text-left hover:bg-gray-50 rounded-lg p-2 transition-colors"
           >
             <div className="flex justify-between items-center mb-1">
-              <span className="text-sm font-medium text-gray-700">Setup Progress</span>
-              <span className="text-sm text-gray-500">{progress.completed}/{progress.total}</span>
+              <span className="text-xs font-medium text-gray-700">Setup Progress</span>
+              <span className="text-xs text-gray-500">{progress.completed}/{progress.total}</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
+            <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
               <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${progress.percentage}%` }}
               ></div>
             </div>
-            <div className="text-xs text-gray-500">
-              {progress.percentage}% Complete - Click to continue setup
+            <div className="text-xs text-gray-500 leading-tight">
+              {progress.percentage}% Complete
             </div>
           </button>
         ) : (
           <div className="mb-2">
             <div className="flex justify-between items-center mb-1">
-              <span className="text-sm font-medium text-gray-700">Setup Progress</span>
-              <span className="text-sm text-gray-500">{progress.completed}/{progress.total}</span>
+              <span className="text-xs font-medium text-gray-700">Setup Progress</span>
+              <span className="text-xs text-gray-500">{progress.completed}/{progress.total}</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 rounded-full h-1.5">
               <div 
-                className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                className="bg-green-600 h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${progress.percentage}%` }}
               ></div>
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              ✅ Setup Complete
+              ✅ Complete
             </div>
           </div>
         )}
       </div>
 
       {/* Navigation Menu */}
-      <nav className="p-4">
-        <ul className="space-y-2">
+      <nav className="p-2">
+        <ul className="space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -151,32 +162,20 @@ const Sidebar = ({ activeTab, setActiveTab, whatsappStatus, onboardingStatus, tr
                     setActiveTab(item.id);
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-all ${
+                  className={`w-full flex items-center space-x-2 px-2 py-2 rounded-lg text-left transition-all ${
                     isActive
                       ? 'bg-blue-50 text-blue-700 border border-blue-200'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  <Icon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
-                  <span className="font-medium">{item.name}</span>
+                  <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
+                  <span className="text-sm font-medium truncate">{item.name}</span>
                 </button>
               </li>
             );
           })}
         </ul>
       </nav>
-
-      {/* Bottom section - Quick actions */}
-      <div className="absolute bottom-0 w-64 p-4 border-t border-gray-200">
-        <div className="space-y-3">
-          {/* <button className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-            Training Mode
-          </button>
-          <button className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors">
-            Invite Team
-          </button> */}
-        </div>
-      </div>
       </div>
     </>
   );
