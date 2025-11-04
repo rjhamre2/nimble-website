@@ -41,6 +41,10 @@ const Dashboard = () => {
   const [onboardingError, setOnboardingError] = useState('');
   const [onboardingMessage, setOnboardingMessage] = useState('');
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [activeAutomationView, setActiveAutomationView] = useState('ai-agents');
+  const [teamManagementTab, setTeamManagementTab] = useState('users');
+  const [activeChannel, setActiveChannel] = useState('whatsapp');
+  const [accountDetailsTab, setAccountDetailsTab] = useState('account-settings');
   const navigate = useNavigate();
 
   // Handle training status click
@@ -975,14 +979,65 @@ const Dashboard = () => {
                   <div className="flex-1 overflow-y-auto p-6">
                     <h2 className="text-xl font-bold text-gray-900 mb-4">Automations</h2>
                     <div className="space-y-2">
-                      <button className="w-full px-3 py-2 text-sm font-medium bg-blue-50 text-blue-700 rounded-lg border border-blue-300 text-left">
-                        Triggers
+                      <button 
+                        onClick={() => setActiveAutomationView('ai-agents')}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
+                          activeAutomationView === 'ai-agents' 
+                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        AI Agents
                       </button>
-                      <button className="w-full px-3 py-2 text-sm font-medium bg-white text-gray-700 rounded-lg border border-gray-300 hover:bg-gray-50 text-left">
-                        Rules
+                      <button 
+                        onClick={() => setActiveAutomationView('chatbots')}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
+                          activeAutomationView === 'chatbots' 
+                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        Chatbots
                       </button>
-                      <button className="w-full px-3 py-2 text-sm font-medium bg-white text-gray-700 rounded-lg border border-gray-300 hover:bg-gray-50 text-left">
-                        Recommended
+                      <button 
+                        onClick={() => setActiveAutomationView('sequence')}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
+                          activeAutomationView === 'sequence' 
+                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        sequence
+                      </button>
+                      <button 
+                        onClick={() => setActiveAutomationView('whatsapp-flows')}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
+                          activeAutomationView === 'whatsapp-flows' 
+                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        whatsapp flows
+                      </button>
+                      <button 
+                        onClick={() => setActiveAutomationView('human-routing')}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
+                          activeAutomationView === 'human-routing' 
+                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        Human Routing
+                      </button>
+                      <button 
+                        onClick={() => setActiveAutomationView('reply-material')}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
+                          activeAutomationView === 'reply-material' 
+                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        Reply material
                       </button>
                     </div>
                   </div>
@@ -990,6 +1045,103 @@ const Dashboard = () => {
                 {/* Right Panel */}
                 <div className="lg:col-span-7 rounded-lg shadow-lg flex flex-col bg-white" style={{ height: 'calc(100vh - 64px)' }}>
                   <div className="flex-1 overflow-y-auto p-6">
+                    {activeAutomationView === 'human-routing' ? (
+                      <div className="space-y-6">
+                        <h2 className="text-xl font-bold text-gray-900">Human Routing</h2>
+                        <div className="space-y-3">
+                          <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">Send Notification</button>
+                          <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">Assign to User</button>
+                          <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">Assign to Team</button>
+                        </div>
+                        <div>
+                          <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Add</button>
+                        </div>
+                      </div>
+                    ) : activeAutomationView === 'reply-material' ? (
+                      <div className="space-y-6">
+                        <h2 className="text-xl font-bold text-gray-900">Reply material</h2>
+                        <div className="grid grid-cols-8 gap-6">
+                          <div className="col-span-2">
+                            <div className="space-y-2">
+                              <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">text</button>
+                              <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">documents</button>
+                              <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">video</button>
+                              <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">stickers</button>
+                              <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">chatbots</button>
+                              <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">sequences</button>
+                              <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">contacts</button>
+                              <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">template</button>
+                              <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">catalog</button>
+                            </div>
+                          </div>
+                          <div className="col-span-6">
+                            <div className="h-full w-full border border-gray-200 rounded-lg p-4 text-sm text-gray-500">
+                              Select an item from the list to view details.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : activeAutomationView === 'sequence' ? (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between mb-6">
+                          <h2 className="text-xl font-bold text-gray-900">Sequences</h2>
+                          <div className="flex gap-3">
+                            <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                              Watch Tutorial
+                            </button>
+                            <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                              Add Sequence
+                            </button>
+                          </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Name
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Messages
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Triggered
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Completed
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Edit/Delete
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              <tr>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  Test Sequence
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  0
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  0
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  0%
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex gap-2">
+                                    <button className="text-blue-600 hover:text-blue-900">Edit</button>
+                                    <span className="text-gray-300">/</span>
+                                    <button className="text-red-600 hover:text-red-900">Delete</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
                     <div className="space-y-6">
 
               <div className="mb-6">
@@ -1121,6 +1273,7 @@ const Dashboard = () => {
                 </div>
               </div>
                     </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1139,15 +1292,358 @@ const Dashboard = () => {
         );
       
       case 'analytics':
-        return <AnalyticsReports />;
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Team Inbox Analytics</h2>
+              <p className="text-gray-600 mb-4">Get an overview of all your important team, operator and ticket metrics here</p>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Data shown is for representation purpose only</span>
+                <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Preview with sample data</button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Schedule Report</button>
+              <div className="text-xl font-semibold text-gray-900">Overview</div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+              <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-gray-900">2</div>
+                <div className="text-xs text-gray-500">Open</div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-gray-900">0</div>
+                <div className="text-xs text-gray-500">Pending</div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-gray-900">99</div>
+                <div className="text-xs text-gray-500">Solved</div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-gray-900">31</div>
+                <div className="text-xs text-gray-500">Solved by bot</div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-gray-900">68</div>
+                <div className="text-xs text-gray-500">Solved by operator</div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-gray-900">140</div>
+                <div className="text-xs text-gray-500">Expired</div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+                <div className="text-2xl font-bold text-gray-900">127</div>
+                <div className="text-xs text-gray-500">Missed chats</div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="text-sm font-medium text-gray-900">Ticket status over time</div>
+                  <div className="text-xs text-gray-500">Opened • Pending • Solved • Solved by bot • Solved by operator • Expired • Missed chats</div>
+                </div>
+                <div className="flex gap-2">
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download SVG</button>
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download PNG</button>
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download CSV</button>
+                </div>
+              </div>
+              <div className="h-56 bg-gray-50 border border-dashed border-gray-300 rounded flex items-center justify-center text-sm text-gray-500">Chart placeholder</div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm font-medium text-gray-900">Total ticket count by status</div>
+                <div className="flex gap-2">
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download SVG</button>
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download PNG</button>
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download CSV</button>
+                </div>
+              </div>
+              <div className="h-56 bg-gray-50 border border-dashed border-gray-300 rounded flex items-center justify-center text-sm text-gray-500">Bar chart placeholder</div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm font-medium text-gray-900">Operator performance</div>
+                <div className="text-sm text-gray-600">All users</div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Open</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pending</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Solved</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Solved by bot</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Solved by operator</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">FRT</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ART</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">TTR</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 text-sm">
+                    <tr>
+                      <td className="px-4 py-2 text-gray-900">Samson<br/><span className="text-gray-500">samson@productsupport.com</span></td>
+                      <td className="px-4 py-2">10</td>
+                      <td className="px-4 py-2">6</td>
+                      <td className="px-4 py-2">30</td>
+                      <td className="px-4 py-2">11</td>
+                      <td className="px-4 py-2">2</td>
+                      <td className="px-4 py-2">0d 0h 2m 17s</td>
+                      <td className="px-4 py-2">0d 2h 2m 17s</td>
+                      <td className="px-4 py-2">0d 2h 2m 17s</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2 text-gray-900">Rahul Verma<br/><span className="text-gray-500">rahul.verma@productsupport.com</span></td>
+                      <td className="px-4 py-2">6</td>
+                      <td className="px-4 py-2">4</td>
+                      <td className="px-4 py-2">20</td>
+                      <td className="px-4 py-2">15</td>
+                      <td className="px-4 py-2">1</td>
+                      <td className="px-4 py-2">0d 0h 2m 57s</td>
+                      <td className="px-4 py-2">0d 2h 2m 0s</td>
+                      <td className="px-4 py-2">0d 2h 2m 0s</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2 text-gray-900">Elliot Wong<br/><span className="text-gray-500">elliot@productsupport.com</span></td>
+                      <td className="px-4 py-2">5</td>
+                      <td className="px-4 py-2">2</td>
+                      <td className="px-4 py-2">15</td>
+                      <td className="px-4 py-2">10</td>
+                      <td className="px-4 py-2">0</td>
+                      <td className="px-4 py-2">0d 0h 0m 17s</td>
+                      <td className="px-4 py-2">0d 2h 1m 5s</td>
+                      <td className="px-4 py-2">0d 2h 1m 5s</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2 text-gray-900">Priyanka Patil<br/><span className="text-gray-500">priyanka.patil@productsupport.com</span></td>
+                      <td className="px-4 py-2">4</td>
+                      <td className="px-4 py-2">2</td>
+                      <td className="px-4 py-2">10</td>
+                      <td className="px-4 py-2">4</td>
+                      <td className="px-4 py-2">1</td>
+                      <td className="px-4 py-2">0d 0h 2m 10s</td>
+                      <td className="px-4 py-2">0d 9h 2m 1s</td>
+                      <td className="px-4 py-2">0d 9h 2m 1s</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2 text-gray-900">Jyoti<br/><span className="text-gray-500">jyoti@productsupport.com</span></td>
+                      <td className="px-4 py-2">2</td>
+                      <td className="px-4 py-2">0</td>
+                      <td className="px-4 py-2">5</td>
+                      <td className="px-4 py-2">6</td>
+                      <td className="px-4 py-2">0</td>
+                      <td className="px-4 py-2">0d 0h 0m 30s</td>
+                      <td className="px-4 py-2">0d 3h 2m 1s</td>
+                      <td className="px-4 py-2">0d 3h 2m 1s</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div className="mt-2 text-xs text-gray-500">Rows per page: 1–5 of 5</div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm font-medium text-gray-900">Count of tags</div>
+                <div className="flex gap-2">
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download SVG</button>
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download PNG</button>
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download CSV</button>
+                </div>
+              </div>
+              <div className="h-56 bg-gray-50 border border-dashed border-gray-300 rounded flex items-center justify-center text-sm text-gray-500">Bar chart placeholder</div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm font-medium text-gray-900">Ticket duration v/s count</div>
+                <div className="flex gap-2">
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download SVG</button>
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download PNG</button>
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download CSV</button>
+                </div>
+              </div>
+              <div className="h-56 bg-gray-50 border border-dashed border-gray-300 rounded flex items-center justify-center text-sm text-gray-500">Line chart placeholder</div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm font-medium text-gray-900">Sent v/s received messages</div>
+                <div className="flex gap-2">
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download SVG</button>
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download PNG</button>
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download CSV</button>
+                </div>
+              </div>
+              <div className="h-56 bg-gray-50 border border-dashed border-gray-300 rounded flex items-center justify-center text-sm text-gray-500">Line chart placeholder</div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm font-medium text-gray-900">Sent messages by type</div>
+                <div className="flex gap-2">
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download SVG</button>
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download PNG</button>
+                  <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download CSV</button>
+                </div>
+              </div>
+              <div className="h-56 bg-gray-50 border border-dashed border-gray-300 rounded flex items-center justify-center text-sm text-gray-500">Stacked bar chart placeholder</div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="text-sm font-medium text-gray-900 mb-2">Message delivery status</div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <div className="h-56 bg-gray-50 border border-dashed border-gray-300 rounded flex items-center justify-center text-sm text-gray-500">Delivery chart placeholder</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-900 mb-2">Total messages by type</div>
+                  <div className="text-xs text-gray-500 mb-4">Starting July 1, 2025, this chart shows data based on message-level statistics instead of conversations. Historical conversation data before this date is no longer available in this chart.</div>
+                  <div className="h-56 bg-gray-50 border border-dashed border-gray-300 rounded flex items-center justify-center text-sm text-gray-500">Message type chart placeholder</div>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-4 justify-end">
+                <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download SVG</button>
+                <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download PNG</button>
+                <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Download CSV</button>
+              </div>
+            </div>
+          </div>
+        );
       
       case 'team-management':
         return (
           <div className="space-y-6">
+            {/* Header and Actions */}
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Team Management</h2>
-              <p className="text-gray-600">Manage team members, roles, and permissions.</p>
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Team Management</h2>
+                <div className="flex gap-2">
+                  <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Watch Tutorial</button>
+                  {teamManagementTab === 'users' ? (
+                    <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Add User</button>
+                  ) : (
+                    <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Add Team</button>
+                  )}
             </div>
+              </div>
+              {/* Tabs */}
+              <div className="mt-6 border-b">
+                <nav className="flex space-x-4" aria-label="Tabs">
+                  <button
+                    onClick={() => setTeamManagementTab('users')}
+                    className={`${teamManagementTab === 'users' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'} px-3 py-2 text-sm font-medium`}
+                  >
+                    Users
+                  </button>
+                  <button
+                    onClick={() => setTeamManagementTab('teams')}
+                    className={`${teamManagementTab === 'teams' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'} px-3 py-2 text-sm font-medium`}
+                  >
+                    Teams
+                  </button>
+                </nav>
+              </div>
+            </div>
+
+            {/* Tab Content */}
+            {teamManagementTab === 'users' ? (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Users</h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Online Status</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email/Phone</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Teams</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 text-sm">
+                      <tr>
+                        <td className="px-4 py-2 text-gray-900">User Wati</td>
+                        <td className="px-4 py-2"><span className="inline-flex items-center text-xs text-gray-600">Offline</span></td>
+                        <td className="px-4 py-2 text-gray-700">rupesh@nimbleai.in</td>
+                        <td className="px-4 py-2 text-gray-700">TEMPLATE MANAGER</td>
+                        <td className="px-4 py-2 text-gray-700">All Teams</td>
+                        <td className="px-4 py-2">
+                          <div className="flex gap-2">
+                            <button className="text-blue-600 hover:text-blue-800">Edit</button>
+                            <button className="text-red-600 hover:text-red-800">Remove</button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-2 text-gray-900">User Wati</td>
+                        <td className="px-4 py-2"><span className="inline-flex items-center text-xs text-gray-600">Offline</span></td>
+                        <td className="px-4 py-2 text-gray-700">pj248254@gmail.com</td>
+                        <td className="px-4 py-2 text-gray-700">BROADCAST MANAGER</td>
+                        <td className="px-4 py-2 text-gray-700">All Teams</td>
+                        <td className="px-4 py-2">
+                          <div className="flex gap-2">
+                            <button className="text-blue-600 hover:text-blue-800">Edit</button>
+                            <button className="text-red-600 hover:text-red-800">Remove</button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-2 text-gray-900">User Wati</td>
+                        <td className="px-4 py-2"><span className="inline-flex items-center text-xs text-gray-600">Offline</span></td>
+                        <td className="px-4 py-2 text-gray-700">mahak.mhk1@gmail.com</td>
+                        <td className="px-4 py-2 text-gray-700">CONTACT MANAGER</td>
+                        <td className="px-4 py-2 text-gray-700">All Teams</td>
+                        <td className="px-4 py-2">
+                          <div className="flex gap-2">
+                            <button className="text-blue-600 hover:text-blue-800">Edit</button>
+                            <button className="text-red-600 hover:text-red-800">Remove</button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-2 text-gray-900">User Wati</td>
+                        <td className="px-4 py-2"><span className="inline-flex items-center text-xs text-gray-600">Offline</span></td>
+                        <td className="px-4 py-2 text-gray-700">ujhamre2@gmail.com</td>
+                        <td className="px-4 py-2 text-gray-700">ADMINISTRATOR</td>
+                        <td className="px-4 py-2 text-gray-700">All Teams</td>
+                        <td className="px-4 py-2">
+                          <div className="flex gap-2">
+                            <button className="text-blue-600 hover:text-blue-800">Edit</button>
+                            <button className="text-red-600 hover:text-red-800">Remove</button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-2 text-gray-900">Rupesh Jhamre</td>
+                        <td className="px-4 py-2"><span className="inline-flex items-center text-xs text-green-600">Online</span></td>
+                        <td className="px-4 py-2 text-gray-700">rjhamre2@gmail.com</td>
+                        <td className="px-4 py-2 text-gray-700">ADMINISTRATOR</td>
+                        <td className="px-4 py-2 text-gray-700">All Teams</td>
+                        <td className="px-4 py-2">
+                          <div className="flex gap-2">
+                            <button className="text-blue-600 hover:text-blue-800">Edit</button>
+                            <button className="text-red-600 hover:text-red-800">Remove</button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Teams</h3>
+                <div className="text-sm text-gray-600">No teams added yet. Use the "Add Team" button to create your first team.</div>
+              </div>
+            )}
           </div>
         );
       
@@ -1157,9 +1653,48 @@ const Dashboard = () => {
       case 'webhooks':
         return (
           <div className="space-y-6">
+            {/* Header + Actions */}
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Webhooks</h2>
-              <p className="text-gray-600">Configure and manage webhooks for real-time event notifications.</p>
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Webhooks</h2>
+                <div className="flex gap-2">
+                  <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Learn More</button>
+                  <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Watch Tutorial</button>
+                  <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Add Webhook</button>
+                </div>
+              </div>
+              <p className="text-gray-600 mt-3">You can add a webhook to receive event callbacks for events such as new message received, when a message is read, etc.</p>
+            </div>
+
+            {/* Logs + Table */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm font-medium text-gray-900">Logs</div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Url</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Webhook.EventTypes</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last Updated</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-500">No data</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 text-sm text-gray-600">No webhooks added.</div>
+              <div className="mt-1 text-sm text-gray-600">You can add a webhook to receive event callbacks for events such as new message received, when a message is read, etc.</div>
+              <div className="mt-4">
+                <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Add Webhook</button>
+              </div>
             </div>
           </div>
         );
@@ -1177,10 +1712,168 @@ const Dashboard = () => {
       case 'account-details':
         return (
           <div className="space-y-6">
+            {/* Header */}
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Account Details</h2>
-              <p className="text-gray-600">View and manage your account information and settings.</p>
+              <h2 className="text-2xl font-bold text-gray-900">Account Details</h2>
+              <p className="text-gray-600 mt-1">View and manage your account information and settings.</p>
+              {/* Tabs */}
+              <div className="mt-6 border-b">
+                <nav className="flex space-x-4" aria-label="Tabs">
+                  <button
+                    onClick={() => setAccountDetailsTab('account-settings')}
+                    className={`${accountDetailsTab === 'account-settings' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'} px-3 py-2 text-sm font-medium`}
+                  >
+                    Account settings
+                  </button>
+                  <button
+                    onClick={() => setAccountDetailsTab('subscription')}
+                    className={`${accountDetailsTab === 'subscription' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'} px-3 py-2 text-sm font-medium`}
+                  >
+                    Subscription
+                  </button>
+                </nav>
             </div>
+            </div>
+
+            {/* Tab Content */}
+            {accountDetailsTab === 'subscription' ? (
+              <div className="space-y-6">
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <p className="text-sm text-gray-700">
+                    You are trialing Pro plan. Select the plan you want to purchase. To disconnect your WhatsApp business number from Wati visit <span className="text-blue-600 hover:underline cursor-pointer">Whatsapp Manager</span>
+                  </p>
+                </div>
+
+                {/* Zero subscription card */}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <div className="flex flex-col lg:flex-row gap-6 items-start">
+                    <div className="flex-1 space-y-3">
+                      <h3 className="text-lg font-semibold text-gray-900">Zero subscription, pay-as-you-go plan</h3>
+                      <p className="text-sm text-gray-600">Cheapest plan if you send up to ~2,100 messages in 3 months.</p>
+                      <div className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded bg-yellow-100 text-yellow-800">New <span className="text-gray-700">Sync your WhatsApp Business App with Wati to chat and send campaigns seamlessly, together.</span></div>
+                      <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+                        <li>Pay INR 999 to get started & get INR 999 back as message credits</li>
+                        <li>Use the INR 999 credits for sending out up to 500 messages</li>
+                        <li>Top up credits as you need</li>
+                        <li>Account validity: 3 months. Send messages regularly to extend validity.</li>
+                        <li>Complete analytics for your bulk campaigns</li>
+                        <li>Self-serve onboarding & support</li>
+                      </ul>
+                      <div>
+                        <button className="mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Buy Now</button>
+                      </div>
+                    </div>
+                    <div className="w-full lg:w-64 h-32 border border-dashed border-gray-300 rounded flex items-center justify-center text-xs text-gray-500">payGIllustration</div>
+                  </div>
+                </div>
+
+                {/* Billing toggle */}
+                <div className="flex items-center gap-4">
+                  <button className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg">Monthly</button>
+                  <button className="px-4 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Annually</button>
+                  <span className="text-sm text-gray-600">Up to ~25% off with annual subscription</span>
+                </div>
+
+                {/* Plans grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Growth Plan */}
+                  <div className="bg-white rounded-lg shadow-sm p-6 border">
+                    <h3 className="text-lg font-semibold text-gray-900">Growth</h3>
+                    <p className="text-sm text-gray-600 mt-1">Send WhatsApp messages to thousands of users in one click to improve reach</p>
+                    <p className="text-sm text-green-700 mt-1">Free dedicated onboarding</p>
+                    <div className="mt-4">
+                      <div className="text-2xl font-bold text-gray-900">₹1,999 <span className="text-base font-medium text-gray-500">/ month</span></div>
+                      <div className="text-xs text-gray-500">billed annually</div>
+                    </div>
+                    <div className="mt-3 text-sm text-gray-700">3 Users Included<br/>No Additional Users<br/>Additional charges apply for messages</div>
+                    <button className="mt-4 w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Select Plan</button>
+                    <div className="mt-4">
+                      <div className="text-sm font-medium text-gray-900">Key features</div>
+                      <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1 mt-2">
+                        <li><span className="font-medium">Zero-fee WhatsApp setup:</span> Get Official WhatsApp API, Blue tick verification help</li>
+                        <li><span className="font-medium">Omnichannel inbox:</span> WhatsApp, FB, Instagram, QR code, widget, wa.me</li>
+                        <li><span className="font-medium">Standard promotions:</span> Run multimedia campaigns, view open & read rates</li>
+                        <li><span className="font-medium">Acquire leads:</span> Run CTWA ads and capture leads on WhatsApp</li>
+                        <li><span className="font-medium">Team inbox staples:</span> Assign, track, automate follow-ups, tag & report</li>
+                        <li><span className="font-medium">E-Commerce tools:</span> WhatsApp Catalog, Shopify abandon cart & order templates$</li>
+                        <li><span className="font-medium">24x5 Email Support</span> in English, Portuguese, with basic SLA coverage</li>
+                      </ul>
+                      <div className="mt-3">
+                        <div className="text-sm font-medium text-gray-900">Usage</div>
+                        <div className="text-sm text-gray-700">15k Broadcast/mon, Standard rates<br/>1,000 Free Automation triggers/mon<br/>2 select Commerce/CRM integrations<br/>10k API calls/mon, No webhooks</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pro Plan */}
+                  <div className="bg-white rounded-lg shadow-sm p-6 border relative">
+                    <div className="absolute -top-3 right-4 px-2 py-0.5 text-[10px] rounded bg-yellow-200 text-yellow-900 font-semibold">BEST VALUE</div>
+                    <h3 className="text-lg font-semibold text-gray-900">Pro</h3>
+                    <p className="text-sm text-gray-600 mt-1">Set up automations, integrations and get powerful analytics to boost conversion</p>
+                    <p className="text-sm text-green-700 mt-1">Free dedicated onboarding</p>
+                    <div className="mt-4">
+                      <div className="text-2xl font-bold text-gray-900">₹4,499 <span className="text-base font-medium text-gray-500">/ month</span></div>
+                      <div className="text-xs text-gray-500">billed annually</div>
+                    </div>
+                    <div className="mt-3 text-sm text-gray-700">5 Users Included<br/>Additional Users @ ₹1299/user/month<br/>Additional charges apply for messages</div>
+                    <button className="mt-4 w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Select Plan</button>
+                    <div className="mt-4">
+                      <div className="text-sm font-medium text-gray-900">Everything in Growth, plus:</div>
+                      <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1 mt-2">
+                        <li><span className="font-medium">Auto-qualify leads:</span> Advanced chatbots, forms, integrations & IG Automation</li>
+                        <li><span className="font-medium">Boost conversion:</span> Smart retargeting, Carousel template & Catalog pay options</li>
+                        <li><span className="font-medium">Optimize campaigns:</span> CTWA source tags, click tracking & engagement insights</li>
+                        <li><span className="font-medium">AI automation:</span> Answer queries, collect info, send reminders and more</li>
+                        <li><span className="font-medium">Advanced team inbox:</span> Teams, auto routing, and operator reports</li>
+                        <li><span className="font-medium">Drive Shopify$ sales:</span> Campaign based on buyer data, Shopflo/Gokwik checkout</li>
+                        <li><span className="font-medium">24x7 Email & Chat Support:</span> Standard SLAs to support your operations</li>
+                      </ul>
+                      <div className="mt-3">
+                        <div className="text-sm font-medium text-gray-900">Usage</div>
+                        <div className="text-sm text-gray-700">Unlimited Broadcasts, Standard rates<br/>2,000 Free Automation triggers/mon<br/>5 integrations incl. HubSpot<br/>200k API calls/mon, Limited webhooks<br/>250 Free AI Support Agent replies/mon</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Business Plan */}
+                  <div className="bg-white rounded-lg shadow-sm p-6 border">
+                    <h3 className="text-lg font-semibold text-gray-900">Business</h3>
+                    <p className="text-sm text-gray-600 mt-1">Unlock the full potential of WhatsApp with advanced workflows and expert support</p>
+                    <p className="text-sm text-green-700 mt-1">Free dedicated onboarding</p>
+                    <div className="mt-4">
+                      <div className="text-2xl font-bold text-gray-900">₹13,499 <span className="text-base font-medium text-gray-500">/ month</span></div>
+                      <div className="text-xs text-gray-500">billed annually</div>
+                    </div>
+                    <div className="mt-3 text-sm text-gray-700">5 Users Included<br/>Additional Users @ ₹3999/user/month<br/>Additional charges apply for messages</div>
+                    <button className="mt-4 w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Select Plan</button>
+                    <div className="mt-4">
+                      <div className="text-sm font-medium text-gray-900">Everything in Pro, plus:</div>
+                      <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1 mt-2">
+                        <li><span className="font-medium">Ultra-fast, Affordable messaging:</span> Send 4k messages/min with volume discounts & SMS fallbackBeta</li>
+                        <li><span className="font-medium">Official Google Partner:</span> Asia's only Google ads to WhatsApp Partner</li>
+                        <li><span className="font-medium">Best-in-class ROI:</span> Optimize CTWA ads, track conversion, use WhatsApp Pay API</li>
+                        <li><span className="font-medium">Scale effortlessly:</span> Multiple WhatsApp numbers & round-robin chat assignment</li>
+                        <li><span className="font-medium">Dedicated Customer Success Manager</span> for strategic recommendations</li>
+                        <li><span className="font-medium">Enhance privacy & compliance:</span> Phone number masking, Roles & IP Whitelisting</li>
+                        <li><span className="font-medium">24x7 Priority Email & Chat support,</span> with access to paid TAM services</li>
+                      </ul>
+                      <div className="mt-3">
+                        <div className="text-sm font-medium text-gray-900">Usage</div>
+                        <div className="text-sm text-gray-700">Unlimited Broadcasts, Volume discounts<br/>5,000 Free Automation triggers/mon<br/>Unlimited integrations incl. Salesforce<br/>20M API calls/mon, Extensive webhooks<br/>1000 Free AI Support Agent replies/mon<br/>Blitz add-on: Send up to 12k messages/min</div>
+                        <div className="text-xs text-gray-500 mt-2">$ - Requires purchase of $4.9/mo Shopify app</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-sm text-blue-600 hover:underline cursor-pointer">Compare plans in detail</div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Account settings</h3>
+                <div className="text-sm text-gray-600">Update your profile, company details, and preferences here.</div>
+              </div>
+            )}
           </div>
         );
       
@@ -1190,6 +1883,142 @@ const Dashboard = () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Channels</h2>
               <p className="text-gray-600">Manage communication channels and integrations.</p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="grid grid-cols-8 gap-6">
+                <div className="col-span-2">
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setActiveChannel('whatsapp')}
+                      className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
+                        activeChannel === 'whatsapp' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      WhatsApp
+                    </button>
+                    <button
+                      onClick={() => setActiveChannel('instagram')}
+                      className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
+                        activeChannel === 'instagram' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      Instagram
+                    </button>
+                    <button
+                      onClick={() => setActiveChannel('messenger')}
+                      className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
+                        activeChannel === 'messenger' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      Messenger
+                    </button>
+                  </div>
+                </div>
+                <div className="col-span-6">
+                  {activeChannel === 'whatsapp' ? (
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Channel Status</h3>
+                        <p className="text-sm text-gray-600">View and manage your connections</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm text-gray-500 mb-1">WhatsappSvg</div>
+                          <div className="text-sm font-medium text-gray-900">WhatsApp</div>
+                        </div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm text-gray-500 mb-1">InstagramSvg</div>
+                          <div className="text-sm font-medium text-gray-900">Instagram</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="px-2 py-1 rounded bg-green-100 text-green-700">Messenger</span>
+                        <span className="px-2 py-1 rounded bg-blue-100 text-blue-700">New</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium text-gray-900">15558316639</div>
+                        <div className="flex items-center gap-2">
+                          <button className="px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Add</button>
+                          <span className="text-xs text-gray-500">Mandatory</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm font-medium text-gray-900">Connect Account</div>
+                          <div className="text-xs text-gray-500">Link your Business Manager & Number</div>
+                        </div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm font-medium text-gray-900">Business Verification(Action Required)</div>
+                          <div className="text-xs text-gray-500">Verify your Meta Business Manager</div>
+                        </div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm font-medium text-gray-900">Others</div>
+                          <div className="text-xs text-gray-500">Messaging limit</div>
+                          <div className="text-xs text-gray-500">Know your Messaging Limits</div>
+                        </div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm font-medium text-gray-900">WhatsApp Approval Status</div>
+                          <div className="text-xs text-gray-500">Check WhatsApp Account Approval status</div>
+                        </div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm font-medium text-gray-900">WhatsApp Display Name</div>
+                          <div className="text-xs text-gray-500">Know your WhatsApp Display Name Status</div>
+                        </div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm font-medium text-gray-900">Phone Number Status</div>
+                          <div className="text-xs text-gray-500">Check Number Connection Status</div>
+                        </div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm font-medium text-gray-900">Quality Rating</div>
+                          <div className="text-xs text-gray-500">Know phone number's quality rating</div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm font-medium text-gray-900">Connect Account</div>
+                          <div className="text-xs text-green-600">Completed</div>
+                        </div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm font-medium text-gray-900">Help Guide</div>
+                          <button className="mt-2 px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Watch Tutorial</button>
+                        </div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-xs text-gray-500">Last Updated : Nov 4, 2025 5:22 PM</div>
+                          <div className="text-sm text-gray-700 mt-1">Your account is connected.</div>
+                          <div className="text-sm text-gray-700">You are ready to engage your customers!</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium text-gray-900">As next steps, we suggest the following:</div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm font-medium text-gray-900">Upload your contacts</div>
+                          <div className="text-xs text-gray-500">You can upload your contacts and easily interact with them</div>
+                          <button className="mt-2 px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Contacts</button>
+                        </div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <div className="text-sm font-medium text-gray-900">Prepare broadcast templates</div>
+                          <div className="text-xs text-gray-500">You can create a broadcast template to engage your customers</div>
+                          <button className="mt-2 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">Create Template message</button>
+                        </div>
+                        <div className="p-4 border border-gray-200 rounded-lg">
+                          <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Change Account/Number</button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-full w-full border border-gray-200 rounded-lg p-4 text-sm text-gray-500">
+                      Select a channel on the left to configure details.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         );
