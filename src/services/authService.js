@@ -64,9 +64,25 @@ export const signInWithGoogleLambda = async () => {
 
             const authData = await lambdaResponse.json();
             
+            console.log('🔐 Auth response:', { 
+              hasFirstTime: 'firstTime' in authData, 
+              firstTime: authData.firstTime,
+              user: authData.user?.email 
+            });
+            
             // Store the JWT token
             localStorage.setItem('authToken', authData.token);
             localStorage.setItem('userData', JSON.stringify(authData.user));
+            
+            // Store firstTime flag if present (for welcome modal)
+            if (typeof authData.firstTime === 'boolean') {
+              localStorage.setItem('nimble_first_time', authData.firstTime ? '1' : '0');
+              console.log('✅ Stored firstTime flag:', authData.firstTime ? '1' : '0');
+              // Dispatch specific event for firstTime flag
+              window.dispatchEvent(new CustomEvent('firstTimeSet', { detail: { firstTime: authData.firstTime } }));
+            } else {
+              console.warn('⚠️ firstTime not found in auth response');
+            }
             
             // Dispatch custom event to notify auth state change
             window.dispatchEvent(new Event('authStateChanged'));

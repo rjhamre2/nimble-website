@@ -76,6 +76,16 @@ const PRICING_LAMBDA_CONFIG = {
     baseURL: process.env.REACT_APP_PRICING_LAMBDA || 'https://your-pricing-lambda-url.amazonaws.com',
   }
 };
+
+// Contacts API configuration
+const CONTACTS_CONFIG = {
+  development: {
+    baseURL: process.env.REACT_APP_CONTACTS_API || 'https://your-contacts-api-url.amazonaws.com',
+  },
+  production: {
+    baseURL: process.env.REACT_APP_CONTACTS_API || 'https://your-contacts-api-url.amazonaws.com',
+  }
+};
 // Determine current environment
 const getCurrentEnvironment = () => {
   // Check if we're in development (localhost) or production
@@ -113,6 +123,12 @@ const getFirebaseLambdaConfig = () => {
 const getPricingLambdaConfig = () => {
   const env = getCurrentEnvironment();
   return PRICING_LAMBDA_CONFIG[env];
+};
+
+// Get current Contacts API configuration
+const getContactsConfig = () => {
+  const env = getCurrentEnvironment();
+  return CONTACTS_CONFIG[env];
 };
 
 // Helper function to build full API URLs
@@ -179,6 +195,49 @@ const buildPricingLambdaUrl = (endpoint) => {
   return url;
 };
 
+// Helper function to build Contacts API URLs
+const buildContactsUrl = (endpoint, params = {}) => {
+  const config = getContactsConfig();
+  const contactsEndpoints = {
+    createContact: '/create_contact',
+    getUserContacts: (dbId) => `/user/${dbId}`,
+    updateContact: (contactId) => `/${contactId}`,
+    deleteContact: (contactId) => `/${contactId}`
+  };
+  
+  let url;
+  if (endpoint === 'getUserContacts' && params.dbId) {
+    url = `${config.baseURL}${contactsEndpoints.getUserContacts(params.dbId)}`;
+  } else if (endpoint === 'updateContact' && params.contactId) {
+    url = `${config.baseURL}${contactsEndpoints.updateContact(params.contactId)}`;
+  } else if (endpoint === 'deleteContact' && params.contactId) {
+    url = `${config.baseURL}${contactsEndpoints.deleteContact(params.contactId)}`;
+  } else {
+    url = `${config.baseURL}${contactsEndpoints[endpoint] || endpoint}`;
+  }
+  
+  console.log('🔧 Building Contacts API URL:', {
+    endpoint,
+    baseURL: config.baseURL,
+    fullURL: url,
+    envVar: process.env.REACT_APP_CONTACTS_API,
+    envVarExists: !!process.env.REACT_APP_CONTACTS_API,
+    allEnvVars: Object.keys(process.env).filter(key => key.includes('CONTACTS'))
+  });
+  
+  // Warn if using fallback URL
+  if (config.baseURL === 'https://your-contacts-api-url.amazonaws.com') {
+    console.warn('⚠️ Using fallback Contacts API URL. REACT_APP_CONTACTS_API environment variable is not set or not loaded.');
+    console.warn('💡 Make sure:');
+    console.warn('   1. REACT_APP_CONTACTS_API is set in your .env file');
+    console.warn('   2. The .env file is in the project root directory');
+    console.warn('   3. You have restarted the development server after adding the variable');
+    console.warn('   4. The variable name is exactly REACT_APP_CONTACTS_API (case-sensitive)');
+  }
+  
+  return url;
+};
+
 // Export configuration and helper functions
 export const apiConfig = {
   // Current environment
@@ -190,6 +249,7 @@ export const apiConfig = {
   waEsConfig: getWaEsConfig(),
   firebaseLambdaConfig: getFirebaseLambdaConfig(),
   pricingLambdaConfig: getPricingLambdaConfig(),
+  contactsConfig: getContactsConfig(),
   
   // Helper functions
   buildUrl: buildApiUrl,
@@ -197,6 +257,7 @@ export const apiConfig = {
   buildWaEsUrl: buildWaEsUrl,
   buildFirebaseLambdaUrl: buildFirebaseLambdaUrl,
   buildPricingLambdaUrl: buildPricingLambdaUrl,
+  buildContactsUrl: buildContactsUrl,
   
   // Direct endpoint access
   endpoints: {
@@ -222,6 +283,13 @@ export const apiConfig = {
       fetchProductsAndPricing: () => buildPricingLambdaUrl('fetchProductsAndPricing'),
       subscribe: () => buildPricingLambdaUrl('subscribe'),
       fetchSubscriptionStatus: () => buildPricingLambdaUrl('fetchSubscriptionStatus')
+    },
+    // Contacts API endpoints
+    contacts: {
+      createContact: () => buildContactsUrl('createContact'),
+      getUserContacts: (dbId) => buildContactsUrl('getUserContacts', { dbId }),
+      updateContact: (contactId) => buildContactsUrl('updateContact', { contactId }),
+      deleteContact: (contactId) => buildContactsUrl('deleteContact', { contactId })
     }
   }
 };
