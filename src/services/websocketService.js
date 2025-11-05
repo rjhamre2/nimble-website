@@ -1,127 +1,281 @@
+import { io } from 'socket.io-client';
+
 class WebSocketService {
   constructor() {
-    this.ws = null;
+    this.socket = null;
     this.userId = null;
     this.isConnected = false;
+    this.isRegistered = false;
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000; // Start with 1 second
     this.messageHandlers = new Map();
     this.connectionHandlers = new Map();
     this.connectionHandlerId = 0;
-    this.apiGatewayEndpoint = null;
+    this.serverUrl = null;
   }
 
   async initialize() {
-    // Use environment variable for API Gateway endpoint
-    this.apiGatewayEndpoint = process.env.REACT_APP_WEBSOCKET_API_GATEWAY;
+    // Use environment variable for Socket.IO server endpoint
+    this.serverUrl = process.env.REACT_APP_WEBSOCKET_API_GATEWAY || 
+                     process.env.REACT_APP_WEBSOCKET_SERVER_URL;
     
-    if (!this.apiGatewayEndpoint) {
-      console.warn('⚠️ REACT_APP_WEBSOCKET_API_GATEWAY not set, using fallback URL');
+    if (!this.serverUrl) {
+      console.warn('⚠️ REACT_APP_WEBSOCKET_API_GATEWAY or REACT_APP_WEBSOCKET_SERVER_URL not set, using fallback URL');
       // Fallback for development
-      this.apiGatewayEndpoint = 'wss://your-api-gateway-id.execute-api.ap-south-1.amazonaws.com/dev';
+      this.serverUrl = 'http://localhost:3001';
     }
     
-    console.log('🔌 WebSocket API Gateway endpoint:', this.apiGatewayEndpoint);
+    console.log('🔌 Socket.IO server endpoint:', this.serverUrl);
   }
 
-  connect(userId) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log('WebSocket already connected');
-      // Even if already connected, request messages for the new user
-      this.requestUserMessages(userId);
+  async connect(userId) {
+    // Ensure serverUrl is initialized
+    if (!this.serverUrl) {
+      await this.initialize();
+    }
+
+    // Convert userId to integer (db_id only - must be a number)
+    // Frontend should only send db_id (integer), not Firebase uid
+    let uid = userId;
+    if (typeof userId === 'string' && /^\d+$/.test(userId)) {
+      uid = parseInt(userId);
+    } else if (typeof userId !== 'number') {
+      console.error('❌ Invalid userId: Expected db_id (integer), got:', userId, '(type:', typeof userId, ')');
+      this.notifyConnectionHandlers('error', { message: 'Invalid userId. Expected db_id (integer) only.' });
+      return;
+    }
+    
+    // Validate userId is a valid number
+    if (uid === null || uid === undefined || isNaN(uid)) {
+      console.error('❌ Invalid userId:', userId);
+      this.notifyConnectionHandlers('error', { message: 'Invalid userId. Expected db_id (integer).' });
       return;
     }
 
-    this.userId = userId;
-    const wsUrl = this.buildWebSocketUrl(userId);
-    console.log('🔌 Connecting to WebSocket:', wsUrl);
+    console.log('🔌 Connecting with db_id:', uid, '(type:', typeof uid, ')');
 
-    this.ws = new WebSocket(wsUrl);
+    // If already connected and registered with the same user, just request messages
+    if (this.socket && this.socket.connected && this.isRegistered && this.userId === uid) {
+      console.log('✅ Socket.IO already connected and registered, requesting messages');
+      // Request messages immediately if already registered
+      setTimeout(() => {
+        this.requestUserMessages(uid);
+      }, 50);
+      return;
+    }
 
-    this.ws.onopen = () => {
-      console.log('✅ WebSocket connected');
+    // Disconnect existing socket if connecting to a different user
+    if (this.socket && this.userId !== uid) {
+      console.log('🔄 Different user detected, disconnecting previous connection');
+      this.disconnect();
+    }
+
+    this.userId = uid;
+
+    // If socket exists but not connected, reconnect
+    if (this.socket && !this.socket.connected) {
+      console.log('🔄 Reconnecting existing socket');
+      this.socket.connect();
+      return;
+    }
+
+    // Create new Socket.IO connection
+    if (!this.socket) {
+      const serverUrl = this.serverUrl || process.env.REACT_APP_WEBSOCKET_API_GATEWAY || 
+                        process.env.REACT_APP_WEBSOCKET_SERVER_URL || 'http://localhost:3001';
+      
+      console.log('🔌 Creating new Socket.IO connection to:', serverUrl);
+
+      this.socket = io(serverUrl, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: this.maxReconnectAttempts,
+        reconnectionDelay: this.reconnectDelay,
+        reconnectionDelayMax: 5000,
+      });
+
+      this.setupSocketHandlers();
+    }
+  }
+
+  setupSocketHandlers() {
+    // Connection established
+    this.socket.on('connect', () => {
+      console.log('✅ Socket.IO connected:', this.socket.id);
       this.isConnected = true;
       this.reconnectAttempts = 0;
       this.reconnectDelay = 1000;
       this.notifyConnectionHandlers('connected');
       
-      // Request messages for this user from the database
-      this.requestUserMessages(userId);
-    };
+      // Register user after connection
+      this.registerUser();
+    });
 
-    this.ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('📨 WebSocket message received:', data);
-        this.handleMessage(data);
-      } catch (error) {
-        console.error('❌ Error parsing WebSocket message:', error);
-      }
-    };
-
-    this.ws.onclose = (event) => {
-      console.log('🔌 WebSocket disconnected:', event.code, event.reason);
-      this.isConnected = false;
-      this.notifyConnectionHandlers('disconnected', event);
+    // User registration successful
+    this.socket.on('user_registered', (data) => {
+      console.log('✅ User registered:', data);
+      this.isRegistered = true;
+      this.notifyConnectionHandlers('registered', data);
       
-      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      // Request messages for this user from the database
+      // Add a small delay to ensure registration is fully processed
+      setTimeout(() => {
+        console.log('📥 Requesting messages after registration for userId:', this.userId);
+        this.requestUserMessages(this.userId);
+      }, 100);
+    });
+
+    // Error from server
+    this.socket.on('error', (error) => {
+      console.error('❌ Socket.IO error:', error);
+      if (error.message === 'User not found') {
+        console.error('💡 User not found error. The server is checking "users WHERE uid = $1" but we sent db_id:', this.userId);
+        console.error('💡 Server needs to check "users WHERE db_id = $1" instead of "users WHERE uid = $1"');
+      }
+      this.notifyConnectionHandlers('error', error);
+    });
+
+    // Disconnection
+    this.socket.on('disconnect', (reason) => {
+      console.log('🔌 Socket.IO disconnected:', reason);
+      this.isConnected = false;
+      this.isRegistered = false;
+      this.notifyConnectionHandlers('disconnected', { reason });
+      
+      // Attempt reconnection if not intentional
+      if (reason !== 'io client disconnect' && this.reconnectAttempts < this.maxReconnectAttempts) {
         this.scheduleReconnect();
       }
-    };
+    });
 
-    this.ws.onerror = (error) => {
-      console.error('❌ WebSocket error:', error);
+    // Connection error
+    this.socket.on('connect_error', (error) => {
+      console.error('❌ Socket.IO connection error:', error);
       this.notifyConnectionHandlers('error', error);
-    };
-  }
+    });
 
-  buildWebSocketUrl(userId) {
-    // Use environment variable for API Gateway endpoint
-    const baseUrl = process.env.REACT_APP_WEBSOCKET_API_GATEWAY || this.apiGatewayEndpoint || 'wss://your-api-gateway-id.execute-api.ap-south-1.amazonaws.com/dev';
-    console.log(`🔌 Building WebSocket URL:`, baseUrl);
-    
-    // For development/localhost or EC2-like backends, append userId as path parameter
-    if (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1') || baseUrl.includes('ws://')) {
-      return `${baseUrl}/${encodeURIComponent(userId)}`;
-    }
-    
-    // For API Gateway, use query parameter
-    return `${baseUrl}?userId=${encodeURIComponent(userId)}`;
-  }
+    // Reconnection attempt
+    this.socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`🔄 Reconnection attempt ${attemptNumber}`);
+      this.reconnectAttempts = attemptNumber;
+    });
 
-  // Request messages for a specific user from the database
-  requestUserMessages(userId) {
-    console.log('🔍 Requesting messages for user:', userId);
-    return this.sendMessage('fetch_messages', {
-      userId: userId
+    // Reconnection successful
+    this.socket.on('reconnect', (attemptNumber) => {
+      console.log(`✅ Reconnected after ${attemptNumber} attempts`);
+      this.isConnected = true;
+      this.reconnectAttempts = 0;
+      this.notifyConnectionHandlers('connected');
+      this.registerUser();
+    });
+
+    // Reconnection failed
+    this.socket.on('reconnect_failed', () => {
+      console.error('❌ Reconnection failed');
+      this.notifyConnectionHandlers('error', { message: 'Reconnection failed' });
+    });
+
+    // Handle new_message event from server
+    this.socket.on('new_message', (data) => {
+      console.log('📨 New message received:', data);
+      this.handleMessage('new_message', data);
+    });
+
+    // Handle message_updated event from server
+    this.socket.on('message_updated', (data) => {
+      console.log('📝 Message updated:', data);
+      this.handleMessage('message_updated', data);
+    });
+
+    // Handle message_deleted event from server
+    this.socket.on('message_deleted', (data) => {
+      console.log('🗑️ Message deleted:', data);
+      this.handleMessage('message_deleted', data);
+    });
+
+    // Handle database_messages event (response to fetch_messages)
+    // The server should emit this when responding to fetch_messages request
+    this.socket.on('database_messages', (data) => {
+      console.log('📦 Database messages received:', data);
+      this.handleMessage('database_messages', data);
+    });
+
+    // Handle connection_status event if server emits it
+    this.socket.on('connection_status', (data) => {
+      console.log('📡 Connection status:', data);
+      this.handleMessage('connection_status', data);
     });
   }
 
+  registerUser() {
+    if (!this.socket || !this.socket.connected || !this.userId) {
+      console.warn('⚠️ Cannot register user: socket not connected or userId missing');
+      return;
+    }
+
+    console.log('👤 Registering user with db_id:', this.userId, '(type:', typeof this.userId, ')');
+    this.socket.emit('register_user', { userId: this.userId }); // userId is db_id (integer)
+  }
+
+  // Request messages for a specific user from the database
+  // Note: This emits a 'fetch_messages' event. The server needs to handle this event
+  // and respond with messages. If the server doesn't handle this, consider using REST API instead.
+  requestUserMessages(userId) {
+    if (!this.socket || !this.socket.connected) {
+      console.warn('⚠️ Socket not connected, cannot request messages');
+      return false;
+    }
+
+    if (!this.isRegistered) {
+      console.warn('⚠️ User not registered yet, cannot request messages. Will request after registration.');
+      // If user is connected but not registered, wait for registration
+      // The user_registered handler will call requestUserMessages automatically
+      return false;
+    }
+
+    console.log('🔍 Requesting messages for user (db_id):', userId, '(type:', typeof userId, ')');
+    console.log('📤 Emitting fetch_messages event with db_id:', userId);
+    
+    this.socket.emit('fetch_messages', {
+      userId: userId  // db_id (integer) only
+    });
+    
+    return true;
+  }
+
   // Send a new message to be stored in the database
+  // Note: This emits a 'store_message' event. The server needs to handle this event.
+  // If the server doesn't handle this, consider using REST API instead.
   sendMessageToDatabase(message, senderName = 'User', senderNumber = '') {
-    return this.sendMessage('store_message', {
+    if (!this.socket || !this.socket.connected) {
+      console.warn('⚠️ Socket not connected, cannot send message');
+      return false;
+    }
+
+    this.socket.emit('store_message', {
       userId: this.userId,
       message: message,
       senderName: senderName,
       senderNumber: senderNumber,
       time_stamp: Math.floor(Date.now() / 1000) // Unix timestamp
     });
+    return true;
   }
 
-  sendMessage(type, data) {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.error('❌ WebSocket not connected');
+  // Generic method to emit events to server
+  sendMessage(eventName, data) {
+    if (!this.socket || !this.socket.connected) {
+      console.error('❌ Socket.IO not connected');
       return false;
     }
 
     const message = {
-      type: type, // Backend expects 'type' for message handling
       ...data
     };
 
-    console.log('📤 Sending WebSocket message:', message);
-    this.ws.send(JSON.stringify(message));
+    console.log(`📤 Emitting ${eventName}:`, message);
+    this.socket.emit(eventName, message);
     return true;
   }
 
@@ -131,19 +285,21 @@ class WebSocketService {
   }
 
   sendPing() {
-    return this.sendMessage('ping', { timestamp: Date.now() });
+    if (!this.socket || !this.socket.connected) {
+      return false;
+    }
+    this.socket.emit('ping', { timestamp: Date.now() });
+    return true;
   }
 
-  handleMessage(data) {
-    const { type } = data;
-    
-    // Notify all handlers for this message type
-    if (this.messageHandlers.has(type)) {
-      this.messageHandlers.get(type).forEach(handler => {
+  handleMessage(eventType, data) {
+    // Notify all handlers for this event type
+    if (this.messageHandlers.has(eventType)) {
+      this.messageHandlers.get(eventType).forEach(handler => {
         try {
           handler(data);
         } catch (error) {
-          console.error(`Error in message handler for type ${type}:`, error);
+          console.error(`Error in message handler for type ${eventType}:`, error);
         }
       });
     }
@@ -183,35 +339,42 @@ class WebSocketService {
   }
 
   scheduleReconnect() {
-    this.reconnectAttempts++;
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1); // Exponential backoff
-    
-    console.log(`🔄 Scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
-    
-    setTimeout(() => {
-      if (this.userId) {
-        console.log(`🔄 Attempting to reconnect...`);
-        this.connect(this.userId);
-      }
-    }, delay);
+    // Socket.IO handles reconnection automatically, but we can still track attempts
+    if (this.socket && !this.socket.connected) {
+      this.reconnectAttempts++;
+      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1); // Exponential backoff
+      
+      console.log(`🔄 Scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms`);
+      
+      setTimeout(() => {
+        if (this.userId && this.socket && !this.socket.connected) {
+          console.log(`🔄 Attempting to reconnect...`);
+          this.socket.connect();
+        }
+      }, delay);
+    }
   }
 
   disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
     this.isConnected = false;
+    this.isRegistered = false;
     this.userId = null;
     this.messageHandlers.clear();
     this.connectionHandlers.clear();
+    this.reconnectAttempts = 0;
   }
 
   getConnectionStatus() {
     return {
-      isConnected: this.isConnected,
+      isConnected: this.isConnected && this.socket?.connected,
+      isRegistered: this.isRegistered,
       reconnectAttempts: this.reconnectAttempts,
-      userId: this.userId
+      userId: this.userId,
+      socketId: this.socket?.id || null
     };
   }
 }

@@ -4,7 +4,7 @@ import websocketService from '../services/websocketService';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 const LiveChat = ({ isDarkMode }) => {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [selectedSender, setSelectedSender] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -16,12 +16,19 @@ const LiveChat = ({ isDarkMode }) => {
 
   // WebSocket connection and message handling
   useEffect(() => {
-    if (!user?.uid) return;
+    // Use db_id ONLY for WebSocket connection (database user ID)
+    // Check both user and userData as db_id might be in either
+    const userId = user?.db_id || userData?.db_id;
+    if (!userId) {
+      console.warn('⚠️ db_id not available, cannot connect to WebSocket');
+      setLoading(false);
+      return;
+    }
 
-    console.log('🔌 Attempting to connect to WebSocket for user:', user.uid);
+    console.log('🔌 Attempting to connect to WebSocket for user (db_id):', userId);
     
-    // Connect to WebSocket
-    websocketService.connect(user.uid);
+    // Connect to WebSocket using db_id (database user ID)
+    websocketService.connect(userId);
 
     // Handle connection status
     const connectionHandler = (status, error) => {
@@ -171,7 +178,7 @@ const LiveChat = ({ isDarkMode }) => {
       websocketService.offMessage('new_message', handleNewMessage);
       websocketService.offMessage('connection_status', handleConnectionStatus);
     };
-  }, [user?.uid]);
+  }, [user?.db_id, userData?.db_id]);
 
   // Track if we're adding a new message vs selecting a conversation
   const [isNewMessage, setIsNewMessage] = useState(false);

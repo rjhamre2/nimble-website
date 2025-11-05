@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const RecentChats = ({ onNavigateToLiveChat }) => {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const [sortBy, setSortBy] = useState('time');
   const [sortOrder, setSortOrder] = useState('desc');
   const [recentChats, setRecentChats] = useState([]);
@@ -20,10 +20,17 @@ const RecentChats = ({ onNavigateToLiveChat }) => {
 
   // Fetch recent chats from the same source as Live Chat (WebSocket DB messages)
   useEffect(() => {
-    if (!user?.uid) return;
+    // Use db_id ONLY for WebSocket connection (database user ID)
+    // Check both user and userData as db_id might be in either
+    const userId = user?.db_id || userData?.db_id;
+    if (!userId) {
+      console.warn('⚠️ db_id not available, cannot connect to WebSocket');
+      setLoading(false);
+      return;
+    }
 
     // Connect if not already connected; this will also request messages
-    websocketService.connect(user.uid);
+    websocketService.connect(userId);
 
     const handleDatabaseMessages = (data) => {
       try {
@@ -75,20 +82,26 @@ const RecentChats = ({ onNavigateToLiveChat }) => {
 
     const handleNewMessage = (data) => {
       // Re-request messages for freshness when a new one arrives
-      websocketService.requestUserMessages(user.uid);
+      // Recalculate userId to ensure we use the latest user data
+      const currentUserId = user?.db_id || userData?.db_id;
+      if (currentUserId) {
+        websocketService.requestUserMessages(currentUserId);
+      }
     };
 
     websocketService.onMessage('database_messages', handleDatabaseMessages);
     websocketService.onMessage('new_message', handleNewMessage);
 
     // Initial fetch in case already connected
-    websocketService.requestUserMessages(user.uid);
+    if (userId) {
+      websocketService.requestUserMessages(userId);
+    }
 
     return () => {
       websocketService.offMessage('database_messages', handleDatabaseMessages);
       websocketService.offMessage('new_message', handleNewMessage);
     };
-  }, [user?.uid]);
+  }, [user?.db_id, userData?.db_id]);
 
   const getStatusColor = (status) => {
     switch (status) {

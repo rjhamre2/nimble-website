@@ -27,15 +27,21 @@ const ChatWidget = ({ isDarkMode }) => {
 		quickReplies,
 	} = useChat();
 
-	const { user } = useAuth();
+	const { user, userData } = useAuth();
 	const [wsConnected, setWsConnected] = useState(false);
 
 	// WebSocket connection and message handling
 	useEffect(() => {
-		if (!user?.uid) return;
+		// Use db_id ONLY for WebSocket connection (database user ID)
+		// Check both user and userData as db_id might be in either
+		const userId = user?.db_id || userData?.db_id;
+		if (!userId) {
+			console.warn('⚠️ db_id not available, cannot connect to WebSocket');
+			return;
+		}
 
-		// Connect to WebSocket
-		websocketService.connect(user.uid);
+		// Connect to WebSocket using db_id (database user ID)
+		websocketService.connect(userId);
 
 		// Handle connection status
 		const connectionHandler = (status) => {
@@ -83,7 +89,7 @@ const ChatWidget = ({ isDarkMode }) => {
 			websocketService.offMessage('new_message', handleNewMessage);
 			websocketService.offMessage('connection_status', handleConnectionStatus);
 		};
-	}, [user?.uid]);
+	}, [user?.db_id, userData?.db_id]);
 
 	// Animation for big icon to corner
 	const [showIntroAnim, setShowIntroAnim] = useState(true);
