@@ -86,6 +86,16 @@ const CONTACTS_CONFIG = {
     baseURL: process.env.REACT_APP_CONTACTS_API || 'https://your-contacts-api-url.amazonaws.com',
   }
 };
+
+// DB Server configuration
+const DB_SERVER_CONFIG = {
+  development: {
+    baseURL: process.env.REACT_APP_DB_SERVER_URL || 'https://your-db-server-url.com',
+  },
+  production: {
+    baseURL: process.env.REACT_APP_DB_SERVER_URL || 'https://your-db-server-url.com',
+  }
+};
 // Determine current environment
 const getCurrentEnvironment = () => {
   // Check if we're in development (localhost) or production
@@ -129,6 +139,12 @@ const getPricingLambdaConfig = () => {
 const getContactsConfig = () => {
   const env = getCurrentEnvironment();
   return CONTACTS_CONFIG[env];
+};
+
+// Get current DB Server configuration
+const getDbServerConfig = () => {
+  const env = getCurrentEnvironment();
+  return DB_SERVER_CONFIG[env];
 };
 
 // Helper function to build full API URLs
@@ -238,6 +254,23 @@ const buildContactsUrl = (endpoint, params = {}) => {
   return url;
 };
 
+// Helper function to build DB Server API URLs
+const buildDbServerUrl = (endpoint) => {
+  const config = getDbServerConfig();
+  const dbServerEndpoints = {
+    createUser: '/api/users'
+  };
+  const url = `${config.baseURL}${dbServerEndpoints[endpoint] || endpoint}`;
+  console.log('🔧 Building DB Server URL:', {
+    endpoint,
+    baseURL: config.baseURL,
+    fullURL: url,
+    envVar: process.env.REACT_APP_DB_SERVER_URL,
+    envVarExists: !!process.env.REACT_APP_DB_SERVER_URL
+  });
+  return url;
+};
+
 // Export configuration and helper functions
 export const apiConfig = {
   // Current environment
@@ -250,6 +283,7 @@ export const apiConfig = {
   firebaseLambdaConfig: getFirebaseLambdaConfig(),
   pricingLambdaConfig: getPricingLambdaConfig(),
   contactsConfig: getContactsConfig(),
+  dbServerConfig: getDbServerConfig(),
   
   // Helper functions
   buildUrl: buildApiUrl,
@@ -258,6 +292,7 @@ export const apiConfig = {
   buildFirebaseLambdaUrl: buildFirebaseLambdaUrl,
   buildPricingLambdaUrl: buildPricingLambdaUrl,
   buildContactsUrl: buildContactsUrl,
+  buildDbServerUrl: buildDbServerUrl,
   
   // Direct endpoint access
   endpoints: {
@@ -290,6 +325,10 @@ export const apiConfig = {
       getUserContacts: (dbId) => buildContactsUrl('getUserContacts', { dbId }),
       updateContact: (contactId) => buildContactsUrl('updateContact', { contactId }),
       deleteContact: (contactId) => buildContactsUrl('deleteContact', { contactId })
+    },
+    // DB Server endpoints
+    dbServer: {
+      createUser: () => buildDbServerUrl('createUser')
     }
   }
 };
