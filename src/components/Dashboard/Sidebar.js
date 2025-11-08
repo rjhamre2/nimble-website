@@ -13,10 +13,11 @@ import {
   IdentificationIcon,
   ChatBubbleLeftRightIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 
-const Sidebar = ({ activeTab, setActiveTab, whatsappStatus, onboardingStatus, trainingStatus, pricingSubscriptionStatus }) => {
+const Sidebar = ({ activeTab, setActiveTab, whatsappStatus, onboardingStatus, trainingStatus, pricingSubscriptionStatus, isWabaDetailsEmpty }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   // Calculate progress based on dashboard steps
   const calculateProgress = () => {
@@ -154,6 +155,7 @@ const Sidebar = ({ activeTab, setActiveTab, whatsappStatus, onboardingStatus, tr
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
+            const showWarning = item.id === 'channels' && isWabaDetailsEmpty;
             
             return (
               <li key={item.id}>
@@ -169,7 +171,10 @@ const Sidebar = ({ activeTab, setActiveTab, whatsappStatus, onboardingStatus, tr
                   }`}
                 >
                   <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
-                  <span className="text-sm font-medium truncate">{item.name}</span>
+                  <span className="text-sm font-medium truncate flex-1">{item.name}</span>
+                  {showWarning && (
+                    <ExclamationTriangleIcon className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                  )}
                 </button>
               </li>
             );

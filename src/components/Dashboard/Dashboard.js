@@ -53,6 +53,15 @@ const Dashboard = () => {
   const [broadcastView, setBroadcastView] = useState('new-broadcast');
   const [activeAutomationView, setActiveAutomationView] = useState('ai-agents');
   const [activeChannel, setActiveChannel] = useState('whatsapp');
+  const [showConnectAccount, setShowConnectAccount] = useState(false);
+  const [connectAccountStep, setConnectAccountStep] = useState(0);
+  const [hasOfficialNumber, setHasOfficialNumber] = useState(true);
+  const [connectPhoneCountry, setConnectPhoneCountry] = useState('IN');
+  const [connectPhoneDialCode, setConnectPhoneDialCode] = useState('+91');
+  const [connectPhoneNumber, setConnectPhoneNumber] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [hasWebsiteUrl, setHasWebsiteUrl] = useState(true);
+  const [websiteUrl, setWebsiteUrl] = useState('');
   
   // Status state
   const [whatsappStatus, setWhatsappStatus] = useState(null);
@@ -126,6 +135,7 @@ const Dashboard = () => {
   const [welcomePhone, setWelcomePhone] = useState('');
   const [welcomePhoneNumber, setWelcomePhoneNumber] = useState('');
   const [welcomeBusinessType, setWelcomeBusinessType] = useState('');
+  const [isWabaDetailsEmpty, setIsWabaDetailsEmpty] = useState(false);
   const [welcomeBusinessName, setWelcomeBusinessName] = useState('');
   const [welcomeError, setWelcomeError] = useState('');
   const [isSubmittingWelcome, setIsSubmittingWelcome] = useState(false);
@@ -187,6 +197,180 @@ const Dashboard = () => {
 
   const handleSubscriptionClick = () => {
     setActiveTab('plan-billing');
+  };
+
+  const handleOpenWhatsAppGuidelines = () => {
+    const guidelinesHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display name guidelines for the WhatsApp Business platform</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #fff;
+        }
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #1a1a1a;
+        }
+        h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-top: 32px;
+            margin-bottom: 16px;
+            color: #1a1a1a;
+        }
+        p {
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 14px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+        }
+        ul {
+            margin: 16px 0;
+            padding-left: 24px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .accepted {
+            color: #059669;
+            font-weight: 500;
+        }
+        .not-accepted {
+            color: #dc2626;
+            font-weight: 500;
+        }
+        .note {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px 16px;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Display name guidelines for the WhatsApp Business platform</h1>
+    
+    <p>This article is intended for businesses that use WhatsApp Business platform. Understand the differences between the WhatsApp Business platform and WhatsApp Business app.</p>
+    
+    <p>Your WhatsApp Business display name is the name customers see when they have conversations with your business and on your WhatsApp Business profile. You can assign a display name to a phone number that you add to your WhatsApp Business account. Your business must qualify for a display name to be eligible for a display name review. Learn how to become eligible for a display name.</p>
+    
+    <p>The display name will undergo a review, and you must follow specific guidelines for approval. See the guidelines below.</p>
+    
+    <h2>Display name guidelines</h2>
+    
+    <p>This table outlines the guidelines for display names.</p>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Principle</th>
+                <th>Examples</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Compliance with policies</strong></td>
+                <td>
+                A display name should not violate <a href="https://business.whatsapp.com/policy" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline; cursor: pointer;">WhatsApp Business Messaging Policy</a>. An example for a store that sells a variety of sporting goods:<br><br>
+                <span class="accepted">Accepted: Sarah's Sporting Goods Shop</span><br><br>
+                <span class="not-accepted">Not accepted: Sarah's Sporting Goods Shop – Guns department</span><br><br>
+                Within your company, you may have separate WhatsApp Business accounts for different divisions; only those divisions that are compliant with WhatsApp's Commerce policy may have a WhatsApp Business account.
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Accurate and clear representation of your business</strong></td>
+                <td>
+                A display name should accurately represent:<br><br>
+                • A business or its service, product or department.<br>
+                • A test account or a demo account and it must maintain an association to the business. Examples of what is and isn't acceptable are below:<br><br>
+                <span class="accepted">Accepted: Fresh Produce Boston</span><br>
+                <span class="accepted">Accepted: Fresh Produce Customer Service Department</span><br>
+                <span class="accepted">Accepted: Fresh Produce by Global Grocers Inc.</span><br><br>
+                <span class="not-accepted">Not accepted: Tom Ford Nike (unless the brand name is officially linked on external sources such as websites or social media pages)</span><br><br>
+                <div class="note">
+                    <strong>Note:</strong> If the display name uses a personal name, it should clearly indicate the nature of the business on external sources (e.g. Tom Ford Chiropractor).
+                </div>
+                A display name should not be:<br><br>
+                • A generic term<br>
+                <span class="not-accepted">Not accepted: Fashion</span><br><br>
+                • A generic geographic location<br>
+                <span class="not-accepted">Not accepted: New York</span><br><br>
+                • Appearing to have verification, which can mislead customers to think your business has an endorsed status. Official or Verified shouldn't be in the name.<br>
+                <span class="not-accepted">Not accepted: Fresh Produce official account</span><br>
+                <span class="not-accepted">Not accepted: Verified Minni's Muffins</span><br><br>
+                • A display name should not reference Meta or any of its family of apps. Examples of what is and isn't acceptable are below:<br>
+                <span class="not-accepted">Not accepted: Minni's Muffins - Meta</span><br>
+                <span class="not-accepted">Not accepted: Minni's Muffins WhatsApp</span><br>
+                <span class="not-accepted">Not accepted: Minni's Muffins pop-up on Facebook</span><br><br>
+                • A display name should reflect the business's name only. It shouldn't have any advertising or promotional language.<br>
+                <span class="not-accepted">Not accepted: Sarah's Sporting Goods – 20% off sale</span><br>
+                <span class="not-accepted">Not accepted: Sarah's Sporting Goods: Best rated sporting goods store in Texas, US</span><br><br>
+                • A display name shouldn't be formatted as a website or email. This helps to prevent phishing and maintain professionalism on our platforms. Examples of what isn't acceptable are below:<br>
+                <span class="not-accepted">Not accepted: https://minnismuffins.net</span><br>
+                <span class="not-accepted">Not accepted: sarahssportinggoods.com</span><br>
+                <span class="not-accepted">Not accepted: hello@freshproducejuices.com</span>
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Clear relationship with your business's legal name and consistency with external branding</strong></td>
+                <td>
+                A display name must have a clear relationship with your business's legal name. For example:<br><br>
+                <span class="accepted">Accepted: Legal name of a charity mentioned on a charity organisation's website</span><br><br>
+                <span class="not-accepted">Not accepted: Legal name of a charity not mentioned on any external websites</span><br><br>
+                If the relationship between your company and the brand is not obvious, indicate the relationship using "by [company name]".<br><br>
+                <span class="accepted">Accepted: Fruit Snacks by Fresh Produce (Note that in this example, Fresh Produce is the parent company of the Fruit Snacks brand and their association is clearly mentioned on their external websites)</span><br><br>
+                <span class="not-accepted">Not accepted: Fruit Snacks (Fresh Produce owns the Fruit Snacks brand but their association is not mentioned on any external websites)</span><br><br>
+                If the display name represents a business that the company is working with (if the business is an agency, distributor, partner or parent company), then the relationship between the business represented in the display name and end-client business must be evident and clear in your business website.<br><br>
+                For example, if Global Voyager signs up for WhatsApp and wants to use the display name Commercial Air, they must submit a link to a website page stating that Commercial Air is a subsidiary of Global Voyager.<br><br>
+                A display name must also have consistent branding with external sources, such as a company's website or marketing, or with the company's verified legal name. Examples of what is and isn't acceptable are below:<br><br>
+                <span class="accepted">Accepted: Fresh Produce Cold Pressed Juices (how it is branded on your website).</span><br>
+                <span class="accepted">Accepted: Fresh Produce Cold Pressed Juices Mexico.</span><br>
+                <span class="accepted">Accepted: Fresh Produce Juices - Jessica</span><br>
+                <span class="accepted">Accepted: Fresh Produce Juices</span><br>
+                <span class="accepted">Accepted: FP Cold Pressed Juices (you added an abbreviation to the company name)</span><br>
+                <span class="accepted">Accepted: FPCP Juices</span><br>
+                <span class="accepted">Accepted: XY Fresh Cold Pressed Juices Service New York</span><br><br>
+                <span class="not-accepted">Not accepted: Digital Cloud Solutions (this can't be found anywhere on external sources such as on your website)</span><br>
+                <span class="not-accepted">Not accepted: Juice (this is a generic term)</span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
+    `;
+    
+    const blob = new Blob([guidelinesHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    // Clean up the URL after a delay to free memory
+    setTimeout(() => URL.revokeObjectURL(url), 100);
   };
 
   const resetContactForm = () => {
@@ -657,10 +841,15 @@ const Dashboard = () => {
         
         // Check if waba_details is an empty object
         const isEmpty = Object.keys(wabaDetails).length === 0;
+        setIsWabaDetailsEmpty(isEmpty);
         
         if (isEmpty) {
-          console.log('📋 waba_details is empty, showing WABA modal');
+          console.log('📋 waba_details is empty, navigating to channels and showing WABA modal');
           setUserName(result.data.username || userData?.username || user?.displayName || 'User');
+          // Navigate to channels tab and select WhatsApp
+          setActiveTab('channels');
+          setActiveChannel('whatsapp');
+          // Show WABA modal
           setIsWabaModalOpen(true);
         } else {
           console.log('✅ waba_details exists, not showing modal');
@@ -689,6 +878,14 @@ const Dashboard = () => {
       return () => clearTimeout(timer);
     }
   }, [user, userData, loading, isWelcomeModalOpen, checkWabaDetails]);
+
+  // Check WABA details when WhatsApp channel is selected in channels tab
+  useEffect(() => {
+    if (activeTab === 'channels' && activeChannel === 'whatsapp' && !isWabaModalOpen && user && userData && !isCheckingWaba && isWabaDetailsEmpty) {
+      console.log('🔍 WhatsApp channel selected, checking WABA details...');
+      checkWabaDetails();
+    }
+  }, [activeTab, activeChannel, isWabaModalOpen, user, userData, isCheckingWaba, isWabaDetailsEmpty, checkWabaDetails]);
 
   // Debug: Track when WABA modal state changes
   useEffect(() => {
@@ -752,7 +949,7 @@ const Dashboard = () => {
           userDbId: userData?.db_id || user?.db_id
         });
         
-        checkWabaDetails();
+          checkWabaDetails();
       } else {
         console.log('⏸️ Skipping WABA auto-check - user is first-time, welcome modal will show', {
           isFirstTime,
@@ -2526,44 +2723,410 @@ const Dashboard = () => {
       
       case 'channels':
         return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Channels</h2>
-              <p className="text-gray-600">Manage communication channels and integrations.</p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="grid grid-cols-8 gap-6">
-                <div className="col-span-2">
-                  <div className="space-y-2">
+          <div className="w-full" style={{ height: 'calc(100vh - 64px)' }}>
+            <div className="pl-0 pr-4 w-full" style={{ height: 'calc(100vh - 64px)' }}>
+              <div className="grid grid-cols-1 lg:grid-cols-8 gap-0 w-full" style={{ height: 'calc(100vh - 64px)' }}>
+                {/* Left Panel - Channel Buttons (2 columns) */}
+                <div className="lg:col-span-2 rounded-lg shadow-lg flex flex-col bg-white relative z-10" style={{ height: 'calc(100vh - 64px)' }}>
+                  <div className="pr-0 pl-0 pt-4 pb-4 border-b flex-shrink-0 border-gray-200">
+                    <h2 className="text-lg font-semibold text-gray-900 px-4 mb-4">Channels</h2>
+                    <div className="flex flex-col gap-2 px-4">
                     <button
-                      onClick={() => setActiveChannel('whatsapp')}
-                      className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
-                        activeChannel === 'whatsapp' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        onClick={() => {
+                          setActiveChannel('whatsapp');
+                          // Check and show WABA modal if waba_details is empty
+                          if (isWabaDetailsEmpty && !isCheckingWaba) {
+                            checkWabaDetails();
+                          }
+                        }}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left transition-colors ${
+                          activeChannel === 'whatsapp' 
+                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
+                            : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
                       }`}
                     >
                       WhatsApp
                     </button>
                     <button
-                      onClick={() => setActiveChannel('instagram')}
-                      className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
-                        activeChannel === 'instagram' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        onClick={() => {
+                          setActiveChannel('instagram');
+                          // Close WABA modal when switching to Instagram
+                          if (isWabaModalOpen) {
+                            setIsWabaModalOpen(false);
+                          }
+                        }}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left transition-colors ${
+                          activeChannel === 'instagram' 
+                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
+                            : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
                       }`}
                     >
                       Instagram
                     </button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Right Panel - Channel Content (6 columns) */}
+                <div className="lg:col-span-6 bg-white rounded-lg shadow-lg overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
+                  <div className="h-full overflow-y-auto p-6">
+                  {showConnectAccount && activeChannel === 'whatsapp' && connectAccountStep === 1 ? (
+                    // Step 1/2: Connect Account In-Process Form
+                    <div className="space-y-6">
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <h1 className="text-2xl font-bold text-gray-900">Connect Account</h1>
+                          <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">In-Process</span>
+                        </div>
+                      </div>
+
+                      {/* Form Card */}
+                      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                        {/* Step Indicator */}
+                        <div className="text-sm text-gray-500 mb-6">Step 1/2</div>
+
+                          {/* Connect your WhatsApp Phone Number */}
+                          <div className="space-y-4 mb-8">
+                            <h2 className="text-lg font-semibold text-gray-900">Connect your WhatsApp Phone Number</h2>
+                            
+                            <ul className="space-y-2 text-sm text-gray-700">
+                              <li className="flex items-start">
+                                <span className="mr-2">•</span>
+                                <span>
+                                  NimbleAI recommends using your official business phone number. Please ensure the number you register is not already linked to any existing WhatsApp account (personal or business).
+                                </span>
+                              </li>
+                              <li className="flex items-start">
+                                <span className="mr-2">•</span>
+                                <span>
+                                  Meta may provide a free phone number or a display-name-only option in the following steps. However, if you select this option, you'll need to submit official documents later to activate your WhatsApp account. Step-by-step guidance will be provided.
+                                </span>
+                              </li>
+                            </ul>
+
+                            {/* Radio Buttons */}
+                            <div className="space-y-3 mt-4">
+                              <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="phoneNumberType"
+                                  checked={hasOfficialNumber}
+                                  onChange={() => setHasOfficialNumber(true)}
+                                  className="w-4 h-4 text-green-600 focus:ring-green-500"
+                                />
+                                <span className="text-sm text-gray-700">I have an official number</span>
+                              </label>
+                              <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="phoneNumberType"
+                                  checked={!hasOfficialNumber}
+                                  onChange={() => setHasOfficialNumber(false)}
+                                  className="w-4 h-4 text-green-600 focus:ring-green-500"
+                                />
+                                <span className="text-sm text-gray-700">I will be using Meta's free number</span>
+                              </label>
+                            </div>
+
+                            {/* Phone Number Input */}
+                            {hasOfficialNumber && (
+                              <div className="mt-4">
+                                <div className="flex border rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-green-400">
+                                  <select
+                                    className="border-r border-gray-300 px-3 py-3 text-sm focus:outline-none bg-white"
+                                    value={connectPhoneCountry}
+                                    onChange={(e) => {
+                                      const country = e.target.value;
+                                      setConnectPhoneCountry(country);
+                                      const countryDialCodes = {
+                                        'IN': '+91', 'US': '+1', 'GB': '+44', 'CA': '+1', 'AU': '+61',
+                                        'DE': '+49', 'FR': '+33', 'IT': '+39', 'ES': '+34', 'BR': '+55',
+                                        'MX': '+52', 'JP': '+81', 'CN': '+86', 'KR': '+82', 'SG': '+65'
+                                      };
+                                      setConnectPhoneDialCode(countryDialCodes[country] || '+1');
+                                    }}
+                                    style={{ appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23374151\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
+                                  >
+                                    <option value="IN">🇮🇳 IN</option>
+                                    <option value="US">🇺🇸 US</option>
+                                    <option value="GB">🇬🇧 GB</option>
+                                    <option value="CA">🇨🇦 CA</option>
+                                    <option value="AU">🇦🇺 AU</option>
+                                  </select>
+                                  <div className="flex items-center px-3 bg-gray-50 border-r border-gray-300 text-gray-700 text-sm font-medium">
+                                    {connectPhoneDialCode}
+                                  </div>
+                                  <input
+                                    type="tel"
+                                    className="flex-1 px-4 py-3 text-sm focus:outline-none"
+                                    value={connectPhoneNumber}
+                                    onChange={(e) => setConnectPhoneNumber(e.target.value)}
+                                    placeholder="Enter phone number"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Choose your WhatsApp Business Display Name */}
+                          <div className="space-y-4 mb-8">
+                            <h2 className="text-lg font-semibold text-gray-900">Choose your WhatsApp Business Display Name</h2>
+                            <p className="text-sm text-gray-700">
+                              This is what customers will see as your WhatsApp business account name. It must align with your legal business name, match your external branding, and follow these{' '}
                     <button
-                      onClick={() => setActiveChannel('messenger')}
-                      className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
-                        activeChannel === 'messenger' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      Messenger
+                                className="text-blue-600 hover:text-blue-700 underline"
+                                onClick={handleOpenWhatsAppGuidelines}
+                              >
+                                WhatsApp's Guidelines
+                              </button>.
+                            </p>
+                            <input
+                              type="text"
+                              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                              value={displayName}
+                              onChange={(e) => setDisplayName(e.target.value)}
+                              placeholder="Enter display name"
+                            />
+                          </div>
+
+                          {/* Your business website URL */}
+                          <div className="space-y-4 mb-6">
+                            <h2 className="text-lg font-semibold text-gray-900">Your business website URL</h2>
+                            
+                            <ul className="space-y-2 text-sm text-gray-700">
+                              <li className="flex items-start">
+                                <span className="mr-2">•</span>
+                                <span>For account approval, NimbleAI strongly recommends entering your official website URL.</span>
+                              </li>
+                              <li className="flex items-start">
+                                <span className="mr-2">•</span>
+                                <span>If you provide Facebook or Instagram profile page links, Meta will ban your account.</span>
+                              </li>
+                              <li className="flex items-start">
+                                <span className="mr-2">•</span>
+                                <span>
+                                  Meta may allow you to skip providing a website, but if you choose this, you must submit official documents later to use the WhatsApp account (step-by-step guidance will be available).
+                                </span>
+                              </li>
+                            </ul>
+
+                            <label className="flex items-center gap-3 cursor-pointer mt-4">
+                              <input
+                                type="checkbox"
+                                checked={hasWebsiteUrl}
+                                onChange={(e) => setHasWebsiteUrl(e.target.checked)}
+                                className="w-4 h-4 text-green-600 focus:ring-green-500 rounded"
+                              />
+                              <span className="text-sm text-gray-700">I have an official website URL</span>
+                            </label>
+
+                            {hasWebsiteUrl && (
+                              <input
+                                type="url"
+                                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 mt-2"
+                                value={websiteUrl}
+                                onChange={(e) => setWebsiteUrl(e.target.value)}
+                                placeholder="https://example.com"
+                              />
+                            )}
+                          </div>
+
+                          {/* Next Button */}
+                          <div className="flex justify-end pt-4 border-t border-gray-200">
+                            <button
+                              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-colors duration-200"
+                              onClick={() => {
+                                // Move to next step
+                                setConnectAccountStep(2);
+                              }}
+                            >
+                              Next
                     </button>
                   </div>
                 </div>
-                <div className="col-span-6">
-                  {activeChannel === 'whatsapp' ? (
+                      </div>
+                    ) : showConnectAccount && activeChannel === 'whatsapp' && connectAccountStep === 2 ? (
+                      // Step 2 or other steps can be added here
+                      <div className="space-y-6">
+                        <div className="text-center py-12">
+                          <p className="text-gray-600">Step 2 content will be added here</p>
+                        </div>
+                      </div>
+                    ) : showConnectAccount && activeChannel === 'whatsapp' && connectAccountStep === 0 ? (
+                    // Connect Account initial page (before clicking Connect)
+                    <div className="space-y-6">
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <h1 className="text-2xl font-bold text-gray-900">Connect Account</h1>
+                          <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">Not Started</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <button className="flex items-center gap-2 text-gray-700 hover:text-gray-900">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            <span className="text-sm font-medium">Help Guide</span>
+                          </button>
+                          <button className="flex items-center gap-2 text-gray-700 hover:text-gray-900">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-sm font-medium">Watch Tutorial</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Main Content - Two Column Layout */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Left Panel - Benefits */}
+                        <div className="space-y-4">
+                          <h2 className="text-lg font-semibold text-gray-900">Benefits of connecting your own number</h2>
+                          <ul className="space-y-3">
+                            <li className="flex items-start gap-3">
+                              <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span className="text-gray-700">Sending messages from your brand name</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                              <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span className="text-gray-700">Free 100 INR credits</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                              <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span className="text-gray-700">Respond to unlimited customer initiated conversations</span>
+                            </li>
+                          </ul>
+                          <div className="mt-6 pt-6 border-t border-gray-200">
+                            <p className="text-sm text-gray-600">
+                              If you are not the Admin of your business, please{' '}
+                              <button className="text-blue-600 hover:text-blue-700 underline">invite your team</button>
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Right Panel - Connect Card */}
+                        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                          {/* Icons */}
+                          <div className="flex items-center justify-center gap-4 mb-6">
+                            <svg className="w-12 h-12" fill="#25D366" viewBox="0 0 24 24">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+                            </svg>
+                            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                            </svg>
+                            <svg className="w-12 h-12" fill="#0084FF" viewBox="0 0 24 24">
+                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                          </div>
+
+                          {/* Heading */}
+                          <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
+                            To experience messaging, connect your WhatsApp number
+                          </h3>
+                          <p className="text-sm text-gray-600 text-center mb-6">
+                            Once connected, you can start messaging contacts or receive messages from them
+                          </p>
+
+                          {/* Key Detail Box */}
+                          <div className="mb-6">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-3">Key detail to check before you connect</h4>
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                              <div className="flex items-start gap-3">
+                                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900">Meta Business Manager</p>
+                                  <p className="text-xs text-gray-600 mt-1">You must have Admin access to your Meta Business manager</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Connect Button */}
+                          <button
+                            className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-base font-medium transition-colors duration-200"
+                            onClick={() => {
+                              // Show Step 1 of the connect form
+                              setShowConnectAccount(true);
+                              setConnectAccountStep(1);
+                            }}
+                          >
+                            Connect
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : activeChannel === 'whatsapp' && isWabaDetailsEmpty ? (
+                    // WABA content as page content
+                    <div className="h-full flex flex-col">
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div className="space-y-6">
+                          <div className="space-y-2">
+                            <h1 className="text-2xl font-semibold text-gray-900">
+                              Hello {userName}
+                            </h1>
+                            <h2 className="text-xl font-semibold text-gray-900">
+                              Welcome to NimbleAI
+                            </h2>
+                          </div>
+
+                          <div className="space-y-4">
+                            <p className="text-base text-gray-700">
+                              Ready to start using your Live Trial Account?
+                            </p>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left space-y-3">
+                              <p className="text-sm font-medium text-gray-900">
+                                Connect your number now to unlock the full potential of NimbleAI and enjoy exclusive benefits such as:
+                              </p>
+                              <ul className="space-y-2 text-sm text-gray-700">
+                                <li className="flex items-start">
+                                  <span className="mr-2">•</span>
+                                  <span>Sending messages with your brand name</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="mr-2">•</span>
+                                  <span>₹100 free credits</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="mr-2">•</span>
+                                  <span>Unlimited responses to customer-initiated conversations</span>
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Button positioned at bottom */}
+                        <div className="mt-auto pt-4" style={{ marginBottom: '120px' }}>
+                          <button
+                            className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-base font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                            onClick={() => {
+                              // Show Connect Account page
+                              setShowConnectAccount(true);
+                            }}
+                          >
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+                            </svg>
+                            Create Whatsapp Business Account
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : activeChannel === 'whatsapp' ? (
                     <div className="space-y-6">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">Channel Status</h3>
@@ -2659,11 +3222,22 @@ const Dashboard = () => {
                         </div>
                       </div>
                     </div>
+                  ) : activeChannel === 'instagram' ? (
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Instagram Channel</h3>
+                        <p className="text-sm text-gray-600">Manage your Instagram integration</p>
+                      </div>
+                      <div className="p-4 border border-gray-200 rounded-lg">
+                        <p className="text-sm text-gray-600">Instagram channel configuration coming soon.</p>
+                      </div>
+                    </div>
                   ) : (
                     <div className="h-full w-full border border-gray-200 rounded-lg p-4 text-sm text-gray-500">
                       Select a channel on the left to configure details.
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -3148,95 +3722,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* WABA Modal - Rectangle between sidebar and right edge */}
-      {isWabaModalOpen && (
-        <>
-          <div className="fixed top-16 bottom-0 z-40 bg-white shadow-2xl overflow-y-auto" style={{ left: '10rem', width: 'calc(100% - 10rem)' }}>
-          <div className="h-full flex flex-col p-6">
-            {/* Close button */}
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={() => {
-                  setIsWabaModalOpen(false);
-                }}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="Close"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col justify-between">
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <h1 className="text-2xl font-semibold text-gray-900">
-                    Hello {userName}
-                  </h1>
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Welcome to NimbleAI
-                  </h2>
-                </div>
-
-                <div className="space-y-4">
-                  <p className="text-base text-gray-700">
-                    Ready to start using your Live Trial Account?
-                  </p>
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left space-y-3">
-                    <p className="text-sm font-medium text-gray-900">
-                      Connect your number now to unlock the full potential of NimbleAI and enjoy exclusive benefits such as:
-                    </p>
-                    <ul className="space-y-2 text-sm text-gray-700">
-                      <li className="flex items-start">
-                        <span className="mr-2">•</span>
-                        <span>Sending messages with your brand name</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="mr-2">•</span>
-                        <span>₹100 free credits</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="mr-2">•</span>
-                        <span>Unlimited responses to customer-initiated conversations</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Button positioned at bottom to align with Channels in sidebar */}
-              <div className="mt-auto pt-4" style={{ marginBottom: '120px' }}>
-                <button
-                  className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-base font-medium transition-colors duration-200 flex items-center justify-center gap-2"
-                  onClick={() => {
-                    // Close modal and navigate to integrations
-                    setIsWabaModalOpen(false);
-                    setActiveTab('integrations');
-                  }}
-                >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
-                  </svg>
-                  Create Whatsapp Business Account
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Backdrop overlay when WABA modal is open - only covers the modal area */}
-        <div 
-          className="fixed top-16 bottom-0 bg-black bg-opacity-30 z-30"
-          style={{ left: '10rem', width: 'calc(100% - 10rem)' }}
-          onClick={() => {
-            setIsWabaModalOpen(false);
-          }}
-        />
-        </>
-      )}
       
       {isWhatsAppModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
@@ -4282,10 +4767,11 @@ const Dashboard = () => {
           onboardingStatus={onboardingStatus}
           trainingStatus={trainingStatus}
           pricingSubscriptionStatus={pricingSubscriptionStatus}
+          isWabaDetailsEmpty={isWabaDetailsEmpty}
         />
         {/* Main Content */}
-        <div className={`flex-1 ${activeTab === 'team-inbox' || activeTab === 'broadcast' ? 'p-0 overflow-hidden' : 'p-4 lg:p-6'}`}>
-          <div className={activeTab === 'team-inbox' || activeTab === 'broadcast' ? 'w-full h-full' : 'max-w-7xl mx-auto'}>
+        <div className={`flex-1 ${activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'p-0 overflow-hidden' : 'p-4 lg:p-6'}`}>
+          <div className={activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'w-full h-full' : 'max-w-7xl mx-auto'}>
             {renderMainContent()}
           </div>
         </div>
