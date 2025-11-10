@@ -1011,7 +1011,7 @@ const Dashboard = () => {
         },
       });
       
-      console.log('🌐 API Response status:', response.status);
+      console.log('🌐 API Response status :', response.status);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
