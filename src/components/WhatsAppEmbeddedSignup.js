@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import apiConfig from '../config/api';
 
-const WhatsAppEmbeddedSignup = ({ isDarkMode, user, onSetupComplete }) => {
+const WhatsAppEmbeddedSignup = ({ isDarkMode, user, onSetupComplete, setup = null }) => {
   const [isSDKReady, setIsSDKReady] = useState(false);
   const [signupData, setSignupData] = useState(null);
   const [error, setError] = useState(null);
@@ -255,7 +255,7 @@ const WhatsAppEmbeddedSignup = ({ isDarkMode, user, onSetupComplete }) => {
       response_type: 'code',
       override_default_response_type: true,
       extras: {
-        setup: {},
+        setup: setup || {},
         featureType: CONFIG.FEATURE_TYPE,
         sessionInfoVersion: '3'
       }

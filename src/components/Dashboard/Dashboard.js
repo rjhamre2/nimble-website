@@ -62,6 +62,22 @@ const Dashboard = () => {
   const [displayName, setDisplayName] = useState('');
   const [hasWebsiteUrl, setHasWebsiteUrl] = useState(true);
   const [websiteUrl, setWebsiteUrl] = useState('');
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [formErrors, setFormErrors] = useState({});
+  const [setupData, setSetupData] = useState(null);
+  const [whatsappSignupData, setWhatsappSignupData] = useState(null);
+  const [whatsappAuthCode, setWhatsappAuthCode] = useState(null);
+  const [isProcessingWhatsapp, setIsProcessingWhatsapp] = useState(false);
+  
+  // Carousel images
+  const carouselImages = [
+    require('../../images/carousel-1.png'),
+    require('../../images/carousel-3.png'),
+    require('../../images/carousel-4.png'),
+    require('../../images/carousel-5.png'),
+    require('../../images/carousel-6.png'),
+    require('../../images/carousel-7.png'),
+  ];
   
   // Status state
   const [whatsappStatus, setWhatsappStatus] = useState(null);
@@ -197,6 +213,129 @@ const Dashboard = () => {
 
   const handleSubscriptionClick = () => {
     setActiveTab('plan-billing');
+  };
+
+  // WhatsApp Embedded Signup message listener
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (!event.origin.endsWith('facebook.com')) return;
+      
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'WA_EMBEDDED_SIGNUP') {
+          console.log('WhatsApp Embedded Signup message event:', data);
+          
+          // Handle successful completion
+          if (data.event === 'FINISH' || data.event === 'FINISH_ONLY_WABA' || data.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING') {
+            console.log('Raw Facebook event data:', data.data);
+            const newWhatsappData = {
+              phone_number_id: data.data.phone_number_id,
+              waba_id: data.data.waba_id,
+              business_id: data.data.business_id,
+              event: data.event
+            };
+            console.log('Setting new WhatsApp data:', newWhatsappData);
+            setWhatsappSignupData(newWhatsappData);
+          }
+          // Handle abandoned flow
+          else if (data.event === 'CANCEL') {
+            console.log(`Signup abandoned at step: ${data.data.current_step || 'Unknown'}`);
+            setWhatsappSignupData(null);
+          }
+        }
+      } catch (err) {
+        console.log('WhatsApp Embedded Signup raw message event:', event.data);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
+  // Process WhatsApp signup when both data and code are available
+  useEffect(() => {
+    if (whatsappSignupData && whatsappAuthCode && !isProcessingWhatsapp) {
+      // Validate required fields
+      if (!whatsappSignupData.phone_number_id) {
+        console.error('Missing phone_number_id in whatsappData:', whatsappSignupData);
+        return;
+      }
+      
+      if (!whatsappSignupData.waba_id) {
+        console.error('Missing waba_id in whatsappData:', whatsappSignupData);
+        return;
+      }
+      
+      setIsProcessingWhatsapp(true);
+      
+      sendWhatsappCodeToServer(whatsappAuthCode, whatsappSignupData.waba_id, whatsappSignupData.phone_number_id)
+        .then(result => {
+          console.log('WhatsApp integration completed successfully:', result);
+          setWhatsappSignupData(null);
+          setWhatsappAuthCode(null);
+          setIsProcessingWhatsapp(false);
+          
+          // Refresh WhatsApp status
+          if (user?.uid) {
+            checkWhatsAppStatus(user.uid).then(data => {
+              setWhatsappStatus(data);
+            });
+          }
+          
+          // Close the connect account flow
+          setShowConnectAccount(false);
+          setConnectAccountStep(0);
+        })
+        .catch(error => {
+          console.error('Failed to send code to server:', error);
+          setIsProcessingWhatsapp(false);
+        });
+    }
+  }, [whatsappSignupData, whatsappAuthCode, isProcessingWhatsapp, user]);
+
+  // Function to send WhatsApp code to server
+  const sendWhatsappCodeToServer = async (code, wabaId, phoneNumberId) => {
+    try {
+      console.log('Sending code to server for token exchange:', { 
+        code: code ? `${code.substring(0, 10)}...` : 'undefined', 
+        wabaId, 
+        phoneNumberId 
+      });
+      
+      if (!phoneNumberId || !wabaId || !code || !user?.uid) {
+        throw new Error('Missing required parameters for WhatsApp setup');
+      }
+      
+      const requestBody = {
+        code,
+        waba_id: wabaId,
+        phone_number_id: phoneNumberId,
+        user_id: user.uid,
+      };
+      
+      const response = await fetch(apiConfig.endpoints.whatsapp(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Server exchange successful:', result);
+        return result;
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Server error response:', errorData);
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Error exchanging code with server:', error);
+      throw error;
+    }
   };
 
   const handleOpenWhatsAppGuidelines = () => {
@@ -1634,7 +1773,6 @@ const Dashboard = () => {
             </div>
           </div>
         );
-      
       case 'contacts':
         return (
           <div className="space-y-6">
@@ -2134,7 +2272,6 @@ const Dashboard = () => {
             </div>
           </div>
         );
-      
       case 'analytics':
         return (
           <div className="space-y-6">
@@ -2552,7 +2689,6 @@ const Dashboard = () => {
             </div>
           </div>
         );
-      
       case 'account-details':
         return (
           <div className="space-y-6">
@@ -2776,6 +2912,15 @@ const Dashboard = () => {
                       {/* Header */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setConnectAccountStep(0)}
+                            className="mr-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            aria-label="Go back"
+                          >
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                          </button>
                           <h1 className="text-2xl font-bold text-gray-900">Connect Account</h1>
                           <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">In-Process</span>
                         </div>
@@ -2853,15 +2998,36 @@ const Dashboard = () => {
                                     <option value="GB">🇬🇧 GB</option>
                                     <option value="CA">🇨🇦 CA</option>
                                     <option value="AU">🇦🇺 AU</option>
+                                    <option value="DE">🇩🇪 DE</option>
+                                    <option value="FR">🇫🇷 FR</option>
+                                    <option value="IT">🇮🇹 IT</option>
+                                    <option value="ES">🇪🇸 ES</option>
+                                    <option value="BR">🇧🇷 BR</option>
+                                    <option value="MX">🇲🇽 MX</option>
+                                    <option value="JP">🇯🇵 JP</option>
+                                    <option value="CN">🇨🇳 CN</option>
+                                    <option value="KR">🇰🇷 KR</option>
+                                    <option value="SG">🇸🇬 SG</option>
                                   </select>
                                   <div className="flex items-center px-3 bg-gray-50 border-r border-gray-300 text-gray-700 text-sm font-medium">
                                     {connectPhoneDialCode}
                                   </div>
                                   <input
                                     type="tel"
-                                    className="flex-1 px-4 py-3 text-sm focus:outline-none"
+                                    className={`flex-1 px-4 py-3 text-sm focus:outline-none ${
+                                      formErrors.phoneNumber ? 'border-red-500' : ''
+                                    }`}
                                     value={connectPhoneNumber}
-                                    onChange={(e) => setConnectPhoneNumber(e.target.value)}
+                                    onChange={(e) => {
+                                      setConnectPhoneNumber(e.target.value);
+                                      if (formErrors.phoneNumber) {
+                                        setFormErrors(prev => {
+                                          const newErrors = { ...prev };
+                                          delete newErrors.phoneNumber;
+                                          return newErrors;
+                                        });
+                                      }
+                                    }}
                                     placeholder="Enter phone number"
                                   />
                                 </div>
@@ -2883,9 +3049,22 @@ const Dashboard = () => {
                             </p>
                             <input
                               type="text"
-                              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                              className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 ${
+                                formErrors.displayName 
+                                  ? 'border-red-500 focus:ring-red-400' 
+                                  : 'border-gray-300 focus:ring-green-400'
+                              }`}
                               value={displayName}
-                              onChange={(e) => setDisplayName(e.target.value)}
+                              onChange={(e) => {
+                                setDisplayName(e.target.value);
+                                if (formErrors.displayName) {
+                                  setFormErrors(prev => {
+                                    const newErrors = { ...prev };
+                                    delete newErrors.displayName;
+                                    return newErrors;
+                                  });
+                                }
+                              }}
                               placeholder="Enter display name"
                             />
                           </div>
@@ -2924,21 +3103,103 @@ const Dashboard = () => {
                             {hasWebsiteUrl && (
                               <input
                                 type="url"
-                                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 mt-2"
+                                className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 mt-2 ${
+                                  formErrors.websiteUrl 
+                                    ? 'border-red-500 focus:ring-red-400' 
+                                    : 'border-gray-300 focus:ring-green-400'
+                                }`}
                                 value={websiteUrl}
-                                onChange={(e) => setWebsiteUrl(e.target.value)}
+                                onChange={(e) => {
+                                  setWebsiteUrl(e.target.value);
+                                  if (formErrors.websiteUrl) {
+                                    setFormErrors(prev => {
+                                      const newErrors = { ...prev };
+                                      delete newErrors.websiteUrl;
+                                      return newErrors;
+                                    });
+                                  }
+                                }}
                                 placeholder="https://example.com"
                               />
                             )}
                           </div>
 
-                          {/* Next Button */}
-                          <div className="flex justify-end pt-4 border-t border-gray-200">
+                          {/* Error Messages */}
+                          {Object.keys(formErrors).length > 0 && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                              <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+                                {Object.values(formErrors).map((error, index) => (
+                                  <li key={index}>{error}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Navigation Buttons */}
+                          <div className="flex justify-between pt-4 border-t border-gray-200">
+                            <button
+                              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium transition-colors duration-200"
+                              onClick={() => {
+                                setFormErrors({});
+                                setConnectAccountStep(0);
+                              }}
+                            >
+                              Back
+                            </button>
                             <button
                               className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-colors duration-200"
                               onClick={() => {
-                                // Move to next step
+                                // Validate form
+                                const errors = {};
+                                
+                                // Validate display name (mandatory)
+                                if (!displayName || displayName.trim() === '') {
+                                  errors.displayName = 'Display name is required';
+                                }
+                                
+                                // Validate phone number if official number is selected
+                                if (hasOfficialNumber && (!connectPhoneNumber || connectPhoneNumber.trim() === '')) {
+                                  errors.phoneNumber = 'Phone number is required when using an official number';
+                                }
+                                
+                                // Validate website URL if checkbox is checked
+                                if (hasWebsiteUrl && (!websiteUrl || websiteUrl.trim() === '')) {
+                                  errors.websiteUrl = 'Website URL is required when you have an official website';
+                                }
+                                
+                                setFormErrors(errors);
+                                
+                                // If no errors, create setup object and proceed
+                                if (Object.keys(errors).length === 0) {
+                                  // Create setup object
+                                  const setup = {
+                                    business: {
+                                      id: '',
+                                      name: '',
+                                      email: '',
+                                      website: hasWebsiteUrl ? websiteUrl.trim() : '',
+                                      address: {
+                                        streetAddress1: '',
+                                        streetAddress2: '',
+                                        city: '',
+                                        state: '',
+                                        zipPostal: '',
+                                        country: ''
+                                      },
+                                      phone: hasOfficialNumber ? {
+                                        code: parseInt(connectPhoneDialCode.replace('+', '')),
+                                        number: connectPhoneNumber.trim()
+                                      } : {
+                                        code: null,
+                                        number: ''
+                                      },
+                                      timezone: ''
+                                    }
+                                  };
+                                  
+                                  setSetupData(setup);
                                 setConnectAccountStep(2);
+                                }
                               }}
                             >
                               Next
@@ -2947,10 +3208,224 @@ const Dashboard = () => {
                 </div>
                       </div>
                     ) : showConnectAccount && activeChannel === 'whatsapp' && connectAccountStep === 2 ? (
-                      // Step 2 or other steps can be added here
+                      // Step 2: Carousel with Connect with Facebook button
                       <div className="space-y-6">
-                        <div className="text-center py-12">
-                          <p className="text-gray-600">Step 2 content will be added here</p>
+                        {/* Header */}
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setConnectAccountStep(1)}
+                            className="mr-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            aria-label="Go back"
+                          >
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                          </button>
+                          <h1 className="text-2xl font-bold text-gray-900">Connect Account</h1>
+                          <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">In-Process</span>
+                        </div>
+                        
+                        {/* Carousel Section */}
+                        <div className="relative w-full max-w-4xl mx-auto">
+                          <div className="flex gap-8">
+                            {/* Left space for text */}
+                            <div className="w-80 flex-shrink-0 flex items-center">
+                              {carouselIndex === 0 && (
+                                <div className="bg-white/95 rounded-lg p-6 shadow-lg w-full">
+                                  <h3 className="text-xl font-bold text-gray-900 mb-2">Step 1</h3>
+                                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Login to Facebook</h4>
+                                  <ul className="space-y-2 text-gray-700">
+                                    <li className="flex items-start">
+                                      <span className="mr-2">•</span>
+                                      <span>Ensure it's the admin account for your Meta Business Manager</span>
+                                    </li>
+                                  </ul>
+                                </div>
+                              )}
+                              {carouselIndex === 1 && (
+                                <div className="bg-white/95 rounded-lg p-6 shadow-lg w-full">
+                                  <h3 className="text-xl font-bold text-gray-900 mb-2">Step 2</h3>
+                                  <ul className="space-y-2 text-gray-700">
+                                    <li className="flex items-start">
+                                      <span className="mr-2">•</span>
+                                      <span>Grant required permissions</span>
+                                    </li>
+                                  </ul>
+                                </div>
+                              )}
+                              {carouselIndex === 2 && (
+                                <div className="bg-white/95 rounded-lg p-6 shadow-lg w-full">
+                                  <h3 className="text-xl font-bold text-gray-900 mb-2">Step 3</h3>
+                                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Enter Your Business Information</h4>
+                                  <ul className="space-y-2 text-gray-700">
+                                    <li className="flex items-start">
+                                      <span className="mr-2">•</span>
+                                      <span>NimbleAI recommends choosing your existing business portfolio.</span>
+                                    </li>
+                                    <li className="flex items-start">
+                                      <span className="mr-2">•</span>
+                                      <span>To prevent any onboarding issues, please include your official website URL.</span>
+                                    </li>
+                                    <li className="flex items-start">
+                                      <span className="mr-2">•</span>
+                                      <span>If you skip adding your website, you'll be required to submit official documents to verify and activate your WhatsApp account later.</span>
+                                    </li>
+                                  </ul>
+                                </div>
+                              )}
+                              {carouselIndex === 3 && (
+                                <div className="bg-white/95 rounded-lg p-6 shadow-lg w-full">
+                                  <h3 className="text-xl font-bold text-gray-900 mb-2">Step 4</h3>
+                                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Create or connect a WhatsApp Business Account and Profile</h4>
+                                  <ul className="space-y-2 text-gray-700">
+                                    <li className="flex items-start">
+                                      <span className="mr-2">•</span>
+                                      <span>NimbleAI recommends setting up a new business account and profile.</span>
+                                    </li>
+                                    <li className="flex items-start">
+                                      <span className="mr-2">•</span>
+                                      <span className="text-red-600">If you connect an existing Whatsapp Business Account, all your chat history will be lost</span>
+                                    </li>
+                                  </ul>
+                                </div>
+                              )}
+                              {carouselIndex === 4 && (
+                                <div className="bg-white/95 rounded-lg p-6 shadow-lg w-full">
+                                  <h3 className="text-xl font-bold text-gray-900 mb-2">Step 5</h3>
+                                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Provide WhatsApp Business profile info.</h4>
+                                  <ul className="space-y-2 text-gray-700">
+                                    <li className="flex items-start">
+                                      <span className="mr-2">•</span>
+                                      <span>Ensure your display name complies with Meta's naming policies</span>
+                                    </li>
+                                  </ul>
+                                </div>
+                              )}
+                              {carouselIndex === 5 && (
+                                <div className="bg-white/95 rounded-lg p-6 shadow-lg w-full">
+                                  <h3 className="text-xl font-bold text-gray-900 mb-2">Step 6</h3>
+                                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Add or verify your Business Number</h4>
+                                  <div className="space-y-3 text-gray-700">
+                                    <p>The "Get a free WhatsApp number" option isn't eligible for Click-to-WhatsApp Ads and will require you to submit official documents after your WhatsApp account is connected.</p>
+                                    <p>Enter the verification code received via text or voice call.</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Carousel Container */}
+                            <div className="flex-1 relative">
+                              <div className="relative overflow-hidden rounded-lg bg-white" style={{ height: '500px' }}>
+                            {/* Carousel Images */}
+                            <div 
+                              className="flex transition-transform duration-500 ease-in-out h-full"
+                              style={{ transform: `translateX(-${carouselIndex * 100}%)` }}
+                            >
+                              {carouselImages.map((image, index) => (
+                                <div key={index} className="min-w-full h-full relative flex items-center justify-center bg-white">
+                                  <img 
+                                    src={image} 
+                                    alt={`Carousel image ${index + 1}`}
+                                    className="max-w-full max-h-full object-contain border-2 border-black"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Left Navigation Button */}
+                            {carouselIndex > 0 && (
+                              <button
+                                onClick={() => setCarouselIndex((prev) => prev - 1)}
+                                className="absolute top-1/2 transform -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full p-2.5 shadow-lg transition-all duration-200 hover:scale-110 z-10"
+                                style={{ left: '15px' }}
+                                aria-label="Previous image"
+                              >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                </svg>
+                              </button>
+                            )}
+
+                            {/* Right Navigation Button */}
+                            {carouselIndex < carouselImages.length - 1 && (
+                              <button
+                                onClick={() => setCarouselIndex((prev) => prev + 1)}
+                                className="absolute top-1/2 transform -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full p-2.5 shadow-lg transition-all duration-200 hover:scale-110 z-10"
+                                style={{ right: '15px' }}
+                                aria-label="Next image"
+                              >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </button>
+                            )}
+
+                            {/* Carousel Indicators */}
+                            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
+                              {carouselImages.map((_, index) => (
+                                <button
+                                  key={index}
+                                  onClick={() => setCarouselIndex(index)}
+                                  className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                                    carouselIndex === index ? 'bg-white w-8' : 'bg-white/50'
+                                  }`}
+                                  aria-label={`Go to slide ${index + 1}`}
+                                />
+                              ))}
+                            </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Connect with Facebook Button */}
+                        <div className="flex justify-center pt-6">
+                          <button
+                            onClick={() => {
+                              // Check if Facebook SDK is available
+                              if (!window.FB) {
+                                alert('Facebook SDK is not loaded. Please refresh the page.');
+                                return;
+                              }
+                              
+                              // Launch WhatsApp Embedded Signup with setup data
+                              const CONFIGURATION_ID = '1464707537999245'; // Same as in WhatsAppEmbeddedSignup
+                              
+                              // Facebook login callback
+                              const fbLoginCallback = (response) => {
+                                console.log('Facebook login callback received:', response);
+                                
+                                if (response.authResponse) {
+                                  const code = response.authResponse.code;
+                                  console.log('WhatsApp Embedded Signup response code:', code);
+                                  
+                                  // Store the auth code - the useEffect will handle processing when both code and data are available
+                                  setWhatsappAuthCode(code);
+                                } else {
+                                  console.log('WhatsApp Embedded Signup was cancelled or failed');
+                                  setWhatsappAuthCode(null);
+                                }
+                              };
+                              
+                              // Launch WhatsApp Embedded Signup
+                              window.FB.login(fbLoginCallback, {
+                                config_id: CONFIGURATION_ID,
+                                response_type: 'code',
+                                override_default_response_type: true,
+                                extras: {
+                                  setup: setupData || {},
+                                  featureType: '',
+                                  sessionInfoVersion: '3'
+                                }
+                              });
+                            }}
+                            className="flex items-center gap-3 px-8 py-4 bg-[#0084FF] hover:bg-[#0066CC] text-white rounded-lg font-semibold text-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
+                          >
+                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                            Connect with Facebook
+                          </button>
                         </div>
                       </div>
                     ) : showConnectAccount && activeChannel === 'whatsapp' && connectAccountStep === 0 ? (
@@ -2959,6 +3434,15 @@ const Dashboard = () => {
                       {/* Header */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setShowConnectAccount(false)}
+                            className="mr-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            aria-label="Go back"
+                          >
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                          </button>
                           <h1 className="text-2xl font-bold text-gray-900">Connect Account</h1>
                           <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">Not Started</span>
                         </div>
@@ -3243,7 +3727,6 @@ const Dashboard = () => {
             </div>
           </div>
         );
-      
       case 'dashboard':
       case 'knowledge':
       case 'live-chat':
@@ -3721,8 +4204,6 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-
-      
       {isWhatsAppModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
@@ -4222,7 +4703,6 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-      
       {/* Import Contacts Modal */}
       {isImportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
@@ -4720,7 +5200,6 @@ const Dashboard = () => {
                   </div>
                 </div>
               )}
-
               <div className="flex justify-end space-x-3 pt-4 border-t">
                 <button
                   type="button"
