@@ -906,20 +906,65 @@ const Dashboard = () => {
   }, [user]);
 
   // Check welcome modal
-  const checkWelcomeModal = useCallback(() => {
+  const checkWelcomeModal = useCallback(async () => {
     if (!user || !userData) return;
     
-    const storedFirstTime = localStorage.getItem('nimble_first_time');
-    const isFirstTime = storedFirstTime === '1';
-    
-    // Only show welcome modal if it's first time AND modal is not already open AND not currently submitting
-    if (isFirstTime && !isWelcomeModalOpen && !isSubmittingWelcome) {
-      // Set default country and dial code when opening modal
-      if (!welcomeCountry) {
-        setWelcomeCountry('IN');
-        setWelcomeDialCode('+91');
+    try {
+      const dbId = userData?.db_id || user?.db_id;
+      if (!dbId) {
+        console.log('⚠️ No db_id found, cannot check welcome modal');
+        return;
       }
-      setIsWelcomeModalOpen(true);
+
+      // Call DB Server API to check if user exists
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        console.error('❌ DB Server URL is not configured!');
+        return;
+      }
+      
+      const url = `${dbServerUrl}/api/users/${dbId}`;
+      
+      console.log('🌐 Checking user existence for welcome modal:', url);
+      console.log('🌐 dbId:', dbId);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ User check response for welcome modal:', result);
+
+      // If user exists (success: true with data), don't show welcome banner
+      // If user not found (success: false with error "User not found"), show welcome banner
+      const shouldShowWelcome = result.success === false && result.error === 'User not found';
+      
+      console.log('🎯 Welcome modal decision:', {
+        shouldShowWelcome,
+        success: result.success,
+        hasData: !!result.data,
+        error: result.error
+      });
+      
+      // Only show welcome modal if user not found AND modal is not already open AND not currently submitting
+      if (shouldShowWelcome && !isWelcomeModalOpen && !isSubmittingWelcome) {
+        // Set default country and dial code when opening modal
+        if (!welcomeCountry) {
+          setWelcomeCountry('IN');
+          setWelcomeDialCode('+91');
+        }
+        setIsWelcomeModalOpen(true);
+      }
+    } catch (error) {
+      console.error('❌ Error checking user for welcome modal:', error);
+      // On error, default to not showing the welcome modal
     }
   }, [user, userData, isWelcomeModalOpen, welcomeCountry, isSubmittingWelcome]);
 
