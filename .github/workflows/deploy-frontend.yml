@@ -13,10 +13,10 @@ jobs:
   build-deploy:
     runs-on: ubuntu-latest
     # Skip deployment for prod branch if deploy flag is not set
-    if: github.ref == 'refs/heads/master' || (github.ref == 'refs/heads/prod' && env.DEPLOY_FLAG == 'true')
+    if: github.ref == 'refs/heads/master' || (github.ref == 'refs/heads/prod' && vars.DEPLOY_TO_PROD == 'true')
     env:
       BUILD_DIR: build
-      # Set DEPLOY_FLAG from repository secret/variable
+      # Set DEPLOY_FLAG from repository secret/variable (for use in steps)
       DEPLOY_FLAG: ${{ secrets.DEPLOY_TO_PROD || vars.DEPLOY_TO_PROD || '' }}
     steps:
       - name: ⬇️ Checkout Code
