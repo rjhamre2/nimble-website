@@ -936,6 +936,7 @@ const Dashboard = () => {
       });
 
       if (!response.ok) {
+        console.log('🌐 Check Welcome Modal API Response status :', response.status);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
@@ -1014,6 +1015,7 @@ const Dashboard = () => {
       console.log('🌐 API Response status :', response.status);
 
       if (!response.ok) {
+        console.log('🌐 API Response status :', response.status);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
