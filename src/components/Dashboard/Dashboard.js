@@ -937,7 +937,7 @@ const Dashboard = () => {
 
       if (!response.ok) {
         console.log('🌐 Check Welcome Modal API Response status :', response.status);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        //throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const result = await response.json();
