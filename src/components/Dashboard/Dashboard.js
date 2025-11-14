@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { checkWhatsAppStatus, getUserDashboardStatus } from '../../services/firebaseService';
 import { apiConfig } from '../../config/api';
@@ -12,6 +12,8 @@ import Settings from './Settings';
 import OnboardingBanner from './OnboardingBanner';
 import LiveAgentPreview from './LiveAgentPreview';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { getAuth } from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
 
 // Fetch pricing subscription status
 const fetchPricingSubscriptionStatus = async () => {
@@ -45,8 +47,26 @@ const fetchPricingSubscriptionStatus = async () => {
   }
 };
 
+// Initialize Firebase if not already initialized
+let firebaseApp;
+const firebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || 'nimbleai-firebase.firebaseapp.com',
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || 'nimbleai-firebase',
+};
+
+if (firebaseConfig.apiKey && getApps().length === 0) {
+  firebaseApp = initializeApp(firebaseConfig);
+} else if (getApps().length > 0) {
+  firebaseApp = getApps()[0];
+}
+
 const Dashboard = () => {
   const { user, userData, loading } = useAuth();
+  const [isEmailVerified, setIsEmailVerified] = useState(null);
+  const [isCheckingEmailVerification, setIsCheckingEmailVerification] = useState(false);
+  const hasCheckedEmailVerification = useRef(false);
+  const lastCheckedUserId = useRef(null);
   
   // Tab and view state
   const [activeTab, setActiveTab] = useState('overview');
@@ -131,7 +151,27 @@ const Dashboard = () => {
   const [updatingLeadStage, setUpdatingLeadStage] = useState(null);
   
   // Team management state
-  const [teamManagementTab, setTeamManagementTab] = useState('members');
+  const [teamManagementTab, setTeamManagementTab] = useState('users');
+  const [isAddTeamModalOpen, setIsAddTeamModalOpen] = useState(false);
+  const [teamFormData, setTeamFormData] = useState({
+    teamName: '',
+    customTeamName: '',
+    members: Array(5).fill(null).map(() => ({ name: '', email: '', role: '', customRole: '' }))
+  });
+  const [isSubmittingTeam, setIsSubmittingTeam] = useState(false);
+  const [teamError, setTeamError] = useState(null);
+  const [teamsData, setTeamsData] = useState([]);
+  const [isLoadingTeams, setIsLoadingTeams] = useState(false);
+  const [expandedTeams, setExpandedTeams] = useState(new Set());
+  const [editingMember, setEditingMember] = useState(null);
+  const [deletingMember, setDeletingMember] = useState(null);
+  const [addingMember, setAddingMember] = useState(null);
+  const [newMemberData, setNewMemberData] = useState({ name: '', email: '', selectedRole: '', customRole: '' });
+  const [teamMembersData, setTeamMembersData] = useState([]);
+  const [isLoadingTeamMembers, setIsLoadingTeamMembers] = useState(false);
+  const [editingTeamMember, setEditingTeamMember] = useState(null);
+  const [deletingTeamMember, setDeletingTeamMember] = useState(null);
+  const [deletingTeam, setDeletingTeam] = useState(null);
   
   // Account details state
   const [accountDetailsTab, setAccountDetailsTab] = useState('profile');
@@ -294,6 +334,617 @@ const Dashboard = () => {
         });
     }
   }, [whatsappSignupData, whatsappAuthCode, isProcessingWhatsapp, user]);
+
+  // Check email verification status - only once when user is available or when user changes
+  useEffect(() => {
+    // Use a ref to track if we've already checked for this user
+    let isMounted = true;
+    
+    const checkEmailVerification = async () => {
+      // Prevent multiple simultaneous checks
+      const currentUserId = user?.uid || user?.email;
+      
+      // Skip if:
+      // - No user or firebase app
+      // - Already checking
+      if (!user || !firebaseApp || isCheckingEmailVerification) {
+        return;
+      }
+      
+      // If user changed, reset the check flag
+      if (lastCheckedUserId.current !== currentUserId) {
+        hasCheckedEmailVerification.current = false;
+      }
+      
+      // If we've already checked for this user, skip
+      if (hasCheckedEmailVerification.current && lastCheckedUserId.current === currentUserId) {
+        return;
+      }
+      
+      // Mark as checking for this user
+      hasCheckedEmailVerification.current = true;
+      lastCheckedUserId.current = currentUserId;
+      
+      console.log('📧 [Email Verification] Starting check...', { 
+        hasUser: !!user, 
+        hasFirebaseApp: !!firebaseApp,
+        userId: user?.uid || user?.email 
+      });
+      
+      setIsCheckingEmailVerification(true);
+      try {
+        const auth = getAuth(firebaseApp);
+        const firebaseUser = auth.currentUser;
+        
+        console.log('📧 [Email Verification] Firebase Auth state:', {
+          hasFirebaseUser: !!firebaseUser,
+          firebaseUserEmail: firebaseUser?.email,
+          firebaseUserId: firebaseUser?.uid
+        });
+        
+        if (firebaseUser) {
+          // CRITICAL STEP: Get the latest data from the Firebase server
+          console.log('📧 [Email Verification] Reloading user data from Firebase server...');
+          await firebaseUser.reload();
+          
+          if (!isMounted) return; // Component unmounted, don't update state
+          
+          console.log('📧 [Email Verification] User data after reload:', {
+            email: firebaseUser.email,
+            emailVerified: firebaseUser.emailVerified,
+            uid: firebaseUser.uid
+          });
+          
+          // Check the updated property
+          if (firebaseUser.emailVerified) {
+            console.log("✅ [Email Verification] Email Verified: Access Granted!");
+            setIsEmailVerified(true);
+          } else {
+            console.log("⚠️ [Email Verification] Email NOT Verified: Please check your inbox.");
+            setIsEmailVerified(false);
+          }
+        } else {
+          // If no Firebase user, we can't check verification
+          // This might happen if user signed up with email/password but Firebase Auth isn't used
+          if (!isMounted) return;
+          console.warn("⚠️ [Email Verification] No Firebase user found. Cannot check email verification status.");
+          console.warn("📝 [Email Verification] This might happen if user signed up with email/password but Firebase Auth isn't used.");
+          setIsEmailVerified(null);
+        }
+      } catch (error) {
+        if (!isMounted) return;
+        console.error("❌ [Email Verification] Error reloading user data:", error);
+        console.error("❌ [Email Verification] Error details:", {
+          message: error.message,
+          code: error.code,
+          stack: error.stack
+        });
+        setIsEmailVerified(null);
+      } finally {
+        if (isMounted) {
+          setIsCheckingEmailVerification(false);
+          console.log('📧 [Email Verification] Check completed.');
+        }
+      }
+    };
+
+    // Only check when user is available and not loading
+    if (user && !loading) {
+      checkEmailVerification();
+    }
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, [user, loading]); // Removed isCheckingEmailVerification from dependencies
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isAddTeamModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isAddTeamModalOpen]);
+
+  // Fetch teams data function
+  const fetchTeams = async () => {
+    const dbId = userData?.db_id || user?.db_id;
+    if (!dbId) {
+      console.log('⚠️ No db_id found, cannot fetch teams');
+      return;
+    }
+
+    setIsLoadingTeams(true);
+    try {
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('DB Server URL is not configured');
+      }
+
+      const url = `${dbServerUrl}/api/teams/${dbId}`;
+      console.log('🌐 [Fetch Teams] Calling API:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch teams: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [Fetch Teams] Teams fetched successfully:', result);
+
+      if (result.success && result.data) {
+        setTeamsData(result.data);
+      } else {
+        setTeamsData([]);
+      }
+    } catch (error) {
+      console.error('❌ [Fetch Teams] Error:', error);
+      setTeamsData([]);
+    } finally {
+      setIsLoadingTeams(false);
+    }
+  };
+
+  // Fetch teams data when teams tab is active
+  useEffect(() => {
+    if (activeTab !== 'team-management' || teamManagementTab !== 'teams') {
+      return;
+    }
+
+    fetchTeams();
+  }, [activeTab, teamManagementTab, userData, user]);
+
+  // Fetch team members data when users tab is active
+  const fetchTeamMembers = async () => {
+    const dbId = userData?.db_id || user?.db_id;
+    if (!dbId) {
+      console.log('⚠️ No db_id found, cannot fetch team members');
+      return;
+    }
+
+    setIsLoadingTeamMembers(true);
+    try {
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('DB Server URL is not configured');
+      }
+
+      const url = `${dbServerUrl}/api/users/${dbId}/team-members`;
+      console.log('🌐 [Fetch Team Members] Calling API:', url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch team members: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [Fetch Team Members] Team members fetched successfully:', result);
+
+      if (result.success && result.data) {
+        setTeamMembersData(result.data);
+      } else {
+        setTeamMembersData([]);
+      }
+    } catch (error) {
+      console.error('❌ [Fetch Team Members] Error:', error);
+      setTeamMembersData([]);
+    } finally {
+      setIsLoadingTeamMembers(false);
+    }
+  };
+
+  // Fetch team members when users tab is active
+  useEffect(() => {
+    if (activeTab !== 'team-management' || teamManagementTab !== 'users') {
+      return;
+    }
+
+    fetchTeamMembers();
+  }, [activeTab, teamManagementTab, userData, user]);
+
+  // Handle edit team member
+  const handleEditMember = (teamId, memberIndex, member) => {
+    // Determine if the current role is a predefined role or custom
+    const predefinedRoles = ['Admin / Business Manager', 'Sales Manager', 'Support Manager', 'Marketing Manager'];
+    const isPredefinedRole = predefinedRoles.includes(member.role);
+    
+    setEditingMember({ 
+      teamId, 
+      memberIndex, 
+      member,
+      selectedRole: isPredefinedRole ? member.role : 'Other',
+      customRole: isPredefinedRole ? '' : member.role
+    });
+  };
+
+  // Handle delete team member
+  const handleDeleteMember = async (teamId, memberIndex, member) => {
+    if (!window.confirm(`Are you sure you want to remove ${member.name} from this team?`)) {
+      return;
+    }
+
+    setDeletingMember({ teamId, memberIndex });
+    
+    try {
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('Server configuration error.');
+      }
+
+      // Get member_id from member object (could be id, member_id, or email as fallback)
+      const memberId = member.id || member.member_id || member.email;
+      if (!memberId) {
+        throw new Error('Member ID not found.');
+      }
+
+      const apiUrl = `${dbServerUrl}/api/teams/${teamId}/members/${memberId}`;
+      
+      console.log('🌐 [Delete Member] Calling API:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to delete member: ${response.status} ${response.statusText}`);
+      }
+
+      console.log('✅ [Delete Member] Member deleted successfully');
+
+      // Refresh teams data to get the updated member list
+      const dbId = userData?.db_id || user?.db_id;
+      if (dbId) {
+        const teamsUrl = `${dbServerUrl}/api/teams/${dbId}`;
+        const teamsResponse = await fetch(teamsUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (teamsResponse.ok) {
+          const teamsResult = await teamsResponse.json();
+          if (teamsResult.success && teamsResult.data) {
+            setTeamsData(teamsResult.data);
+          }
+        }
+      }
+
+      setDeletingMember(null);
+    } catch (error) {
+      console.error('❌ [Delete Member] Error:', error);
+      alert(`Failed to remove member: ${error.message}`);
+      setDeletingMember(null);
+    }
+  };
+
+  // Handle save edited member
+  const handleSaveMember = async (teamId, memberIndex, updatedMember) => {
+    try {
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('Server configuration error.');
+      }
+
+      // Get the original member to find member_id
+      const team = teamsData.find(t => t.team_id === teamId);
+      if (!team || !team.members || !team.members[memberIndex]) {
+        throw new Error('Member not found.');
+      }
+
+      const originalMember = team.members[memberIndex];
+      // Get member_id from member object (could be id, member_id, or email as fallback)
+      const memberId = originalMember.id || originalMember.member_id || originalMember.email;
+      if (!memberId) {
+        throw new Error('Member ID not found.');
+      }
+
+      const apiUrl = `${dbServerUrl}/api/teams/${teamId}/members/${memberId}`;
+      
+      console.log('🌐 [Edit Member] Calling API:', apiUrl);
+      console.log('📤 [Edit Member] Request data:', {
+        name: updatedMember.name,
+        email: updatedMember.email,
+        role: updatedMember.role
+      });
+
+      const response = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: updatedMember.name,
+          email: updatedMember.email,
+          role: updatedMember.role
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to update member: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [Edit Member] Member updated successfully:', result);
+
+      // Refresh teams data to get the updated member list
+      const dbId = userData?.db_id || user?.db_id;
+      if (dbId) {
+        const teamsUrl = `${dbServerUrl}/api/teams/${dbId}`;
+        const teamsResponse = await fetch(teamsUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (teamsResponse.ok) {
+          const teamsResult = await teamsResponse.json();
+          if (teamsResult.success && teamsResult.data) {
+            setTeamsData(teamsResult.data);
+          }
+        }
+      }
+
+      setEditingMember(null);
+    } catch (error) {
+      console.error('❌ [Edit Member] Error:', error);
+      alert(`Failed to update member: ${error.message}`);
+    }
+  };
+
+  // Handle add new member
+  const handleAddMember = (teamId) => {
+    setAddingMember(teamId);
+    setNewMemberData({ name: '', email: '', selectedRole: '', customRole: '' });
+  };
+
+  // Handle save new member
+  const handleSaveNewMember = async (teamId) => {
+    try {
+      if (!newMemberData.name || !newMemberData.email) {
+        alert('Please fill in name and email');
+        return;
+      }
+
+      if (!newMemberData.selectedRole) {
+        alert('Please select a role');
+        return;
+      }
+
+      if (newMemberData.selectedRole === 'Other' && !newMemberData.customRole) {
+        alert('Please enter a role name');
+        return;
+      }
+
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('Server configuration error.');
+      }
+
+      const finalRole = newMemberData.selectedRole === 'Other' ? newMemberData.customRole : newMemberData.selectedRole;
+      const apiUrl = `${dbServerUrl}/api/teams/${teamId}/members`;
+      
+      console.log('🌐 [Add Member] Calling API:', apiUrl);
+      console.log('📤 [Add Member] Request data:', {
+        name: newMemberData.name,
+        email: newMemberData.email,
+        role: finalRole
+      });
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newMemberData.name,
+          email: newMemberData.email,
+          role: finalRole
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to add member: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [Add Member] Member added successfully:', result);
+
+      // Refresh teams data to get the updated member list
+      const dbId = userData?.db_id || user?.db_id;
+      if (dbId) {
+        const teamsUrl = `${dbServerUrl}/api/teams/${dbId}`;
+        const teamsResponse = await fetch(teamsUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (teamsResponse.ok) {
+          const teamsResult = await teamsResponse.json();
+          if (teamsResult.success && teamsResult.data) {
+            setTeamsData(teamsResult.data);
+          }
+        }
+      }
+
+      setAddingMember(null);
+      setNewMemberData({ name: '', email: '', selectedRole: '', customRole: '' });
+    } catch (error) {
+      console.error('❌ [Add Member] Error:', error);
+      alert(`Failed to add member: ${error.message}`);
+    }
+  };
+
+  // Handle edit team member from users tab
+  const handleEditTeamMember = (member) => {
+    // Determine if the current role is a predefined role or custom
+    const predefinedRoles = ['Admin / Business Manager', 'Sales Manager', 'Support Manager', 'Marketing Manager'];
+    const isPredefinedRole = predefinedRoles.includes(member.role);
+    
+    setEditingTeamMember({
+      ...member,
+      selectedRole: isPredefinedRole ? member.role : 'Other',
+      customRole: isPredefinedRole ? '' : member.role
+    });
+  };
+
+  // Handle delete team member from users tab
+  const handleDeleteTeamMember = async (member) => {
+    if (!window.confirm(`Are you sure you want to remove ${member.name} from ${member.team_name}?`)) {
+      return;
+    }
+
+    setDeletingTeamMember(member.member_id);
+    
+    try {
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('Server configuration error.');
+      }
+
+      const apiUrl = `${dbServerUrl}/api/teams/${member.team_id}/members/${member.member_id}`;
+      
+      console.log('🌐 [Delete Team Member] Calling API:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to delete member: ${response.status} ${response.statusText}`);
+      }
+
+      console.log('✅ [Delete Team Member] Member deleted successfully');
+
+      // Refresh team members list
+      await fetchTeamMembers();
+      setDeletingTeamMember(null);
+    } catch (error) {
+      console.error('❌ [Delete Team Member] Error:', error);
+      alert(`Failed to remove member: ${error.message}`);
+      setDeletingTeamMember(null);
+    }
+  };
+
+  // Handle save edited team member from users tab
+  const handleSaveTeamMember = async (updatedMember) => {
+    try {
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('Server configuration error.');
+      }
+
+      const apiUrl = `${dbServerUrl}/api/teams/${updatedMember.team_id}/members/${updatedMember.member_id}`;
+      
+      console.log('🌐 [Edit Team Member] Calling API:', apiUrl);
+      console.log('📤 [Edit Team Member] Request data:', {
+        name: updatedMember.name,
+        email: updatedMember.email,
+        role: updatedMember.role
+      });
+
+      const response = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: updatedMember.name,
+          email: updatedMember.email,
+          role: updatedMember.role
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to update member: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [Edit Team Member] Member updated successfully:', result);
+
+      // Refresh team members list
+      await fetchTeamMembers();
+      setEditingTeamMember(null);
+    } catch (error) {
+      console.error('❌ [Edit Team Member] Error:', error);
+      alert(`Failed to update member: ${error.message}`);
+    }
+  };
+
+  // Handle delete team
+  const handleDeleteTeam = async (teamId, teamName) => {
+    if (!window.confirm(`Are you sure you want to delete the team "${teamName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingTeam(teamId);
+    
+    try {
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('Server configuration error.');
+      }
+
+      const apiUrl = `${dbServerUrl}/api/teams/${teamId}`;
+      
+      console.log('🌐 [Delete Team] Calling API:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to delete team: ${response.status} ${response.statusText}`);
+      }
+
+      console.log('✅ [Delete Team] Team deleted successfully');
+
+      // Refresh teams list
+      await fetchTeams();
+      setDeletingTeam(null);
+    } catch (error) {
+      console.error('❌ [Delete Team] Error:', error);
+      alert(`Failed to delete team: ${error.message}`);
+      setDeletingTeam(null);
+    }
+  };
 
   // Function to send WhatsApp code to server
   const sendWhatsappCodeToServer = async (code, wabaId, phoneNumberId) => {
@@ -2557,7 +3208,12 @@ const Dashboard = () => {
                   {teamManagementTab === 'users' ? (
                     <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Add User</button>
                   ) : (
-                    <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Add Team</button>
+                    <button 
+                      onClick={() => setIsAddTeamModalOpen(true)}
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                    >
+                      Add Team
+                    </button>
                   )}
             </div>
               </div>
@@ -2584,92 +3240,770 @@ const Dashboard = () => {
             {teamManagementTab === 'users' ? (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Users</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Online Status</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email/Phone</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Teams</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 text-sm">
-                      <tr>
-                        <td className="px-4 py-2 text-gray-900">User NimbleAI</td>
-                        <td className="px-4 py-2"><span className="inline-flex items-center text-xs text-gray-600">Offline</span></td>
-                        <td className="px-4 py-2 text-gray-700">rupesh@nimbleai.in</td>
-                        <td className="px-4 py-2 text-gray-700">TEMPLATE MANAGER</td>
-                        <td className="px-4 py-2 text-gray-700">All Teams</td>
-                        <td className="px-4 py-2">
-                          <div className="flex gap-2">
-                            <button className="text-blue-600 hover:text-blue-800">Edit</button>
-                            <button className="text-red-600 hover:text-red-800">Remove</button>
-                          </div>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-2 text-gray-900">User NimbleAI</td>
-                        <td className="px-4 py-2"><span className="inline-flex items-center text-xs text-gray-600">Offline</span></td>
-                        <td className="px-4 py-2 text-gray-700">pj248254@gmail.com</td>
-                        <td className="px-4 py-2 text-gray-700">BROADCAST MANAGER</td>
-                        <td className="px-4 py-2 text-gray-700">All Teams</td>
-                        <td className="px-4 py-2">
-                          <div className="flex gap-2">
-                            <button className="text-blue-600 hover:text-blue-800">Edit</button>
-                            <button className="text-red-600 hover:text-red-800">Remove</button>
-                          </div>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-2 text-gray-900">User NimbleAI</td>
-                        <td className="px-4 py-2"><span className="inline-flex items-center text-xs text-gray-600">Offline</span></td>
-                        <td className="px-4 py-2 text-gray-700">mahak.mhk1@gmail.com</td>
-                        <td className="px-4 py-2 text-gray-700">CONTACT MANAGER</td>
-                        <td className="px-4 py-2 text-gray-700">All Teams</td>
-                        <td className="px-4 py-2">
-                          <div className="flex gap-2">
-                            <button className="text-blue-600 hover:text-blue-800">Edit</button>
-                            <button className="text-red-600 hover:text-red-800">Remove</button>
-                          </div>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-2 text-gray-900">User NimbleAI</td>
-                        <td className="px-4 py-2"><span className="inline-flex items-center text-xs text-gray-600">Offline</span></td>
-                        <td className="px-4 py-2 text-gray-700">ujhamre2@gmail.com</td>
-                        <td className="px-4 py-2 text-gray-700">ADMINISTRATOR</td>
-                        <td className="px-4 py-2 text-gray-700">All Teams</td>
-                        <td className="px-4 py-2">
-                          <div className="flex gap-2">
-                            <button className="text-blue-600 hover:text-blue-800">Edit</button>
-                            <button className="text-red-600 hover:text-red-800">Remove</button>
-                          </div>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-2 text-gray-900">Rupesh Jhamre</td>
-                        <td className="px-4 py-2"><span className="inline-flex items-center text-xs text-green-600">Online</span></td>
-                        <td className="px-4 py-2 text-gray-700">rjhamre2@gmail.com</td>
-                        <td className="px-4 py-2 text-gray-700">ADMINISTRATOR</td>
-                        <td className="px-4 py-2 text-gray-700">All Teams</td>
-                        <td className="px-4 py-2">
-                          <div className="flex gap-2">
-                            <button className="text-blue-600 hover:text-blue-800">Edit</button>
-                            <button className="text-red-600 hover:text-red-800">Remove</button>
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                {isLoadingTeamMembers ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="mt-2 text-sm text-gray-600">Loading team members...</p>
+                  </div>
+                ) : teamMembersData.length === 0 ? (
+                  <div className="text-sm text-gray-600">No team members found.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Team</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 text-sm">
+                        {teamMembersData.map((member) => {
+                          const isEditing = editingTeamMember?.member_id === member.member_id;
+                          const isDeleting = deletingTeamMember === member.member_id;
+                          
+                          if (isEditing) {
+                            const editState = editingTeamMember;
+                            return (
+                              <tr key={member.member_id} className="bg-blue-50">
+                                <td className="px-4 py-2">
+                                  <input
+                                    type="text"
+                                    defaultValue={member.name}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                    id={`edit-name-${member.member_id}`}
+                                  />
+                                </td>
+                                <td className="px-4 py-2 text-gray-700">{member.team_name}</td>
+                                <td className="px-4 py-2">
+                                  <div className="flex items-center gap-2">
+                                    <select
+                                      value={editState.selectedRole || ''}
+                                      onChange={(e) => {
+                                        setEditingTeamMember({
+                                          ...editState,
+                                          selectedRole: e.target.value,
+                                          customRole: e.target.value !== 'Other' ? '' : editState.customRole
+                                        });
+                                      }}
+                                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                                    >
+                                      <option value="">Select role</option>
+                                      <option value="Admin / Business Manager">Admin / Business Manager</option>
+                                      <option value="Sales Manager">Sales Manager</option>
+                                      <option value="Support Manager">Support Manager</option>
+                                      <option value="Marketing Manager">Marketing Manager</option>
+                                      <option value="Other">Other</option>
+                                    </select>
+                                    {editState.selectedRole === 'Other' && (
+                                      <input
+                                        type="text"
+                                        value={editState.customRole || ''}
+                                        onChange={(e) => {
+                                          setEditingTeamMember({
+                                            ...editState,
+                                            customRole: e.target.value
+                                          });
+                                        }}
+                                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                                        placeholder="Role name"
+                                      />
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-2">
+                                  <input
+                                    type="email"
+                                    defaultValue={member.email}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                    id={`edit-email-${member.member_id}`}
+                                  />
+                                </td>
+                                <td className="px-4 py-2">
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => {
+                                        const name = document.getElementById(`edit-name-${member.member_id}`).value;
+                                        const email = document.getElementById(`edit-email-${member.member_id}`).value;
+                                        const selectedRole = editState.selectedRole;
+                                        const customRole = editState.customRole;
+                                        
+                                        if (!name || !email || !selectedRole) {
+                                          alert('Please fill in all required fields');
+                                          return;
+                                        }
+                                        
+                                        if (selectedRole === 'Other' && !customRole) {
+                                          alert('Please enter a role name');
+                                          return;
+                                        }
+                                        
+                                        const finalRole = selectedRole === 'Other' ? customRole : selectedRole;
+                                        
+                                        handleSaveTeamMember({
+                                          ...member,
+                                          name,
+                                          email,
+                                          role: finalRole
+                                        });
+                                      }}
+                                      className="text-green-600 hover:text-green-800"
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingTeamMember(null)}
+                                      className="text-gray-600 hover:text-gray-800"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          }
+                          
+                          return (
+                            <tr key={member.member_id}>
+                              <td className="px-4 py-2 text-gray-900">{member.name}</td>
+                              <td className="px-4 py-2 text-gray-700">{member.team_name}</td>
+                              <td className="px-4 py-2 text-gray-700">{member.role}</td>
+                              <td className="px-4 py-2 text-gray-700">{member.email}</td>
+                              <td className="px-4 py-2">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleEditTeamMember(member)}
+                                    disabled={isDeleting}
+                                    className="text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTeamMember(member)}
+                                    disabled={isDeleting}
+                                    className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                                  >
+                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Teams</h3>
-                <div className="text-sm text-gray-600">No teams added yet. Use the "Add Team" button to create your first team.</div>
+                
+                {isLoadingTeams ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="mt-2 text-sm text-gray-600">Loading teams...</p>
+                  </div>
+                ) : teamsData.length === 0 ? (
+                  <div className="text-sm text-gray-600">No teams added yet. Use the "Add Team" button to create your first team.</div>
+                ) : (
+                  <div className="space-y-4">
+                    {teamsData.map((team) => {
+                      const isExpanded = expandedTeams.has(team.team_id);
+                      return (
+                        <div key={team.team_id} className="border border-gray-200 rounded-lg overflow-hidden">
+                          <div 
+                            className="p-4 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                            onClick={() => {
+                              const newExpanded = new Set(expandedTeams);
+                              if (isExpanded) {
+                                newExpanded.delete(team.team_id);
+                              } else {
+                                newExpanded.add(team.team_id);
+                              }
+                              setExpandedTeams(newExpanded);
+                            }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <h4 className="text-lg font-semibold text-gray-900">{team.name}</h4>
+                                <div className="mt-1 flex items-center gap-4 text-sm text-gray-600">
+                                  <span>{team.member_count} {team.member_count === '1' ? 'member' : 'members'}</span>
+                                  <span>•</span>
+                                  <span>Created: {new Date(team.created_at).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteTeam(team.team_id, team.name);
+                                  }}
+                                  disabled={deletingTeam === team.team_id}
+                                  className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                                  title="Delete team"
+                                >
+                                  {deletingTeam === team.team_id ? (
+                                    <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                                  ) : (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  )}
+                                </button>
+                                <svg 
+                                  className={`w-5 h-5 text-gray-500 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`}
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {isExpanded && (
+                            <div className="p-4 bg-white border-t border-gray-200">
+                              <div className="flex items-center justify-between mb-3">
+                                <h5 className="text-sm font-semibold text-gray-700">Team Members</h5>
+                                {!addingMember && (
+                                  <button
+                                    onClick={() => handleAddMember(team.team_id)}
+                                    className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Add Member
+                                  </button>
+                                )}
+                              </div>
+                              <div className="space-y-2">
+                                {/* Add Member Form */}
+                                {addingMember === team.team_id && (
+                                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                                    <div className="flex items-center gap-3">
+                                      <input
+                                        type="text"
+                                        value={newMemberData.name}
+                                        onChange={(e) => setNewMemberData({ ...newMemberData, name: e.target.value })}
+                                        className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                        placeholder="Name"
+                                        required
+                                      />
+                                      <input
+                                        type="email"
+                                        value={newMemberData.email}
+                                        onChange={(e) => setNewMemberData({ ...newMemberData, email: e.target.value })}
+                                        className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                        placeholder="Email"
+                                        required
+                                      />
+                                      <select
+                                        value={newMemberData.selectedRole}
+                                        onChange={(e) => {
+                                          setNewMemberData({
+                                            ...newMemberData,
+                                            selectedRole: e.target.value,
+                                            customRole: e.target.value !== 'Other' ? '' : newMemberData.customRole
+                                          });
+                                        }}
+                                        className="w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      >
+                                        <option value="">Select role</option>
+                                        <option value="Admin / Business Manager">Admin / Business Manager</option>
+                                        <option value="Sales Manager">Sales Manager</option>
+                                        <option value="Support Manager">Support Manager</option>
+                                        <option value="Marketing Manager">Marketing Manager</option>
+                                        <option value="Other">Other</option>
+                                      </select>
+                                      <div className="w-[150px]">
+                                        {newMemberData.selectedRole === 'Other' && (
+                                          <input
+                                            type="text"
+                                            value={newMemberData.customRole}
+                                            onChange={(e) => setNewMemberData({ ...newMemberData, customRole: e.target.value })}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Role name"
+                                          />
+                                        )}
+                                      </div>
+                                      <button
+                                        onClick={() => handleSaveNewMember(team.team_id)}
+                                        className="px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 whitespace-nowrap"
+                                      >
+                                        Add
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setAddingMember(null);
+                                          setNewMemberData({ name: '', email: '', selectedRole: '', customRole: '' });
+                                        }}
+                                        className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 whitespace-nowrap"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                                {team.members && team.members.length > 0 && team.members.map((member, index) => {
+                                  const isEditing = editingMember?.teamId === team.team_id && editingMember?.memberIndex === index;
+                                  const isDeleting = deletingMember?.teamId === team.team_id && deletingMember?.memberIndex === index;
+                                  
+                                  if (isEditing) {
+                                    const editState = editingMember;
+                                    return (
+                                      <div key={index} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                        <div className="flex items-center gap-3">
+                                          <input
+                                            type="text"
+                                            defaultValue={member.name}
+                                            className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                            placeholder="Name"
+                                            id={`edit-name-${team.team_id}-${index}`}
+                                          />
+                                          <input
+                                            type="email"
+                                            defaultValue={member.email}
+                                            className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                            placeholder="Email"
+                                            id={`edit-email-${team.team_id}-${index}`}
+                                          />
+                                          <select
+                                            value={editState.selectedRole || ''}
+                                            onChange={(e) => {
+                                              setEditingMember({
+                                                ...editState,
+                                                selectedRole: e.target.value,
+                                                customRole: e.target.value !== 'Other' ? '' : editState.customRole
+                                              });
+                                            }}
+                                            className="w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          >
+                                            <option value="">Select role</option>
+                                            <option value="Admin / Business Manager">Admin / Business Manager</option>
+                                            <option value="Sales Manager">Sales Manager</option>
+                                            <option value="Support Manager">Support Manager</option>
+                                            <option value="Marketing Manager">Marketing Manager</option>
+                                            <option value="Other">Other</option>
+                                          </select>
+                                          <div className="w-[150px]">
+                                            {editState.selectedRole === 'Other' && (
+                                              <input
+                                                type="text"
+                                                value={editState.customRole || ''}
+                                                onChange={(e) => {
+                                                  setEditingMember({
+                                                    ...editState,
+                                                    customRole: e.target.value
+                                                  });
+                                                }}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Role name"
+                                              />
+                                            )}
+                                          </div>
+                                          <button
+                                            onClick={() => {
+                                              const name = document.getElementById(`edit-name-${team.team_id}-${index}`).value;
+                                              const email = document.getElementById(`edit-email-${team.team_id}-${index}`).value;
+                                              const selectedRole = editState.selectedRole;
+                                              const customRole = editState.customRole;
+                                              
+                                              if (!name || !email || !selectedRole) {
+                                                alert('Please fill in all required fields');
+                                                return;
+                                              }
+                                              
+                                              if (selectedRole === 'Other' && !customRole) {
+                                                alert('Please enter a role name');
+                                                return;
+                                              }
+                                              
+                                              const finalRole = selectedRole === 'Other' ? customRole : selectedRole;
+                                              
+                                              handleSaveMember(team.team_id, index, {
+                                                ...member,
+                                                name,
+                                                email,
+                                                role: finalRole
+                                              });
+                                            }}
+                                            className="px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 whitespace-nowrap"
+                                          >
+                                            Save
+                                          </button>
+                                          <button
+                                            onClick={() => setEditingMember(null)}
+                                            className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 whitespace-nowrap"
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  return (
+                                    <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                      <span className="font-medium text-gray-900 flex-1 min-w-[200px]">{member.name}</span>
+                                      <span className="text-sm text-gray-600 flex-1 min-w-[200px]">{member.email}</span>
+                                      <span className="w-[200px] px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm text-center">{member.role}</span>
+                                      <div className="w-[150px]"></div>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={() => handleEditMember(team.team_id, index, member)}
+                                          disabled={isDeleting}
+                                          className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
+                                          title="Edit member"
+                                        >
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                          </svg>
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteMember(team.team_id, index, member)}
+                                          disabled={isDeleting}
+                                          className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                                          title="Delete member"
+                                        >
+                                          {isDeleting ? (
+                                            <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                                          ) : (
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                          )}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Add Team Modal */}
+            {isAddTeamModalOpen && (
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    setIsAddTeamModalOpen(false);
+                    setTeamFormData({
+                      teamName: '',
+                      customTeamName: '',
+                      members: Array(5).fill(null).map(() => ({ name: '', email: '', role: '', customRole: '' }))
+                    });
+                  }
+                }}
+              >
+                <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-bold text-gray-900">Add Team</h2>
+                      <button
+                        onClick={() => {
+                          setIsAddTeamModalOpen(false);
+                          setTeamFormData({
+                            teamName: '',
+                            customTeamName: '',
+                            members: Array(5).fill(null).map(() => ({ name: '', email: '', role: '', customRole: '' }))
+                          });
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      setIsSubmittingTeam(true);
+                      setTeamError(null);
+                      
+                      try {
+                        // Get owner_id (db_id)
+                        const dbId = userData?.db_id || user?.db_id;
+                        if (!dbId) {
+                          throw new Error('User ID not found. Please try again.');
+                        }
+
+                        // Determine team name
+                        const teamName = teamFormData.teamName === 'Other' 
+                          ? teamFormData.customTeamName 
+                          : teamFormData.teamName;
+
+                        if (!teamName) {
+                          throw new Error('Team name is required.');
+                        }
+
+                        // Filter and format members (only include non-empty members)
+                        const members = teamFormData.members
+                          .filter(member => member.name && member.email && member.role)
+                          .map(member => ({
+                            name: member.name,
+                            email: member.email,
+                            role: member.role === 'Other' ? member.customRole : member.role
+                          }));
+
+                        if (members.length === 0) {
+                          throw new Error('At least one team member is required.');
+                        }
+
+                        // Get DB Server URL
+                        const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+                        if (!dbServerUrl) {
+                          throw new Error('Server configuration error. Please contact support.');
+                        }
+
+                        const apiUrl = `${dbServerUrl}/api/teams`;
+                        
+                        console.log('🌐 [Create Team] Calling API:', apiUrl);
+                        console.log('📤 [Create Team] Request data:', {
+                          owner_id: dbId,
+                          name: teamName,
+                          members: members
+                        });
+
+                        const response = await fetch(apiUrl, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            owner_id: dbId,
+                            name: teamName,
+                            members: members
+                          }),
+                        });
+
+                        if (!response.ok) {
+                          const errorData = await response.json().catch(() => ({}));
+                          throw new Error(errorData.error || `Failed to create team: ${response.status} ${response.statusText}`);
+                        }
+
+                        const result = await response.json();
+                        console.log('✅ [Create Team] Team created successfully:', result);
+
+                        // Close modal and reset form
+                        setIsAddTeamModalOpen(false);
+                        setTeamFormData({
+                          teamName: '',
+                          customTeamName: '',
+                          members: Array(5).fill(null).map(() => ({ name: '', email: '', role: '', customRole: '' }))
+                        });
+
+                        // Refresh teams list
+                        await fetchTeams();
+                      } catch (error) {
+                        console.error('❌ [Create Team] Error:', error);
+                        setTeamError(error.message || 'Failed to create team. Please try again.');
+                        setIsSubmittingTeam(false);
+                      }
+                    }} className="space-y-6">
+                      {/* Team Name */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Team Name <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          required
+                          value={teamFormData.teamName}
+                          onChange={(e) => setTeamFormData({ ...teamFormData, teamName: e.target.value, customTeamName: '' })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select team name</option>
+                          <option value="Marketing">Marketing</option>
+                          <option value="Sales">Sales</option>
+                          <option value="Support">Support</option>
+                          <option value="Business owner">Business owner</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+
+                      {/* Custom Team Name (if Other is selected) */}
+                      {teamFormData.teamName === 'Other' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Team Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={teamFormData.customTeamName}
+                            onChange={(e) => setTeamFormData({ ...teamFormData, customTeamName: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter team name"
+                          />
+                        </div>
+                      )}
+
+                      {/* Error Message */}
+                      {teamError && (
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                          <div className="flex items-start">
+                            <svg className="w-5 h-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-red-800">
+                                {teamError}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setTeamError(null)}
+                              className="ml-2 text-red-600 hover:text-red-700"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Members Section */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-4">
+                          Team Members (up to 5) <span className="text-red-500">*</span>
+                        </label>
+                        
+                        <div className="space-y-3">
+                          {teamFormData.members.map((member, index) => (
+                            <div key={index} className="grid grid-cols-12 gap-3 items-start">
+                              {/* Member Name */}
+                              <div className="col-span-3">
+                                <input
+                                  type="text"
+                                  value={member.name}
+                                  onChange={(e) => {
+                                    const newMembers = [...teamFormData.members];
+                                    newMembers[index].name = e.target.value;
+                                    setTeamFormData({ ...teamFormData, members: newMembers });
+                                  }}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Name"
+                                />
+                              </div>
+
+                              {/* Member Email */}
+                              <div className="col-span-3">
+                                <input
+                                  type="email"
+                                  value={member.email}
+                                  onChange={(e) => {
+                                    const newMembers = [...teamFormData.members];
+                                    newMembers[index].email = e.target.value;
+                                    setTeamFormData({ ...teamFormData, members: newMembers });
+                                  }}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Email"
+                                />
+                              </div>
+
+                              {/* Member Role */}
+                              <div className="col-span-3">
+                                <select
+                                  value={member.role}
+                                  onChange={(e) => {
+                                    const newMembers = [...teamFormData.members];
+                                    newMembers[index].role = e.target.value;
+                                    newMembers[index].customRole = '';
+                                    setTeamFormData({ ...teamFormData, members: newMembers });
+                                  }}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="">Select role</option>
+                                  <option value="Admin / Business Manager">Admin / Business Manager</option>
+                                  <option value="Sales Manager">Sales Manager</option>
+                                  <option value="Support Manager">Support Manager</option>
+                                  <option value="Marketing Manager">Marketing Manager</option>
+                                  <option value="Other">Other</option>
+                                </select>
+                              </div>
+
+                              {/* Custom Role (if Other is selected) */}
+                              {member.role === 'Other' ? (
+                                <div className="col-span-2">
+                                  <input
+                                    type="text"
+                                    required={member.role === 'Other'}
+                                    value={member.customRole}
+                                    onChange={(e) => {
+                                      const newMembers = [...teamFormData.members];
+                                      newMembers[index].customRole = e.target.value;
+                                      setTeamFormData({ ...teamFormData, members: newMembers });
+                                    }}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Role name"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="col-span-2"></div>
+                              )}
+
+                              {/* Clear Row Button */}
+                              <div className="col-span-1 flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newMembers = [...teamFormData.members];
+                                    newMembers[index] = { name: '', email: '', role: '', customRole: '' };
+                                    setTeamFormData({ ...teamFormData, members: newMembers });
+                                  }}
+                                  className="text-gray-400 hover:text-red-600 transition-colors"
+                                  title="Clear row"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Form Actions */}
+                      <div className="flex justify-end gap-3 pt-4 border-t">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAddTeamModalOpen(false);
+                            setTeamFormData({
+                              teamName: '',
+                              customTeamName: '',
+                              members: Array(5).fill(null).map(() => ({ name: '', email: '', role: '', customRole: '' }))
+                            });
+                          }}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSubmittingTeam}
+                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isSubmittingTeam ? 'Creating...' : 'Create Team'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -5283,6 +6617,48 @@ const Dashboard = () => {
       <OnboardingBanner userData={userData} />
       */}
       
+      {/* Email Verification Banner */}
+      {isEmailVerified === false && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3 flex-1">
+              <p className="text-sm text-yellow-700">
+                Please verify your email by clicking on the link sent to your email address
+              </p>
+            </div>
+            <div className="ml-auto pl-3">
+              <button
+                onClick={async () => {
+                  if (isCheckingEmailVerification || !firebaseApp) return;
+                  
+                  setIsCheckingEmailVerification(true);
+                  try {
+                    const auth = getAuth(firebaseApp);
+                    const firebaseUser = auth.currentUser;
+                    if (firebaseUser) {
+                      await firebaseUser.reload();
+                      setIsEmailVerified(firebaseUser.emailVerified);
+                    }
+                  } catch (error) {
+                    console.error("Error reloading user data:", error);
+                  } finally {
+                    setIsCheckingEmailVerification(false);
+                  }
+                }}
+                className="text-sm text-yellow-700 hover:text-yellow-900 underline"
+                disabled={isCheckingEmailVerification}
+              >
+                {isCheckingEmailVerification ? 'Checking...' : 'Refresh'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="flex flex-col lg:flex-row">
         {/* Left Sidebar */}

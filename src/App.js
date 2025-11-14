@@ -3,12 +3,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import FeaturesSection from './components/FeaturesSection';
 import HeroSection from './components/HeroSection';
 import WhatsAppEmbeddedSignup from './components/WhatsAppEmbeddedSignup';
-import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import SignInButton from './components/SignInButton';
 import Dashboard from './components/Dashboard/Dashboard';
 import LiveChat from './components/LiveChat';
 import { useAuth } from './hooks/useAuth';
 import WhatsAppAIAgentSection from './components/WhatsAppAIAgentSection';
+import StartNowPage from './components/StartNowPage';
+import LoginPage from './components/LoginPage';
 
 // Custom Hook for Intersection Observer to trigger animations on scroll
 const useIntersectionObserver = (options) => {
@@ -238,6 +240,8 @@ function App() {
 							<LiveChat isDarkMode={isDarkMode} />
 						</ProtectedRoute>
 					} />
+					<Route path="/start-now" element={<StartNowPage isDarkMode={isDarkMode} />} />
+					<Route path="/login" element={<LoginPage isDarkMode={isDarkMode} />} />
 					<Route path="/privacy-policy" element={<PrivacyPolicy isDarkMode={isDarkMode} />} />
 					<Route path="/terms-of-service" element={<TermsOfService isDarkMode={isDarkMode} />} />
 					<Route path="/delete-user-data" element={<UserDataDeletion isDarkMode={isDarkMode} />} />
@@ -272,6 +276,17 @@ function App() {
 
 // Navbar Component - Updated for Black & White theme with centered logo and new name
 function Navbar({ toggleDarkMode, isDarkMode }) {
+	const { user } = useAuth();
+	const navigate = useNavigate();
+	const location = useLocation();
+	
+	const handleStartNow = () => {
+		navigate('/start-now');
+	};
+
+	// Hide buttons on start-now and login pages
+	const hideButtons = location.pathname === '/start-now' || location.pathname === '/login';
+
 	return (
 		<nav className={`sticky top-0 z-50 border-b ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} animate-fadeIn`}>
 			<div className='container mx-auto px-4 py-4 flex items-center'>
@@ -313,7 +328,19 @@ function Navbar({ toggleDarkMode, isDarkMode }) {
 							</svg>
 						)}
 					</button>
-					<SignInButton />
+					{!hideButtons && !user && (
+						<button
+							onClick={handleStartNow}
+							className={`px-4 py-2 rounded font-medium transition-colors duration-200 ${
+								isDarkMode 
+									? 'bg-green-600 text-white hover:bg-green-700' 
+									: 'bg-green-600 text-white hover:bg-green-700'
+							}`}
+						>
+							Start now
+						</button>
+					)}
+					{!hideButtons && <SignInButton />}
 				</div>
 			</div>
 		</nav>
