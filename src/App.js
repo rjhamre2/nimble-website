@@ -11,6 +11,7 @@ import { useAuth } from './hooks/useAuth';
 import WhatsAppAIAgentSection from './components/WhatsAppAIAgentSection';
 import StartNowPage from './components/StartNowPage';
 import LoginPage from './components/LoginPage';
+import AcceptInvite from './components/AcceptInvite';
 
 // Custom Hook for Intersection Observer to trigger animations on scroll
 const useIntersectionObserver = (options) => {
@@ -240,6 +241,7 @@ function App() {
 							<LiveChat isDarkMode={isDarkMode} />
 						</ProtectedRoute>
 					} />
+					<Route path="/accept-invite/:token" element={<AcceptInvite />} />
 					<Route path="/start-now" element={<StartNowPage isDarkMode={isDarkMode} />} />
 					<Route path="/login" element={<LoginPage isDarkMode={isDarkMode} />} />
 					<Route path="/privacy-policy" element={<PrivacyPolicy isDarkMode={isDarkMode} />} />

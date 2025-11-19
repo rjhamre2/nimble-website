@@ -1596,16 +1596,19 @@ const Dashboard = () => {
 
       // If user exists (success: true with data), don't show welcome banner
       // If user not found (success: false with error "User not found"), show welcome banner
-      const shouldShowWelcome = result.success === false && result.error === 'User not found';
+      // BUT skip welcome modal if user came from an invitation link
+      const invitationToken = sessionStorage.getItem('invitationToken');
+      const shouldShowWelcome = result.success === false && result.error === 'User not found' && !invitationToken;
       
       console.log('🎯 Welcome modal decision:', {
         shouldShowWelcome,
         success: result.success,
         hasData: !!result.data,
-        error: result.error
+        error: result.error,
+        hasInvitationToken: !!invitationToken
       });
       
-      // Only show welcome modal if user not found AND modal is not already open AND not currently submitting
+      // Only show welcome modal if user not found AND no invitation token AND modal is not already open AND not currently submitting
       if (shouldShowWelcome && !isWelcomeModalOpen && !isSubmittingWelcome) {
         // Set default country and dial code when opening modal
         if (!welcomeCountry) {
@@ -1613,6 +1616,14 @@ const Dashboard = () => {
           setWelcomeDialCode('+91');
         }
         setIsWelcomeModalOpen(true);
+      }
+      
+      // Clear invitation token after checking (whether welcome modal is shown or not)
+      // This ensures invited users skip the welcome modal
+      if (invitationToken) {
+        console.log('✅ Clearing invitation token after welcome modal check');
+        sessionStorage.removeItem('invitationToken');
+        sessionStorage.removeItem('invitationEmail');
       }
     } catch (error) {
       console.error('❌ Error checking user for welcome modal:', error);
@@ -3431,6 +3442,12 @@ const Dashboard = () => {
                                 <h4 className="text-lg font-semibold text-gray-900">{team.name}</h4>
                                 <div className="mt-1 flex items-center gap-4 text-sm text-gray-600">
                                   <span>{team.member_count} {team.member_count === '1' ? 'member' : 'members'}</span>
+                                  {team.invitations && team.invitations.length > 0 && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{team.invitations.length} {team.invitations.length === 1 ? 'invitation' : 'invitations'}</span>
+                                    </>
+                                  )}
                                   <span>•</span>
                                   <span>Created: {new Date(team.created_at).toLocaleDateString()}</span>
                                 </div>
@@ -3682,6 +3699,49 @@ const Dashboard = () => {
                                     </div>
                                   );
                                 })}
+                                
+                                {/* Invited Users Section */}
+                                {team.invitations && team.invitations.length > 0 && (
+                                  <>
+                                    <div className="mt-4 pt-4 border-t border-gray-200">
+                                      <h5 className="text-sm font-semibold text-gray-700 mb-3">Invited Users</h5>
+                                      <div className="space-y-2">
+                                        {team.invitations.map((invitation, invIndex) => {
+                                          const isExpired = new Date(invitation.expires_at) < new Date();
+                                          const statusColor = invitation.status === 'Accepted' 
+                                            ? 'bg-green-100 text-green-800' 
+                                            : invitation.status === 'Pending' && !isExpired
+                                            ? 'bg-yellow-100 text-yellow-800'
+                                            : 'bg-red-100 text-red-800';
+                                          
+                                          return (
+                                            <div key={invitation.invitation_id || invIndex} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                              <span className="font-medium text-gray-900 flex-1 min-w-[200px]">{invitation.invited_email}</span>
+                                              <span className="text-sm text-gray-600 flex-1 min-w-[200px]">
+                                                {invitation.accepted_at 
+                                                  ? `Accepted: ${new Date(invitation.accepted_at).toLocaleDateString()}`
+                                                  : `Invited: ${new Date(invitation.created_at).toLocaleDateString()}`
+                                                }
+                                              </span>
+                                              <span className={`w-[200px] px-2 py-1 ${statusColor} rounded text-sm text-center`}>
+                                                {invitation.status} {isExpired && invitation.status === 'Pending' ? '(Expired)' : ''}
+                                              </span>
+                                              <span className="w-[150px] text-xs text-gray-500 text-center">
+                                                {isExpired && invitation.status === 'Pending' 
+                                                  ? 'Expired'
+                                                  : invitation.expires_at 
+                                                    ? `Expires: ${new Date(invitation.expires_at).toLocaleDateString()}`
+                                                    : ''
+                                                }
+                                              </span>
+                                              <div className="w-[100px]"></div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             </div>
                           )}

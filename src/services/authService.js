@@ -44,6 +44,20 @@ export const signInWithGoogleLambda = async () => {
             
             const userInfo = await userInfoResponse.json();
 
+            // Check for invitation token in sessionStorage
+            const invitationToken = sessionStorage.getItem('invitationToken');
+            
+            // Prepare request body
+            const requestBody = {
+              userInfo: userInfo
+            };
+            
+            // Include invitation token if present
+            if (invitationToken) {
+              requestBody.invitationToken = invitationToken;
+              console.log('📧 Including invitation token in Google sign-in request');
+            }
+
             // Send user info to Lambda (not the token)
             const lambdaResponse = await fetch(apiConfig.endpoints.auth.google(), {
               method: 'POST',
@@ -51,9 +65,7 @@ export const signInWithGoogleLambda = async () => {
                 'Content-Type': 'application/json',
                 'Origin': window.location.origin,
               },
-              body: JSON.stringify({
-                userInfo: userInfo
-              }),
+              body: JSON.stringify(requestBody),
             });
 
             if (!lambdaResponse.ok) {

@@ -7,6 +7,7 @@ import { apiConfig } from '../config/api';
 const StartNowPage = ({ isDarkMode }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -17,13 +18,52 @@ const StartNowPage = ({ isDarkMode }) => {
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
 
+  // Check for invitation email from sessionStorage when component mounts
+  React.useEffect(() => {
+    const invitationEmail = sessionStorage.getItem('invitationEmail');
+    const invitationToken = sessionStorage.getItem('invitationToken');
+    
+    if (invitationEmail) {
+      console.log('📧 Pre-filling email from invitation:', invitationEmail);
+      setFormData(prev => {
+        // Only update if email field is empty
+        if (!prev.businessEmail) {
+          return {
+            ...prev,
+            businessEmail: invitationEmail
+          };
+        }
+        return prev;
+      });
+    }
+    
+    if (invitationToken) {
+      console.log('🔑 Invitation token found in sessionStorage');
+    }
+  }, []);
+
   const handleGoogleSignIn = async () => {
     setIsGoogleSigningIn(true);
     try {
+      // Check for invitation token before sign-in
+      const invitationToken = sessionStorage.getItem('invitationToken');
+      
+      // Note: For Google sign-in, the invitation token needs to be handled by the backend
+      // during the authentication process. The backend should check for the token
+      // in the request or we need to pass it separately after authentication.
+      // For now, we'll clear it after successful sign-in and let the backend handle it
+      // if it's configured to do so.
+      
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Sign-in cancelled or timed out')), 5000);
       });
-      await Promise.race([signInWithGoogleLambda(), timeoutPromise]);
+      const authData = await Promise.race([signInWithGoogleLambda(), timeoutPromise]);
+      
+      // Note: We don't clear invitation token here - it will be cleared by Dashboard
+      // after it checks whether to show the welcome modal
+      if (invitationToken) {
+        console.log('✅ Google sign-in completed with invitation token - will be cleared by Dashboard after welcome modal check');
+      }
     } catch (error) {
       console.error('Google sign in error:', error);
       setIsGoogleSigningIn(false);
@@ -43,12 +83,21 @@ const StartNowPage = ({ isDarkMode }) => {
       const authBaseURL = apiConfig.authConfig.baseURL;
       const signupURL = `${authBaseURL}/signup`;
       
+      // Check for invitation token
+      const invitationToken = sessionStorage.getItem('invitationToken');
+      
       // Prepare request body
       const requestBody = {
         email: formData.businessEmail,
         password: formData.password,
         displayName: displayName
       };
+      
+      // Include invitation token if present
+      if (invitationToken) {
+        requestBody.invitationToken = invitationToken;
+        console.log('📧 Including invitation token in signup request');
+      }
       
       console.log('Calling signup API:', signupURL, requestBody);
       
@@ -78,6 +127,13 @@ const StartNowPage = ({ isDarkMode }) => {
           console.log('✅ Stored firstTime flag:', result.firstTime ? '1' : '0');
           // Dispatch specific event for firstTime flag
           window.dispatchEvent(new CustomEvent('firstTimeSet', { detail: { firstTime: result.firstTime } }));
+        }
+        
+        // Note: We don't clear invitation token here - it will be cleared by Dashboard
+        // after it checks whether to show the welcome modal
+        const invitationToken = sessionStorage.getItem('invitationToken');
+        if (invitationToken) {
+          console.log('✅ Signup completed with invitation token - will be cleared by Dashboard after welcome modal check');
         }
         
         // Dispatch custom event to notify auth state change
