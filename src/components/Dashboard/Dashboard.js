@@ -172,6 +172,7 @@ const Dashboard = () => {
   const [editingTeamMember, setEditingTeamMember] = useState(null);
   const [deletingTeamMember, setDeletingTeamMember] = useState(null);
   const [deletingTeam, setDeletingTeam] = useState(null);
+  const [deletingInvitation, setDeletingInvitation] = useState(null);
   
   // Account details state
   const [accountDetailsTab, setAccountDetailsTab] = useState('profile');
@@ -638,6 +639,65 @@ const Dashboard = () => {
       console.error('❌ [Delete Member] Error:', error);
       alert(`Failed to remove member: ${error.message}`);
       setDeletingMember(null);
+    }
+  };
+
+  // Handle delete invitation
+  const handleDeleteInvitation = async (teamId, invitationId, invitedEmail) => {
+    if (!window.confirm(`Are you sure you want to cancel the invitation for ${invitedEmail}?`)) {
+      return;
+    }
+
+    setDeletingInvitation({ teamId, invitationId });
+    
+    try {
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('Server configuration error.');
+      }
+
+      const apiUrl = `${dbServerUrl}/api/invitations/${invitationId}`;
+      
+      console.log('🌐 [Delete Invitation] Calling API:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to delete invitation: ${response.status} ${response.statusText}`);
+      }
+
+      console.log('✅ [Delete Invitation] Invitation deleted successfully');
+
+      // Refresh teams data to get the updated invitation list
+      const dbId = userData?.db_id || user?.db_id;
+      if (dbId) {
+        const teamsUrl = `${dbServerUrl}/api/teams/${dbId}`;
+        const teamsResponse = await fetch(teamsUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (teamsResponse.ok) {
+          const teamsResult = await teamsResponse.json();
+          if (teamsResult.success && teamsResult.data) {
+            setTeamsData(teamsResult.data);
+          }
+        }
+      }
+
+      setDeletingInvitation(null);
+    } catch (error) {
+      console.error('❌ [Delete Invitation] Error:', error);
+      alert(`Failed to cancel invitation: ${error.message}`);
+      setDeletingInvitation(null);
     }
   };
 
@@ -3716,7 +3776,9 @@ const Dashboard = () => {
                                           
                                           return (
                                             <div key={invitation.invitation_id || invIndex} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                              <span className="font-medium text-gray-900 flex-1 min-w-[200px]">{invitation.invited_email}</span>
+                                              <span className="font-medium text-gray-900 flex-1 min-w-[200px]">{invitation.name || invitation.invited_name || 'N/A'}</span>
+                                              <span className="text-sm text-gray-600 flex-1 min-w-[200px]">{invitation.invited_email}</span>
+                                              <span className="w-[200px] px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm text-center">{invitation.role || invitation.invited_role || 'N/A'}</span>
                                               <span className="text-sm text-gray-600 flex-1 min-w-[200px]">
                                                 {invitation.accepted_at 
                                                   ? `Accepted: ${new Date(invitation.accepted_at).toLocaleDateString()}`
@@ -3734,7 +3796,22 @@ const Dashboard = () => {
                                                     : ''
                                                 }
                                               </span>
-                                              <div className="w-[100px]"></div>
+                                              <div className="w-[100px] flex justify-end">
+                                                <button
+                                                  onClick={() => handleDeleteInvitation(team.team_id, invitation.invitation_id, invitation.invited_email)}
+                                                  disabled={deletingInvitation?.teamId === team.team_id && deletingInvitation?.invitationId === invitation.invitation_id}
+                                                  className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                                                  title="Cancel invitation"
+                                                >
+                                                  {deletingInvitation?.teamId === team.team_id && deletingInvitation?.invitationId === invitation.invitation_id ? (
+                                                    <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                                                  ) : (
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                  )}
+                                                </button>
+                                              </div>
                                             </div>
                                           );
                                         })}
