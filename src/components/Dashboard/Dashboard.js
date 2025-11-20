@@ -128,7 +128,7 @@ const Dashboard = () => {
   const [editingContactId, setEditingContactId] = useState(null);
   const [contactFirstName, setContactFirstName] = useState('');
   const [contactLastName, setContactLastName] = useState('');
-  const [contactPhones, setContactPhones] = useState([{ phone: '', type: 'MOBILE' }]);
+  const [contactPhones, setContactPhones] = useState([{ phone: '', type: 'MOBILE', countryCode: 'IN', dialCode: '+91' }]);
   const [contactEmail, setContactEmail] = useState('');
   const [contactEmailType, setContactEmailType] = useState('WORK');
   const [contactAddresses, setContactAddresses] = useState([]);
@@ -203,7 +203,7 @@ const Dashboard = () => {
   const [mapping, setMapping] = useState({});
   const [csvParseError, setCsvParseError] = useState('');
   const [importPreview, setImportPreview] = useState([]);
-  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
+  const [importProgress, setImportProgress] = useState({ success: 0, failed: 0, total: 0 });
   const [importResults, setImportResults] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
   
@@ -1226,7 +1226,7 @@ const Dashboard = () => {
   const resetContactForm = () => {
     setContactFirstName('');
     setContactLastName('');
-    setContactPhones([{ phone: '', type: 'MOBILE' }]);
+    setContactPhones([{ phone: '', type: 'MOBILE', countryCode: 'IN', dialCode: '+91' }]);
     setContactEmail('');
     setContactEmailType('WORK');
     setContactAddresses([]);
@@ -1238,6 +1238,45 @@ const Dashboard = () => {
     setContactError('');
     setContactSuccess('');
     setEditingContactId(null);
+  };
+
+  // Helper function to get dial code from country code
+  const getDialCodeFromCountry = (countryCode) => {
+    const countryDialCodes = {
+      'IN': '+91',
+      'US': '+1',
+      'GB': '+44',
+      'CA': '+1',
+      'AU': '+61',
+      'DE': '+49',
+      'FR': '+33',
+      'IT': '+39',
+      'ES': '+34',
+      'BR': '+55',
+      'MX': '+52',
+      'JP': '+81',
+      'CN': '+86',
+      'KR': '+82',
+      'SG': '+65',
+      'MY': '+60',
+      'TH': '+66',
+      'ID': '+62',
+      'PH': '+63',
+      'VN': '+84',
+      'HK': '+852',
+      'TW': '+886',
+      'NZ': '+64',
+      'AE': '+971',
+      'SA': '+966',
+      'ZA': '+27',
+      'RU': '+7',
+      'PK': '+92',
+      'BD': '+880',
+      'LK': '+94',
+      'NP': '+977',
+      'MM': '+95'
+    };
+    return countryDialCodes[countryCode] || '+1';
   };
 
   const addAddress = () => {
@@ -1263,7 +1302,7 @@ const Dashboard = () => {
   };
 
   const addPhone = () => {
-    setContactPhones([...contactPhones, { phone: '', type: 'MOBILE' }]);
+    setContactPhones([...contactPhones, { phone: '', type: 'MOBILE', countryCode: 'IN', dialCode: '+91' }]);
   };
 
   const removePhone = (index) => {
@@ -1273,16 +1312,27 @@ const Dashboard = () => {
   const updatePhone = (index, field, value) => {
     const newPhones = [...contactPhones];
     newPhones[index] = { ...newPhones[index], [field]: value };
+    
+    // If country code changes, update dial code
+    if (field === 'countryCode') {
+      newPhones[index].dialCode = getDialCodeFromCountry(value);
+    }
+    
     setContactPhones(newPhones);
   };
 
   // Contact utility functions
   const getContactDisplayName = (contact) => {
-    if (contact.first_name || contact.last_name) {
-      return `${contact.first_name || ''} ${contact.last_name || ''}`.trim();
+    const contactData = contact.contact_data || {};
+    const name = contactData.name || {};
+    if (name.first_name || name.last_name) {
+      return `${name.first_name || ''} ${name.last_name || ''}`.trim() || name.formatted_name || 'No Name';
     }
-    if (contact.phones && contact.phones.length > 0) {
-      return contact.phones[0].phone || 'Unknown';
+    if (name.formatted_name) {
+      return name.formatted_name;
+    }
+    if (contactData.phones && contactData.phones.length > 0) {
+      return contactData.phones[0].phone || 'Unknown';
     }
     return 'Unknown Contact';
   };
@@ -1313,26 +1363,163 @@ const Dashboard = () => {
     return phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
   };
 
+  // Fetch contacts data
+  const fetchContacts = async () => {
+    const dbId = userData?.db_id || user?.db_id;
+    if (!dbId) {
+      console.log('⚠️ No db_id found, cannot fetch contacts');
+      return;
+    }
+
+    setContactsLoading(true);
+    setContactsError(null);
+    try {
+      const apiUrl = apiConfig.endpoints.contacts.getUserContacts(dbId);
+      
+      console.log('🌐 [Fetch Contacts] Calling API:', apiUrl);
+
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch contacts: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [Fetch Contacts] Contacts fetched successfully:', result);
+
+      if (result.success && result.data) {
+        setContacts(result.data);
+        setContactsPagination(prev => ({
+          ...prev,
+          total: result.data.length
+        }));
+      } else {
+        setContacts([]);
+        setContactsPagination(prev => ({
+          ...prev,
+          total: 0
+        }));
+      }
+    } catch (error) {
+      console.error('❌ [Fetch Contacts] Error:', error);
+      setContactsError(error.message || 'Failed to fetch contacts');
+      setContacts([]);
+    } finally {
+      setContactsLoading(false);
+    }
+  };
+
+  // Fetch contacts when contacts tab is active
+  useEffect(() => {
+    if (activeTab !== 'contacts') {
+      return;
+    }
+
+    fetchContacts();
+  }, [activeTab, userData, user]);
+
   // Contact handlers
-  const handleAddContact = async () => {
+  const handleAddContact = async (e) => {
+    e.preventDefault();
+    
     setIsSubmittingContact(true);
     setContactError('');
     setContactSuccess('');
     
     try {
-      // Implementation would call API to add contact
+      // Validate required fields
+      if (!contactFirstName || !contactPhones[0]?.phone) {
+        throw new Error('First name and phone number are required');
+      }
+
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('Server configuration error.');
+      }
+
+      // Build contact data structure
+      const contactData = {
+        name: {
+          first_name: contactFirstName,
+          last_name: contactLastName || '',
+          formatted_name: `${contactFirstName} ${contactLastName || ''}`.trim()
+        },
+        phones: contactPhones.filter(p => p.phone).map(p => ({
+          phone: p.dialCode ? `${p.dialCode} ${p.phone}`.trim() : p.phone,
+          type: p.type || 'MOBILE'
+        })),
+        emails: contactEmail ? [{
+          email: contactEmail,
+          type: contactEmailType || 'WORK'
+        }] : [],
+        addresses: contactAddresses.filter(addr => addr.street || addr.city),
+        org: {
+          company: contactCompany || '',
+          department: contactDepartment || '',
+          title: contactTitle || ''
+        },
+        urls: contactUrl ? [{
+          url: contactUrl,
+          type: contactUrlType || 'WORK'
+        }] : [],
+        birthday: contactBirthday || '',
+        lead_stage: contactLeadStage || 'NEW'
+      };
+
+      const apiUrl = apiConfig.endpoints.contacts.createContact();
+      
+      console.log('🌐 [Add Contact] Calling API:', apiUrl);
+      console.log('📤 [Add Contact] Request data:', {
+        user_id: userData?.db_id || user?.db_id,
+        contact_data: contactData
+      });
+
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify({
+          user_id: userData?.db_id || user?.db_id,
+          contact_data: contactData
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to add contact: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [Add Contact] Contact added successfully:', result);
+
       setContactSuccess('Contact added successfully');
       resetContactForm();
       setIsAddContactModalOpen(false);
+      
       // Refresh contacts list
+      await fetchContacts();
     } catch (error) {
+      console.error('❌ [Add Contact] Error:', error);
       setContactError(error.message || 'Failed to add contact');
     } finally {
       setIsSubmittingContact(false);
     }
   };
 
-  const handleUpdateContact = async () => {
+  const handleUpdateContact = async (e) => {
+    e.preventDefault();
+    
     if (!editingContactId) return;
     
     setIsSubmittingContact(true);
@@ -1340,12 +1527,80 @@ const Dashboard = () => {
     setContactSuccess('');
     
     try {
-      // Implementation would call API to update contact
+      // Validate required fields
+      if (!contactFirstName || !contactPhones[0]?.phone) {
+        throw new Error('First name and phone number are required');
+      }
+
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('Server configuration error.');
+      }
+
+      // Build contact data structure
+      const contactData = {
+        name: {
+          first_name: contactFirstName,
+          last_name: contactLastName || '',
+          formatted_name: `${contactFirstName} ${contactLastName || ''}`.trim()
+        },
+        phones: contactPhones.filter(p => p.phone).map(p => ({
+          phone: p.dialCode ? `${p.dialCode} ${p.phone}`.trim() : p.phone,
+          type: p.type || 'MOBILE'
+        })),
+        emails: contactEmail ? [{
+          email: contactEmail,
+          type: contactEmailType || 'WORK'
+        }] : [],
+        addresses: contactAddresses.filter(addr => addr.street || addr.city),
+        org: {
+          company: contactCompany || '',
+          department: contactDepartment || '',
+          title: contactTitle || ''
+        },
+        urls: contactUrl ? [{
+          url: contactUrl,
+          type: contactUrlType || 'WORK'
+        }] : [],
+        birthday: contactBirthday || '',
+        lead_stage: contactLeadStage || 'NEW'
+      };
+
+      const apiUrl = apiConfig.endpoints.contacts.updateContact(editingContactId);
+      
+      console.log('🌐 [Update Contact] Calling API:', apiUrl);
+      console.log('📤 [Update Contact] Request data:', {
+        contact_data: contactData
+      });
+
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify({
+          contact_data: contactData
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to update contact: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ [Update Contact] Contact updated successfully:', result);
+
       setContactSuccess('Contact updated successfully');
       resetContactForm();
       setIsEditContactModalOpen(false);
+      
       // Refresh contacts list
+      await fetchContacts();
     } catch (error) {
+      console.error('❌ [Update Contact] Error:', error);
       setContactError(error.message || 'Failed to update contact');
     } finally {
       setIsSubmittingContact(false);
@@ -1353,20 +1608,67 @@ const Dashboard = () => {
   };
 
   const handleEditContact = (contact) => {
-    setEditingContactId(contact.id);
-    setContactFirstName(contact.first_name || '');
-    setContactLastName(contact.last_name || '');
-    setContactPhones(contact.phones || [{ phone: '', type: 'MOBILE' }]);
-    setContactEmail(contact.email || '');
-    setContactEmailType(contact.email_type || 'WORK');
-    setContactAddresses(contact.addresses || []);
-    setContactCompany(contact.company || '');
-    setContactDepartment(contact.department || '');
-    setContactTitle(contact.title || '');
-    setContactUrl(contact.url || '');
-    setContactUrlType(contact.url_type || 'WORK');
-    setContactBirthday(contact.birthday || '');
-    setContactLeadStage(contact.lead_stage || '');
+    const contactData = contact.contact_data || {};
+    const name = contactData.name || {};
+    const phones = contactData.phones || [];
+    const emails = contactData.emails || [];
+    const addresses = contactData.addresses || [];
+    const org = contactData.org || {};
+    const urls = contactData.urls || [];
+    
+    // Parse phone numbers to extract country code and dial code
+    const parsedPhones = phones.length > 0 ? phones.map(phoneObj => {
+      const phoneNumber = phoneObj.phone || '';
+      let phone = phoneNumber;
+      let countryCode = 'IN';
+      let dialCode = '+91';
+      
+      // Try to extract dial code from phone number
+      if (phoneNumber.startsWith('+')) {
+        // Find matching dial code
+        const dialCodes = {
+          '+91': 'IN', '+1': 'US', '+44': 'GB', '+61': 'AU', '+49': 'DE',
+          '+33': 'FR', '+39': 'IT', '+34': 'ES', '+55': 'BR', '+52': 'MX',
+          '+81': 'JP', '+86': 'CN', '+82': 'KR', '+65': 'SG', '+60': 'MY',
+          '+66': 'TH', '+62': 'ID', '+63': 'PH', '+84': 'VN', '+852': 'HK',
+          '+886': 'TW', '+64': 'NZ', '+971': 'AE', '+966': 'SA', '+27': 'ZA',
+          '+7': 'RU', '+92': 'PK', '+880': 'BD', '+94': 'LK', '+977': 'NP', '+95': 'MM'
+        };
+        
+        // Check for longer dial codes first (like +852, +886, +880, +977)
+        const sortedCodes = Object.keys(dialCodes).sort((a, b) => b.length - a.length);
+        for (const code of sortedCodes) {
+          if (phoneNumber.startsWith(code)) {
+            dialCode = code;
+            countryCode = dialCodes[code];
+            phone = phoneNumber.substring(code.length).trim();
+            break;
+          }
+        }
+      }
+      
+      return {
+        phone: phone,
+        type: phoneObj.type || 'MOBILE',
+        countryCode: countryCode,
+        dialCode: dialCode
+      };
+    }) : [{ phone: '', type: 'MOBILE', countryCode: 'IN', dialCode: '+91' }];
+    
+    setEditingContactId(contact.contact_id);
+    setContactFirstName(name.first_name || '');
+    setContactLastName(name.last_name || '');
+    setContactPhones(parsedPhones);
+    setContactEmail(emails.length > 0 ? emails[0].email || '' : '');
+    setContactEmailType(emails.length > 0 ? emails[0].type || 'WORK' : 'WORK');
+    setContactAddresses(addresses.length > 0 ? addresses : []);
+    setContactCompany(org.company || '');
+    setContactDepartment(org.department || '');
+    setContactTitle(org.title || '');
+    setContactUrl(urls.length > 0 ? urls[0].url || '' : '');
+    setContactUrlType(urls.length > 0 ? urls[0].type || 'WORK' : 'WORK');
+    setContactBirthday(contactData.birthday || '');
+    setContactLeadStage(contactData.lead_stage || '');
     setIsEditContactModalOpen(true);
   };
 
@@ -1374,28 +1676,158 @@ const Dashboard = () => {
     if (!window.confirm('Are you sure you want to delete this contact?')) return;
     
     try {
-      // Implementation would call API to delete contact
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('Server configuration error.');
+      }
+
+      const apiUrl = apiConfig.endpoints.contacts.deleteContact(contactId);
+      
+      console.log('🌐 [Delete Contact] Calling API:', apiUrl);
+
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(apiUrl, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to delete contact: ${response.status} ${response.statusText}`);
+      }
+
+      console.log('✅ [Delete Contact] Contact deleted successfully');
+
       // Refresh contacts list
+      await fetchContacts();
     } catch (error) {
-      console.error('Failed to delete contact:', error);
+      console.error('❌ [Delete Contact] Error:', error);
+      alert(`Failed to delete contact: ${error.message}`);
     }
   };
 
   const handleQuickUpdateLeadStage = async (contactId, newStage) => {
-    setUpdatingLeadStage(contactId);
+    setUpdatingLeadStage({ [contactId]: true });
     try {
-      // Implementation would call API to update lead stage
-      // Refresh contacts list
+      // Find the contact to update
+      const contact = contacts.find(c => c.contact_id === contactId);
+      if (!contact) {
+        throw new Error('Contact not found');
+      }
+
+      const contactData = contact.contact_data || {};
+      const updatedContactData = {
+        ...contactData,
+        lead_stage: newStage
+      };
+
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('Server configuration error.');
+      }
+
+      const apiUrl = apiConfig.endpoints.contacts.updateContact(contactId);
+      
+      console.log('🌐 [Update Lead Stage] Calling API:', apiUrl);
+
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify({
+          contact_data: updatedContactData
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to update lead stage: ${response.status} ${response.statusText}`);
+      }
+
+      console.log('✅ [Update Lead Stage] Lead stage updated successfully');
+
+      // Update local state
+      setContacts(prevContacts => 
+        prevContacts.map(c => 
+          c.contact_id === contactId 
+            ? { ...c, contact_data: updatedContactData }
+            : c
+        )
+      );
     } catch (error) {
-      console.error('Failed to update lead stage:', error);
+      console.error('❌ [Update Lead Stage] Error:', error);
+      alert(`Failed to update lead stage: ${error.message}`);
     } finally {
-      setUpdatingLeadStage(null);
+      setUpdatingLeadStage(prev => {
+        const newState = { ...prev };
+        delete newState[contactId];
+        return Object.keys(newState).length > 0 ? newState : null;
+      });
     }
   };
 
   const handleExportCsv = () => {
-    // Implementation to export contacts as CSV
-    console.log('Exporting contacts to CSV...');
+    try {
+      if (contacts.length === 0) {
+        alert('No contacts to export');
+        return;
+      }
+
+      // Create CSV header
+      const headers = ['Name', 'First Name', 'Last Name', 'Phone', 'Email', 'Company', 'Title', 'Lead Stage', 'Source'];
+      
+      // Create CSV rows
+      const rows = contacts.map(contact => {
+        const contactData = contact.contact_data || {};
+        const name = contactData.name || {};
+        const phones = contactData.phones || [];
+        const emails = contactData.emails || [];
+        const org = contactData.org || {};
+        const primaryPhone = phones[0]?.phone || '';
+        const primaryEmail = emails[0]?.email || '';
+        const displayName = name.formatted_name || `${name.first_name || ''} ${name.last_name || ''}`.trim() || 'No Name';
+        
+        return [
+          displayName,
+          name.first_name || '',
+          name.last_name || '',
+          primaryPhone,
+          primaryEmail,
+          org.company || '',
+          org.title || '',
+          contactData.lead_stage || '',
+          'NimbleAI'
+        ];
+      });
+
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `contacts_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log('✅ [Export CSV] Contacts exported successfully');
+    } catch (error) {
+      console.error('❌ [Export CSV] Error:', error);
+      alert('Failed to export contacts. Please try again.');
+    }
   };
 
   // Onboarding handlers
@@ -1549,13 +1981,165 @@ const Dashboard = () => {
 
   // CSV Import handlers
   const handleCsvFile = (file) => {
-    // Implementation to parse CSV file
-    console.log('Handling CSV file:', file);
+    return new Promise((resolve, reject) => {
+      if (!file) {
+        reject(new Error('No file provided'));
+        return;
+      }
+
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        try {
+          const text = e.target.result;
+          
+          // Simple CSV parser - handles quoted fields and commas
+          const parseCSV = (csvText) => {
+            const lines = csvText.split('\n').filter(line => line.trim());
+            if (lines.length === 0) {
+              return { headers: [], rows: [] };
+            }
+
+            // Parse first line as headers
+            const headers = parseCSVLine(lines[0]);
+            
+            // Parse remaining lines as data rows
+            const rows = lines.slice(1)
+              .map(line => parseCSVLine(line))
+              .filter(row => row.some(cell => cell.trim())); // Filter out empty rows
+
+            return { headers, rows };
+          };
+
+          // Helper function to parse a CSV line, handling quoted fields
+          const parseCSVLine = (line) => {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+              const char = line[i];
+              const nextChar = line[i + 1];
+
+              if (char === '"') {
+                if (inQuotes && nextChar === '"') {
+                  // Escaped quote
+                  current += '"';
+                  i++; // Skip next quote
+                } else {
+                  // Toggle quote state
+                  inQuotes = !inQuotes;
+                }
+              } else if (char === ',' && !inQuotes) {
+                // End of field
+                result.push(current.trim());
+                current = '';
+              } else {
+                current += char;
+              }
+            }
+            
+            // Add last field
+            result.push(current.trim());
+            
+            return result;
+          };
+
+          const { headers, rows } = parseCSV(text);
+          
+          if (headers.length === 0) {
+            throw new Error('CSV file appears to be empty or invalid');
+          }
+
+          // Update state
+          setCsvHeaders(headers);
+          setCsvRows(rows);
+          setCsvParseError('');
+          
+          // Auto-map known fields if headers match
+          const autoMapping = {};
+          headers.forEach((header, index) => {
+            const lowerHeader = header.toLowerCase().trim();
+            knownFields.forEach(field => {
+              const fieldVariations = getFieldVariations(field);
+              if (fieldVariations.some(variation => lowerHeader.includes(variation) || variation.includes(lowerHeader))) {
+                autoMapping[field] = index;
+              }
+            });
+          });
+          setMapping(autoMapping);
+
+          console.log('✅ [CSV Import] File parsed successfully:', { headers, rowCount: rows.length });
+          resolve({ headers, rows });
+        } catch (error) {
+          console.error('❌ [CSV Import] Parse error:', error);
+          setCsvParseError(error.message || 'Failed to parse CSV file');
+          setCsvHeaders([]);
+          setCsvRows([]);
+          reject(error);
+        }
+      };
+
+      reader.onerror = () => {
+        const error = new Error('Failed to read file');
+        setCsvParseError(error.message);
+        reject(error);
+      };
+
+      reader.readAsText(file);
+    });
+  };
+
+  // Helper function to get field name variations for auto-mapping
+  const getFieldVariations = (field) => {
+    const variations = {
+      'first_name': ['first name', 'firstname', 'fname', 'given name', 'first'],
+      'last_name': ['last name', 'lastname', 'lname', 'surname', 'family name', 'last'],
+      'phone': ['phone', 'mobile', 'cell', 'telephone', 'tel', 'number'],
+      'email': ['email', 'e-mail', 'mail'],
+      'company': ['company', 'organization', 'org', 'business'],
+      'title': ['title', 'job title', 'position', 'role'],
+      'address': ['address', 'street', 'location'],
+      'city': ['city'],
+      'state': ['state', 'province'],
+      'zip': ['zip', 'postal code', 'postcode', 'zip code'],
+      'country': ['country'],
+      'birthday': ['birthday', 'birth date', 'dob', 'date of birth'],
+      'lead_stage': ['lead stage', 'stage', 'status', 'lead status']
+    };
+    return variations[field] || [field];
   };
 
   const recomputePreview = () => {
-    // Implementation to recompute import preview
-    console.log('Recomputing preview...');
+    try {
+      if (csvRows.length === 0) {
+        setImportPreview([]);
+        return;
+      }
+
+      // Generate preview based on mapping
+      const preview = csvRows.slice(0, 5).map((row, rowIndex) => {
+        const previewItem = {};
+        
+        // Map each known field to its CSV column value
+        knownFields.forEach(field => {
+          const csvColumnIndex = mapping[field];
+          if (csvColumnIndex !== undefined && csvColumnIndex !== null && csvColumnIndex >= 0) {
+            previewItem[field] = row[csvColumnIndex] || '';
+          } else {
+            previewItem[field] = '';
+          }
+        });
+
+        return previewItem;
+      });
+
+      setImportPreview(preview);
+      console.log('✅ [CSV Import] Preview recomputed:', preview);
+    } catch (error) {
+      console.error('❌ [CSV Import] Preview error:', error);
+      setImportPreview([]);
+    }
   };
 
   const handleChangeMapping = (field, csvColumn) => {
@@ -1563,14 +2147,143 @@ const Dashboard = () => {
   };
 
   const handleStartImport = async () => {
+    if (csvRows.length === 0) {
+      alert('No contacts to import');
+      return;
+    }
+
     setIsImporting(true);
-    setImportProgress({ current: 0, total: csvRows.length });
+    setImportProgress({ success: 0, failed: 0, total: csvRows.length });
+    setImportResults(null);
     
     try {
-      // Implementation to import contacts
-      setImportResults({ success: true, imported: csvRows.length });
+      const dbId = userData?.db_id || user?.db_id;
+      if (!dbId) {
+        throw new Error('User ID not found');
+      }
+
+      const token = localStorage.getItem('authToken');
+      let successCount = 0;
+      let failedCount = 0;
+
+      // Import contacts one by one
+      for (let i = 0; i < csvRows.length; i++) {
+        const row = csvRows[i];
+        
+        try {
+          // Build contact data from mapped row
+          const contactData = {
+            name: {
+              first_name: mapping.first_name !== undefined ? (row[mapping.first_name] || '') : '',
+              last_name: mapping.last_name !== undefined ? (row[mapping.last_name] || '') : '',
+              formatted_name: ''
+            },
+            phones: [],
+            emails: [],
+            org: {},
+            lead_stage: mapping.lead_stage !== undefined ? (row[mapping.lead_stage] || 'NEW') : 'NEW'
+          };
+
+          // Set formatted name
+          const firstName = contactData.name.first_name;
+          const lastName = contactData.name.last_name;
+          contactData.name.formatted_name = `${firstName} ${lastName}`.trim() || 'No Name';
+
+          // Add phone if mapped
+          if (mapping.phone !== undefined && row[mapping.phone]) {
+            contactData.phones.push({
+              phone: row[mapping.phone],
+              type: 'MOBILE'
+            });
+          }
+
+          // Add email if mapped
+          if (mapping.email !== undefined && row[mapping.email]) {
+            contactData.emails.push({
+              email: row[mapping.email],
+              type: 'WORK'
+            });
+          }
+
+          // Add company/title if mapped
+          if (mapping.company !== undefined && row[mapping.company]) {
+            contactData.org.company = row[mapping.company];
+          }
+          if (mapping.title !== undefined && row[mapping.title]) {
+            contactData.org.title = row[mapping.title];
+          }
+
+          // Validate required fields
+          if (!contactData.name.first_name || contactData.phones.length === 0) {
+            throw new Error('Missing required fields: first name and phone');
+          }
+
+          // Make API call to create contact
+          const apiUrl = apiConfig.endpoints.contacts.createContact();
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? `Bearer ${token}` : '',
+            },
+            body: JSON.stringify({
+              user_id: dbId,
+              contact_data: contactData
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Failed to import contact: ${response.status}`);
+          }
+
+          successCount++;
+        } catch (error) {
+          console.error(`❌ [CSV Import] Failed to import row ${i + 1}:`, error);
+          failedCount++;
+        }
+
+        // Update progress
+        setImportProgress({
+          success: successCount,
+          failed: failedCount,
+          total: csvRows.length
+        });
+      }
+
+      setImportResults({
+        success: true,
+        imported: successCount,
+        failed: failedCount,
+        total: csvRows.length
+      });
+
+      // Refresh contacts list
+      await fetchContacts();
+
+      console.log(`✅ [CSV Import] Import completed: ${successCount} successful, ${failedCount} failed`);
+
+      // Show confirmation and close modal after a short delay
+      setTimeout(() => {
+        // Reset form state
+        setCsvHeaders([]);
+        setCsvRows([]);
+        setMapping({});
+        setCsvParseError('');
+        setImportPreview([]);
+        setImportProgress({ success: 0, failed: 0, total: 0 });
+        setImportResults(null);
+        // Close modal
+        setIsImportModalOpen(false);
+      }, 2000); // 2 second delay to show confirmation message
     } catch (error) {
-      setImportResults({ success: false, error: error.message });
+      console.error('❌ [CSV Import] Import error:', error);
+      setImportResults({
+        success: false,
+        error: error.message,
+        imported: importProgress.success,
+        failed: importProgress.failed
+      });
     } finally {
       setIsImporting(false);
     }
@@ -2676,7 +3389,7 @@ const Dashboard = () => {
                                 className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 value={leadStage || 'New Lead'}
                                 onChange={(e) => handleQuickUpdateLeadStage(contact.contact_id, e.target.value)}
-                                disabled={!!updatingLeadStage[contact.contact_id]}
+                                disabled={updatingLeadStage && !!updatingLeadStage[contact.contact_id]}
                               >
                                 {LEAD_STAGES.map(stage => (
                                   <option key={stage} value={stage}>{stage}</option>
@@ -5871,14 +6584,60 @@ const Dashboard = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Phone Number {index === 0 && <span className="text-red-500">*</span>}
                         </label>
-                        <input
-                          type="tel"
-                          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          value={phoneObj.phone}
-                          onChange={(e) => updatePhone(index, 'phone', e.target.value)}
-                          required={index === 0}
-                          disabled={isSubmittingContact}
-                        />
+                        <div className="flex border rounded overflow-hidden focus-within:ring-2 focus-within:ring-blue-400">
+                          <select
+                            className="border-r border-gray-300 px-2 py-2 text-sm focus:outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            value={phoneObj.countryCode || 'IN'}
+                            onChange={(e) => updatePhone(index, 'countryCode', e.target.value)}
+                            disabled={isSubmittingContact}
+                            style={{ appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23374151\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1em 1em', paddingRight: '1.75rem' }}
+                          >
+                            <option value="IN">🇮🇳 IN</option>
+                            <option value="US">🇺🇸 US</option>
+                            <option value="GB">🇬🇧 GB</option>
+                            <option value="CA">🇨🇦 CA</option>
+                            <option value="AU">🇦🇺 AU</option>
+                            <option value="DE">🇩🇪 DE</option>
+                            <option value="FR">🇫🇷 FR</option>
+                            <option value="IT">🇮🇹 IT</option>
+                            <option value="ES">🇪🇸 ES</option>
+                            <option value="BR">🇧🇷 BR</option>
+                            <option value="MX">🇲🇽 MX</option>
+                            <option value="JP">🇯🇵 JP</option>
+                            <option value="CN">🇨🇳 CN</option>
+                            <option value="KR">🇰🇷 KR</option>
+                            <option value="SG">🇸🇬 SG</option>
+                            <option value="MY">🇲🇾 MY</option>
+                            <option value="TH">🇹🇭 TH</option>
+                            <option value="ID">🇮🇩 ID</option>
+                            <option value="PH">🇵🇭 PH</option>
+                            <option value="VN">🇻🇳 VN</option>
+                            <option value="HK">🇭🇰 HK</option>
+                            <option value="TW">🇹🇼 TW</option>
+                            <option value="NZ">🇳🇿 NZ</option>
+                            <option value="AE">🇦🇪 AE</option>
+                            <option value="SA">🇸🇦 SA</option>
+                            <option value="ZA">🇿🇦 ZA</option>
+                            <option value="RU">🇷🇺 RU</option>
+                            <option value="PK">🇵🇰 PK</option>
+                            <option value="BD">🇧🇩 BD</option>
+                            <option value="LK">🇱🇰 LK</option>
+                            <option value="NP">🇳🇵 NP</option>
+                            <option value="MM">🇲🇲 MM</option>
+                          </select>
+                          <div className="flex items-center px-2 bg-gray-50 border-r border-gray-300 text-gray-700 text-sm font-medium min-w-[50px]">
+                            {phoneObj.dialCode || '+91'}
+                          </div>
+                          <input
+                            type="tel"
+                            className="flex-1 px-3 py-2 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            value={phoneObj.phone}
+                            onChange={(e) => updatePhone(index, 'phone', e.target.value)}
+                            required={index === 0}
+                            disabled={isSubmittingContact}
+                            placeholder="Enter phone number"
+                          />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -6236,8 +6995,8 @@ const Dashboard = () => {
                   setMapping({});
                   setCsvParseError('');
                   setImportPreview([]);
-                  setImportProgress({ total: 0, success: 0, failed: 0 });
-                  setImportResults([]);
+                  setImportProgress({ success: 0, failed: 0, total: 0 });
+                  setImportResults(null);
                 }}
                 aria-label="Close"
               >
@@ -6254,7 +7013,15 @@ const Dashboard = () => {
                   accept=".csv,text/csv"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleCsvFile(file).then(recomputePreview);
+                    if (file) {
+                      handleCsvFile(file)
+                        .then(() => {
+                          recomputePreview();
+                        })
+                        .catch((error) => {
+                          console.error('Failed to parse CSV file:', error);
+                        });
+                    }
                   }}
                   className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 />
@@ -6298,10 +7065,53 @@ const Dashboard = () => {
                 </div>
               )}
 
+              {/* Import Results/Confirmation */}
+              {importResults && (
+                <div className={`p-4 rounded-lg border ${
+                  importResults.success 
+                    ? 'bg-green-50 border-green-200' 
+                    : 'bg-red-50 border-red-200'
+                }`}>
+                  {importResults.success ? (
+                    <div className="flex items-start space-x-3">
+                      <span className="text-green-600 text-xl">✅</span>
+                      <div className="flex-1">
+                        <p className="font-semibold text-green-800 mb-1">
+                          Import Completed Successfully!
+                        </p>
+                        <p className="text-sm text-green-700">
+                          {importResults.imported} contact{importResults.imported !== 1 ? 's' : ''} imported successfully.
+                          {importResults.failed > 0 && (
+                            <span className="block mt-1">
+                              {importResults.failed} contact{importResults.failed !== 1 ? 's' : ''} failed to import.
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-green-600 mt-2">
+                          The modal will close automatically...
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start space-x-3">
+                      <span className="text-red-600 text-xl">❌</span>
+                      <div className="flex-1">
+                        <p className="font-semibold text-red-800 mb-1">
+                          Import Failed
+                        </p>
+                        <p className="text-sm text-red-700">
+                          {importResults.error || 'An error occurred during import'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Step 4: Import */}
               <div className="flex items-center justify-between pt-2 border-t">
                 <div className="text-xs text-gray-600">
-                  {importProgress.total > 0 && (
+                  {importProgress.total > 0 && !importResults && (
                     <span>Imported {importProgress.success}/{importProgress.total} successful, {importProgress.failed} failed.</span>
                   )}
                 </div>
@@ -6311,25 +7121,34 @@ const Dashboard = () => {
                     className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
                     onClick={() => {
                       setIsImportModalOpen(false);
+                      setCsvHeaders([]);
+                      setCsvRows([]);
+                      setMapping({});
+                      setCsvParseError('');
+                      setImportPreview([]);
+                      setImportProgress({ success: 0, failed: 0, total: 0 });
+                      setImportResults(null);
                     }}
                     disabled={isImporting}
                   >
-                    Close
+                    {importResults ? 'Close' : 'Cancel'}
                   </button>
-                  <button
-                    type="button"
-                    className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2"
-                    disabled={isImporting || csvRows.length === 0}
-                    onClick={handleStartImport}
-                  >
-                    {isImporting && (
-                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    )}
-                    {isImporting ? 'Importing...' : 'Start Import'}
-                  </button>
+                  {!importResults && (
+                    <button
+                      type="button"
+                      className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2"
+                      disabled={isImporting || csvRows.length === 0}
+                      onClick={handleStartImport}
+                    >
+                      {isImporting && (
+                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
+                      {isImporting ? 'Importing...' : 'Start Import'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -6431,14 +7250,60 @@ const Dashboard = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Phone Number {index === 0 && <span className="text-red-500">*</span>}
                         </label>
-                        <input
-                          type="tel"
-                          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          value={phoneObj.phone}
-                          onChange={(e) => updatePhone(index, 'phone', e.target.value)}
-                          required={index === 0}
-                          disabled={isSubmittingContact}
-                        />
+                        <div className="flex border rounded overflow-hidden focus-within:ring-2 focus-within:ring-blue-400">
+                          <select
+                            className="border-r border-gray-300 px-2 py-2 text-sm focus:outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            value={phoneObj.countryCode || 'IN'}
+                            onChange={(e) => updatePhone(index, 'countryCode', e.target.value)}
+                            disabled={isSubmittingContact}
+                            style={{ appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23374151\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1em 1em', paddingRight: '1.75rem' }}
+                          >
+                            <option value="IN">🇮🇳 IN</option>
+                            <option value="US">🇺🇸 US</option>
+                            <option value="GB">🇬🇧 GB</option>
+                            <option value="CA">🇨🇦 CA</option>
+                            <option value="AU">🇦🇺 AU</option>
+                            <option value="DE">🇩🇪 DE</option>
+                            <option value="FR">🇫🇷 FR</option>
+                            <option value="IT">🇮🇹 IT</option>
+                            <option value="ES">🇪🇸 ES</option>
+                            <option value="BR">🇧🇷 BR</option>
+                            <option value="MX">🇲🇽 MX</option>
+                            <option value="JP">🇯🇵 JP</option>
+                            <option value="CN">🇨🇳 CN</option>
+                            <option value="KR">🇰🇷 KR</option>
+                            <option value="SG">🇸🇬 SG</option>
+                            <option value="MY">🇲🇾 MY</option>
+                            <option value="TH">🇹🇭 TH</option>
+                            <option value="ID">🇮🇩 ID</option>
+                            <option value="PH">🇵🇭 PH</option>
+                            <option value="VN">🇻🇳 VN</option>
+                            <option value="HK">🇭🇰 HK</option>
+                            <option value="TW">🇹🇼 TW</option>
+                            <option value="NZ">🇳🇿 NZ</option>
+                            <option value="AE">🇦🇪 AE</option>
+                            <option value="SA">🇸🇦 SA</option>
+                            <option value="ZA">🇿🇦 ZA</option>
+                            <option value="RU">🇷🇺 RU</option>
+                            <option value="PK">🇵🇰 PK</option>
+                            <option value="BD">🇧🇩 BD</option>
+                            <option value="LK">🇱🇰 LK</option>
+                            <option value="NP">🇳🇵 NP</option>
+                            <option value="MM">🇲🇲 MM</option>
+                          </select>
+                          <div className="flex items-center px-2 bg-gray-50 border-r border-gray-300 text-gray-700 text-sm font-medium min-w-[50px]">
+                            {phoneObj.dialCode || '+91'}
+                          </div>
+                          <input
+                            type="tel"
+                            className="flex-1 px-3 py-2 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            value={phoneObj.phone}
+                            onChange={(e) => updatePhone(index, 'phone', e.target.value)}
+                            required={index === 0}
+                            disabled={isSubmittingContact}
+                            placeholder="Enter phone number"
+                          />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
