@@ -11,6 +11,7 @@ import PlanBilling from './PlanBilling';
 import Settings from './Settings';
 import OnboardingBanner from './OnboardingBanner';
 import LiveAgentPreview from './LiveAgentPreview';
+import Contacts from './sections/Contacts/Contacts';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { getAuth } from 'firebase/auth';
 import { initializeApp, getApps } from 'firebase/app';
@@ -349,6 +350,11 @@ const Dashboard = () => {
       // - No user or firebase app
       // - Already checking
       if (!user || !firebaseApp || isCheckingEmailVerification) {
+        console.log('📧 [Email Verification] Skipping check:', {
+          hasUser: !!user,
+          hasFirebaseApp: !!firebaseApp,
+          isChecking: isCheckingEmailVerification
+        });
         return;
       }
       
@@ -407,10 +413,13 @@ const Dashboard = () => {
         } else {
           // If no Firebase user, we can't check verification
           // This might happen if user signed up with email/password but Firebase Auth isn't used
+          // In this case, assume email is not verified and show warning
           if (!isMounted) return;
           console.warn("⚠️ [Email Verification] No Firebase user found. Cannot check email verification status.");
           console.warn("📝 [Email Verification] This might happen if user signed up with email/password but Firebase Auth isn't used.");
-          setIsEmailVerified(null);
+          console.warn("📝 [Email Verification] Showing warning banner as precaution.");
+          // Set to false to show warning banner when we can't verify
+          setIsEmailVerified(false);
         }
       } catch (error) {
         if (!isMounted) return;
@@ -431,7 +440,17 @@ const Dashboard = () => {
 
     // Only check when user is available and not loading
     if (user && !loading) {
+      console.log('📧 [Email Verification] Triggering check...', {
+        hasUser: !!user,
+        loading,
+        userId: user?.uid || user?.email
+      });
       checkEmailVerification();
+    } else {
+      console.log('📧 [Email Verification] Not checking:', {
+        hasUser: !!user,
+        loading
+      });
     }
     
     // Cleanup function
@@ -2238,7 +2257,7 @@ const Dashboard = () => {
           }
 
           successCount++;
-        } catch (error) {
+    } catch (error) {
           console.error(`❌ [CSV Import] Failed to import row ${i + 1}:`, error);
           failedCount++;
         }
@@ -3256,6 +3275,9 @@ const Dashboard = () => {
           </div>
         );
       case 'contacts':
+        return <Contacts />;
+      
+      case 'contacts_old':
         return (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm p-6">
@@ -6119,6 +6141,60 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Email Verification Banner - Show when email is not verified */}
+      {/* Debug: Current verification status */}
+      {console.log('🔍 [Email Verification Banner] Current state:', { 
+        isEmailVerified, 
+        isCheckingEmailVerification, 
+        hasUser: !!user,
+        shouldShow: isEmailVerified === false,
+        type: typeof isEmailVerified
+      })}
+      {/* Temporary test banner - remove after debugging */}
+
+      {/* Show banner when email is not verified (false) or when status is unknown (null) but we have a user */}
+      {(isEmailVerified === false || (isEmailVerified === null && user && !isCheckingEmailVerification)) && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3 flex-1">
+              <p className="text-sm text-yellow-700">
+                Please verify your email by clicking on the link sent to your email address
+              </p>
+            </div>
+            <div className="ml-auto pl-3">
+              <button
+                onClick={async () => {
+                  if (isCheckingEmailVerification || !firebaseApp) return;
+                  
+                  setIsCheckingEmailVerification(true);
+                  try {
+                    const auth = getAuth(firebaseApp);
+                    const firebaseUser = auth.currentUser;
+                    if (firebaseUser) {
+                      await firebaseUser.reload();
+                      setIsEmailVerified(firebaseUser.emailVerified);
+                    }
+                  } catch (error) {
+                    console.error("Error reloading user data:", error);
+                  } finally {
+                    setIsCheckingEmailVerification(false);
+                  }
+                }}
+                className="text-sm text-yellow-700 hover:text-yellow-900 underline"
+                disabled={isCheckingEmailVerification}
+              >
+                {isCheckingEmailVerification ? 'Checking...' : 'Refresh'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {isOnboardingModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
@@ -6628,15 +6704,15 @@ const Dashboard = () => {
                           <div className="flex items-center px-2 bg-gray-50 border-r border-gray-300 text-gray-700 text-sm font-medium min-w-[50px]">
                             {phoneObj.dialCode || '+91'}
                           </div>
-                          <input
-                            type="tel"
+                        <input
+                          type="tel"
                             className="flex-1 px-3 py-2 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-                            value={phoneObj.phone}
-                            onChange={(e) => updatePhone(index, 'phone', e.target.value)}
-                            required={index === 0}
-                            disabled={isSubmittingContact}
+                          value={phoneObj.phone}
+                          onChange={(e) => updatePhone(index, 'phone', e.target.value)}
+                          required={index === 0}
+                          disabled={isSubmittingContact}
                             placeholder="Enter phone number"
-                          />
+                        />
                         </div>
                       </div>
                       <div>
@@ -7134,20 +7210,20 @@ const Dashboard = () => {
                     {importResults ? 'Close' : 'Cancel'}
                   </button>
                   {!importResults && (
-                    <button
-                      type="button"
-                      className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2"
-                      disabled={isImporting || csvRows.length === 0}
-                      onClick={handleStartImport}
-                    >
-                      {isImporting && (
-                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                      )}
-                      {isImporting ? 'Importing...' : 'Start Import'}
-                    </button>
+                  <button
+                    type="button"
+                    className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2"
+                    disabled={isImporting || csvRows.length === 0}
+                    onClick={handleStartImport}
+                  >
+                    {isImporting && (
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    )}
+                    {isImporting ? 'Importing...' : 'Start Import'}
+                  </button>
                   )}
                 </div>
               </div>
@@ -7294,15 +7370,15 @@ const Dashboard = () => {
                           <div className="flex items-center px-2 bg-gray-50 border-r border-gray-300 text-gray-700 text-sm font-medium min-w-[50px]">
                             {phoneObj.dialCode || '+91'}
                           </div>
-                          <input
-                            type="tel"
+                        <input
+                          type="tel"
                             className="flex-1 px-3 py-2 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-                            value={phoneObj.phone}
-                            onChange={(e) => updatePhone(index, 'phone', e.target.value)}
-                            required={index === 0}
-                            disabled={isSubmittingContact}
+                          value={phoneObj.phone}
+                          onChange={(e) => updatePhone(index, 'phone', e.target.value)}
+                          required={index === 0}
+                          disabled={isSubmittingContact}
                             placeholder="Enter phone number"
-                          />
+                        />
                         </div>
                       </div>
                       <div>
@@ -7618,49 +7694,6 @@ const Dashboard = () => {
       {/* Onboarding Summary Banner - Commented out
       <OnboardingBanner userData={userData} />
       */}
-      
-      {/* Email Verification Banner */}
-      {isEmailVerified === false && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3 flex-1">
-              <p className="text-sm text-yellow-700">
-                Please verify your email by clicking on the link sent to your email address
-              </p>
-            </div>
-            <div className="ml-auto pl-3">
-              <button
-                onClick={async () => {
-                  if (isCheckingEmailVerification || !firebaseApp) return;
-                  
-                  setIsCheckingEmailVerification(true);
-                  try {
-                    const auth = getAuth(firebaseApp);
-                    const firebaseUser = auth.currentUser;
-                    if (firebaseUser) {
-                      await firebaseUser.reload();
-                      setIsEmailVerified(firebaseUser.emailVerified);
-                    }
-                  } catch (error) {
-                    console.error("Error reloading user data:", error);
-                  } finally {
-                    setIsCheckingEmailVerification(false);
-                  }
-                }}
-                className="text-sm text-yellow-700 hover:text-yellow-900 underline"
-                disabled={isCheckingEmailVerification}
-              >
-                {isCheckingEmailVerification ? 'Checking...' : 'Refresh'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       
       <div className="flex flex-col lg:flex-row">
         {/* Left Sidebar */}
