@@ -12,9 +12,10 @@ import Settings from './Settings';
 import OnboardingBanner from './OnboardingBanner';
 import LiveAgentPreview from './LiveAgentPreview';
 import Contacts from './sections/Contacts/Contacts';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { getAuth } from 'firebase/auth';
 import { initializeApp, getApps } from 'firebase/app';
+import { broadcastTemplates, getTemplatesByTag, getAllTags } from '../../data/broadcastTemplates';
 
 // Fetch pricing subscription status
 const fetchPricingSubscriptionStatus = async () => {
@@ -72,6 +73,45 @@ const Dashboard = () => {
   // Tab and view state
   const [activeTab, setActiveTab] = useState('overview');
   const [broadcastView, setBroadcastView] = useState('new-broadcast');
+  const [templateSubView, setTemplateSubView] = useState(null); // 'template-library' or 'your-templates'
+  const [selectedTemplateTag, setSelectedTemplateTag] = useState('All');
+  const [templateSearchQuery, setTemplateSearchQuery] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [showTemplatesDropdown, setShowTemplatesDropdown] = useState(false);
+  // Template form state
+  const [templateName, setTemplateName] = useState('');
+  const [templateCategory, setTemplateCategory] = useState('');
+  const [templateLanguage, setTemplateLanguage] = useState('English');
+  const [templateBody, setTemplateBody] = useState('');
+  const [templateFooter, setTemplateFooter] = useState('');
+  const [templateSampleContent, setTemplateSampleContent] = useState('');
+  const [templateButtons, setTemplateButtons] = useState('');
+
+  // Populate form when template is selected
+  useEffect(() => {
+    if (selectedTemplate) {
+      setTemplateName(selectedTemplate.name || '');
+      
+      // Map category from template to dropdown format
+      let category = '';
+      if (selectedTemplate.category) {
+        const categoryMap = {
+          'AUTHENTICATION': 'Authentication',
+          'MARKETING': 'Marketing',
+          'UTILITY': 'Utility'
+        };
+        category = categoryMap[selectedTemplate.category] || selectedTemplate.category;
+      }
+      setTemplateCategory(category);
+      
+      setTemplateLanguage(selectedTemplate.language || 'English');
+      setTemplateBody(selectedTemplate.content || '');
+      setTemplateFooter(selectedTemplate.footer || '');
+      setTemplateSampleContent('');
+      setTemplateButtons('');
+    }
+  }, [selectedTemplate]);
+
   const [activeAutomationView, setActiveAutomationView] = useState('ai-agents');
   const [activeChannel, setActiveChannel] = useState('whatsapp');
   const [showConnectAccount, setShowConnectAccount] = useState(false);
@@ -2716,66 +2756,362 @@ const Dashboard = () => {
         return (
           <div className="w-full" style={{ height: 'calc(100vh - 64px)' }}>
             <div className="pl-0 pr-4 w-full" style={{ height: 'calc(100vh - 64px)' }}>
-              <div className="grid grid-cols-1 lg:grid-cols-9 gap-0 w-full" style={{ height: 'calc(100vh - 64px)' }}>
-                <div className="lg:col-span-2 rounded-lg shadow-lg flex flex-col bg-white" style={{ height: 'calc(100vh - 64px)' }}>
-                <div className="pr-0 pl-0 pt-0 pb-0 border-b flex-shrink-0 border-gray-200">
-                  <div className="flex items-center gap-0">
-                    <div className="relative flex-1">
-                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search conversations..."
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <button
-                      className="w-10 h-10 flex items-center justify-center font-medium text-sm transition-colors flex-shrink-0 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-                      title="New Chat"
-                    >
-                      <span className="text-lg">+</span>
-                    </button>
-                  </div>
-                  <div className="flex flex-col gap-2 px-0 py-2 border-t border-gray-200">
+              <div className="rounded-lg shadow-lg flex flex-col bg-white" style={{ height: 'calc(100vh - 64px)' }}>
+                {/* Top Navigation Tabs */}
+                <div className="border-b border-gray-200 flex-shrink-0">
+                  <div className="flex items-center gap-2 px-6 py-3">
                     <button 
                       onClick={() => setBroadcastView('new-broadcast')}
-                      className={`w-full px-3 py-2 text-xs font-medium border rounded-lg transition-colors ${
+                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                         broadcastView === 'new-broadcast' 
-                          ? 'bg-blue-50 border-blue-300 text-blue-700' 
-                          : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-300' 
+                          : 'text-gray-700 hover:bg-gray-50 border border-transparent'
                       }`}
                     >
                       New Broadcast
                     </button>
+                    {/* Templates button with dropdown */}
+                    <div 
+                      className="relative"
+                      onMouseEnter={() => setShowTemplatesDropdown(true)}
+                      onMouseLeave={() => setShowTemplatesDropdown(false)}
+                    >
                     <button 
-                      onClick={() => setBroadcastView('templates')}
-                      className={`w-full px-3 py-2 text-xs font-medium border rounded-lg transition-colors ${
+                        onClick={() => {
+                          setBroadcastView('templates');
+                          setTemplateSubView('template-library'); // Default to template library
+                        }}
+                        className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                         broadcastView === 'templates' 
-                          ? 'bg-blue-50 border-blue-300 text-blue-700' 
-                          : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-300' 
+                            : 'text-gray-700 hover:bg-gray-50 border border-transparent'
                       }`}
                     >
                       Templates
                     </button>
+                      {/* Dropdown menu */}
+                      {showTemplatesDropdown && (
+                        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[180px]">
+                          <button
+                            onClick={() => {
+                              setBroadcastView('templates');
+                              setTemplateSubView('template-library');
+                              setShowTemplatesDropdown(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                              broadcastView === 'templates' && templateSubView === 'template-library'
+                                ? 'bg-blue-50 text-blue-700' 
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            Template library
+                          </button>
+                          <button
+                            onClick={() => {
+                              setBroadcastView('templates');
+                              setTemplateSubView('your-templates');
+                              setShowTemplatesDropdown(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm font-medium rounded-b-lg transition-colors ${
+                              broadcastView === 'templates' && templateSubView === 'your-templates'
+                                ? 'bg-blue-50 text-blue-700' 
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            Your templates
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <button 
                       onClick={() => setBroadcastView('analytics')}
-                      className={`w-full px-3 py-2 text-xs font-medium border rounded-lg transition-colors ${
+                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                         broadcastView === 'analytics' 
-                          ? 'bg-blue-50 border-blue-300 text-blue-700' 
-                          : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-300' 
+                          : 'text-gray-700 hover:bg-gray-50 border border-transparent'
                       }`}
                     >
                       Analytics
                     </button>
+                    <button 
+                      onClick={() => setBroadcastView('scheduled-broadcasts')}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                        broadcastView === 'scheduled-broadcasts' 
+                          ? 'bg-blue-50 text-blue-700 border border-blue-300' 
+                          : 'text-gray-700 hover:bg-gray-50 border border-transparent'
+                      }`}
+                    >
+                      Scheduled Broadcasts
+                    </button>
                   </div>
                 </div>
-                  <div className="flex-1 overflow-y-auto p-6">
-                  </div>
-                </div>
-                {/* Right Panel */}
-                <div className="lg:col-span-7 rounded-lg shadow-lg flex flex-col bg-white" style={{ height: 'calc(100vh - 64px)' }}>
+                {/* Content Area */}
                   <div className="flex-1 overflow-y-auto p-6">
                     {broadcastView === 'templates' && (
                       <div className="space-y-6">
+                        {templateSubView === 'template-library' ? (
+                          selectedTemplate ? (
+                            // Show template form when a template is selected
+                            <div className="space-y-6">
+                              {/* Back button and header */}
+                              <div className="flex items-center gap-4 mb-6">
+                                <button
+                                  onClick={() => {
+                                    setSelectedTemplate(null);
+                                    setTemplateName('');
+                                    setTemplateCategory('');
+                                    setTemplateLanguage('English');
+                                    setTemplateBody('');
+                                    setTemplateFooter('');
+                                    setTemplateSampleContent('');
+                                    setTemplateButtons('');
+                                  }}
+                                  className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                                >
+                                  <ArrowLeftIcon className="h-5 w-5" />
+                                  <span>New Templates</span>
+                                </button>
+                              </div>
+
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Left Column - Form */}
+                                <div className="space-y-6">
+                                  {/* Template Name, Category, and Language in a single row */}
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* Template Name */}
+                                    <div className="flex flex-col">
+                                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Template Name
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={templateName}
+                                        onChange={(e) => setTemplateName(e.target.value)}
+                                        className="w-full h-8 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 box-border"
+                                        placeholder="Template Name"
+                                      />
+                                    </div>
+
+                                    {/* Category */}
+                                    <div className="flex flex-col">
+                                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Category
+                                      </label>
+                                      <select
+                                        value={templateCategory}
+                                        onChange={(e) => setTemplateCategory(e.target.value)}
+                                        className="w-full h-8  px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 box-border"
+                                      >
+                                        <option value="">Select Category</option>
+                                        <option value="Authentication">Authentication</option>
+                                        <option value="Marketing">Marketing</option>
+                                        <option value="Utility">Utility</option>
+                                      </select>
+                                    </div>
+
+                                    {/* Language */}
+                                    <div className="flex flex-col">
+                                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Language
+                                      </label>
+                                      <select
+                                        value={templateLanguage}
+                                        onChange={(e) => setTemplateLanguage(e.target.value)}
+                                        className="w-full h-8  px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 box-border"
+                                      >
+                                        <option value="English">English</option>
+                                        <option value="Spanish">Spanish</option>
+                                        <option value="French">French</option>
+                                        <option value="German">German</option>
+                                        <option value="Hindi">Hindi</option>
+                                        <option value="Other">Other</option>
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  {/* Body */}
+                                  <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <label className="block text-sm font-medium text-gray-700">
+                                        Body
+                                      </label>
+                                      <span className="text-xs text-gray-500">
+                                        {templateBody.length}/1024
+                                      </span>
+                                    </div>
+                                    <div className="mb-2">
+                                      <p className="text-xs text-gray-600 italic">
+                                        Content for authentication message templates can't be edited. You can add/remove additional content from the option below
+                                      </p>
+                                    </div>
+                                    <textarea
+                                      value={templateBody}
+                                      onChange={(e) => {
+                                        if (e.target.value.length <= 1024) {
+                                          setTemplateBody(e.target.value);
+                                        }
+                                      }}
+                                      rows={8}
+                                      maxLength={1024}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                      placeholder="Enter template body"
+                                    />
+                                  </div>
+
+                                  {/* Footer */}
+                                  <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <label className="block text-sm font-medium text-gray-700">
+                                        Footer
+                                      </label>
+                                      <span className="text-xs text-gray-500">
+                                        {templateFooter.length}/60
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-600 mb-2 italic">
+                                      (Optional) Footers are great to add any disclaimers or to add a thoughtful PS
+                                    </p>
+                                    <textarea
+                                      value={templateFooter}
+                                      onChange={(e) => {
+                                        if (e.target.value.length <= 60) {
+                                          setTemplateFooter(e.target.value);
+                                        }
+                                      }}
+                                      rows={2}
+                                      maxLength={60}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                      placeholder="Enter footer (optional)"
+                                    />
+                                  </div>
+
+                                  {/* Buttons */}
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      Buttons
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={templateButtons}
+                                      onChange={(e) => setTemplateButtons(e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      placeholder="Enter button text (optional)"
+                                    />
+                                  </div>
+
+                                  {/* Sample Content */}
+                                  <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <label className="block text-sm font-medium text-gray-700">
+                                        Sample Content
+                                      </label>
+                                      <span className="text-xs text-gray-500">
+                                        {templateSampleContent.length}/200
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-600 mb-2 italic">
+                                      Just enter sample content here (it doesn't need to be exact!)
+                                    </p>
+                                    <textarea
+                                      value={templateSampleContent}
+                                      onChange={(e) => {
+                                        if (e.target.value.length <= 200) {
+                                          setTemplateSampleContent(e.target.value);
+                                        }
+                                      }}
+                                      rows={3}
+                                      maxLength={200}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                      placeholder="Enter sample content"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Make sure not to include any actual user or customer information, and provide only sample content in your examples. <a href="https://developers.facebook.com/docs/whatsapp/message-templates/guidelines" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Learn more</a>
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Right Column - Preview */}
+                                <div>
+                                  <div className="sticky top-0">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Preview</h3>
+                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 min-h-[400px]">
+                                      <div className="space-y-2">
+                                        {templateBody && (
+                                          <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                                            {templateBody.replace(/\[.*?\]/g, templateSampleContent || '[Sample]')}
+                                          </div>
+                                        )}
+                                        {templateFooter && (
+                                          <div className="text-xs text-gray-600 mt-4 pt-4 border-t border-gray-300">
+                                            {templateFooter}
+                                          </div>
+                                        )}
+                                        {templateButtons && (
+                                          <div className="mt-4 pt-4 border-t border-gray-300">
+                                            <button className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                                              {templateButtons}
+                                            </button>
+                                          </div>
+                                        )}
+                                        {!templateBody && (
+                                          <p className="text-gray-400 text-sm italic">Preview will appear here</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Action Buttons */}
+                              <div className="flex justify-end space-x-3 pt-6 border-t">
+                                <button
+                                  type="button"
+                                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+                                  onClick={() => {
+                                    setSelectedTemplate(null);
+                                    setTemplateName('');
+                                    setTemplateCategory('');
+                                    setTemplateLanguage('English');
+                                    setTemplateBody('');
+                                    setTemplateFooter('');
+                                    setTemplateSampleContent('');
+                                    setTemplateButtons('');
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+                                  onClick={() => {
+                                    // Handle form submission here
+                                    console.log('Template form submitted:', {
+                                      templateName,
+                                      templateCategory,
+                                      templateLanguage,
+                                      templateBody,
+                                      templateFooter,
+                                      templateButtons,
+                                      templateSampleContent
+                                    });
+                                    // Reset form after submission
+                                    setSelectedTemplate(null);
+                                    setTemplateName('');
+                                    setTemplateCategory('');
+                                    setTemplateLanguage('English');
+                                    setTemplateBody('');
+                                    setTemplateFooter('');
+                                    setTemplateSampleContent('');
+                                    setTemplateButtons('');
+                                  }}
+                                >
+                                  Save and submit
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            // Show template library when no template is selected
+                          <>
                         <div className="flex items-start justify-between">
                   <div>
                             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Template Library</h2>
@@ -2797,216 +3133,239 @@ const Dashboard = () => {
                           </select>
                 </div>
 
-                        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
-                          <button className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium whitespace-nowrap">
-                            All
+                            {/* Tag Filter Buttons */}
+                        <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+                              {getAllTags().map((tag) => {
+                                const count = tag === 'All' 
+                                  ? broadcastTemplates.length 
+                                  : getTemplatesByTag(tag).length;
+                                return (
+                                  <button
+                                    key={tag}
+                                    onClick={() => setSelectedTemplateTag(tag)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                                      selectedTemplateTag === tag
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    {tag} <span className="text-gray-500">({count})</span>
                           </button>
-                          <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 whitespace-nowrap">
-                            Travel <span className="text-gray-500">(6)</span>
-                          </button>
-                          <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 whitespace-nowrap">
-                            Healthcare <span className="text-gray-500">(5)</span>
-                          </button>
-                          <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 whitespace-nowrap">
-                            E-Commerce <span className="text-gray-500">(14)</span>
-                          </button>
-                          <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 whitespace-nowrap">
-                            More...
-                          </button>
+                                );
+                              })}
               </div>
 
-                        <div className="space-y-4">
-                          {/* Template 1 */}
-                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h3 className="font-semibold text-gray-900 mb-1">Login_Verification</h3>
-                                <span className="text-xs text-gray-500">Others</span>
+                            {/* Search Bar */}
+                            <div className="mb-6">
+                              <div className="relative">
+                                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <input
+                                  type="text"
+                                  placeholder="Search templates by name, tag, or content..."
+                                  value={templateSearchQuery}
+                                  onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                />
                               </div>
-                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
+                            </div>
+
+                            {/* Templates grouped by selected tag and filtered by search */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {(() => {
+                                // First filter by tag
+                                let filteredTemplates = getTemplatesByTag(selectedTemplateTag);
+                                
+                                // Then filter by search query if provided
+                                if (templateSearchQuery.trim()) {
+                                  const query = templateSearchQuery.toLowerCase().trim();
+                                  filteredTemplates = filteredTemplates.filter(template => {
+                                    const nameMatch = template.name?.toLowerCase().includes(query);
+                                    const tagsMatch = template.tags?.some(tag => tag.toLowerCase().includes(query));
+                                    const contentMatch = template.content?.toLowerCase().includes(query);
+                                    return nameMatch || tagsMatch || contentMatch;
+                                  });
+                                }
+                                
+                                return filteredTemplates.map((template) => (
+                                <div key={template.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow flex flex-col">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1 min-w-0">
+                                      <h3 className="font-semibold text-gray-900 mb-1 truncate">{template.name}</h3>
+                                      <span className="text-xs text-gray-500">{template.tags ? template.tags.join(', ') : ''}</span>
+                              </div>
+                              <button 
+                                onClick={() => {
+                                  setSelectedTemplate(template);
+                                }}
+                                className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors flex-shrink-0 ml-2"
+                              >
                                 Use sample
                               </button>
                             </div>
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
-                              Hi {`{{name}}`},
-
-                              To verify your login attempt, please enter the following code in the login page:
-
-                              🔑 **Your Code**: [Verification Code]
-
-                              This code will expire in **[Time Duration]**.
-
-                              If this wasn't you, please reset your password or contact our support team at (support_method)
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2 flex-1 overflow-y-auto max-h-48">
+                                    {template.content}
                             </p>
                           </div>
-
-                          {/* Template 2 */}
-                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h3 className="font-semibold text-gray-900 mb-1">Login_Verification</h3>
-                                <span className="text-xs text-gray-500">Others</span>
+                                ));
+                              })()}
                               </div>
-                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
-                                Use sample
-                              </button>
-                            </div>
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
-                              Hi {`{{name}}`},
-
-                              To verify your login attempt, please enter the following code in the app or website:
-
-                              🔑 **Your Code**: [Verification Code]
-
-                              This code will expire in **[Time Duration]**.
-                              Please do not share this code with anyone for your safety.
-
-                              If this wasn't you, please reset your password or contact our support team at (support_method)
+                              
+                              {/* Show message if no templates found */}
+                              {(() => {
+                                let filteredTemplates = getTemplatesByTag(selectedTemplateTag);
+                                if (templateSearchQuery.trim()) {
+                                  const query = templateSearchQuery.toLowerCase().trim();
+                                  filteredTemplates = filteredTemplates.filter(template => {
+                                    const nameMatch = template.name?.toLowerCase().includes(query);
+                                    const tagsMatch = template.tags?.some(tag => tag.toLowerCase().includes(query));
+                                    const contentMatch = template.content?.toLowerCase().includes(query);
+                                    return nameMatch || tagsMatch || contentMatch;
+                                  });
+                                }
+                                return filteredTemplates.length === 0 && (
+                                  <div className="col-span-full text-center py-12">
+                                    <p className="text-gray-500 text-sm">
+                                      {templateSearchQuery.trim() 
+                                        ? `No templates found matching "${templateSearchQuery}"`
+                                        : 'No templates available'}
                             </p>
                           </div>
-
-                          {/* Template 3 */}
-                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between mb-3">
+                                );
+                              })()}
+                          </>
+                          )
+                        ) : templateSubView === 'your-templates' ? (
+                          <div className="space-y-6">
+                            <div className="flex items-start justify-between">
                               <div>
-                                <h3 className="font-semibold text-gray-900 mb-1">Login_Verification</h3>
-                                <span className="text-xs text-gray-500">Others</span>
+                                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Your Templates</h2>
+                                <p className="text-sm text-gray-600 mb-4">
+                                  Manage your custom templates here.
+                            </p>
                               </div>
-                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
-                                Use sample
+                              <button className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                                Watch Tutorial
                               </button>
                             </div>
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
-                              "Hi {`{{name}}`},
-
-                              To complete your purchase, please enter the following OTP (One-Time Password) on our login page:
-
-                              🛍️ **Your OTP**: [OTP Code]
-                              Please do not share this code with anyone for your safety.
-                              This OTP is valid for **[Time Duration]**. If you didn't request this, please contact our support team for assistance at (support_method)."
-                            </p>
+                            <div className="border border-gray-200 rounded-lg p-8 text-center">
+                              <p className="text-gray-500">No custom templates yet. Create your first template to get started.</p>
                           </div>
-
-                          {/* Template 4 */}
-                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h3 className="font-semibold text-gray-900 mb-1">Two-Factor_Authentication (2FA) Code</h3>
-                                <span className="text-xs text-gray-500">Others</span>
                               </div>
-                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
-                                Use sample
-                              </button>
-                            </div>
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
-                              Hi {`{{name}}`},
-
-                              For added security, please use the following code to complete your login:
-
-                              🔑 **Your Code**: [Authentication Code]
-
-                              Please do not share this code with anyone for your safety.
-
-                              If you did not request this, please contact our support team immediately at (support_method).
+                        ) : (
+                          <div className="space-y-6">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Templates</h2>
+                                <p className="text-sm text-gray-600 mb-4">
+                                  Select "Template library" or "Your templates" from the sidebar to get started.
                             </p>
+                              </div>
+                            </div>
                           </div>
-
-                          {/* Template 5 */}
-                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between mb-3">
+                        )}
+                      </div>
+                    )}
+                    
+                    {broadcastView === 'broadcast-history' && (
+                      <div className="space-y-6">
+                        <div className="flex items-start justify-between">
                               <div>
-                                <h3 className="font-semibold text-gray-900 mb-1">OTP_for_Checkout</h3>
-                                <span className="text-xs text-gray-500">Others</span>
+                            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Broadcast History</h2>
+                            <p className="text-sm text-gray-600 mb-4">
+                              View all your past broadcast messages and their performance.
+                            </p>
                               </div>
-                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
-                                Use sample
+                          <button className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                            Watch Tutorial
                               </button>
                             </div>
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
-                              Hi {`{{name}}`},
 
-                              To complete your purchase, please enter the following OTP (One-Time Password) on our checkout page:
-
-                              🛍️ **Your OTP**: [OTP Code]
-
-                              This OTP is valid for **[Time Duration]**. If you didn't request this, please contact our support team for assistance at (support_method).
-                            </p>
+                        <div className="border border-gray-200 rounded-lg bg-white">
+                          <div className="p-4 border-b border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-semibold text-gray-900">Past Broadcasts</h3>
+                              <div className="flex items-center gap-2">
+                                <button className="px-3 py-1 text-sm font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
+                                  Export
+                                </button>
+                                <button className="px-3 py-1 text-sm font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
+                                  Filter
+                                </button>
                           </div>
-
-                          {/* Template 6 */}
-                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h3 className="font-semibold text-gray-900 mb-1">Two-Factor_Authentication (2FA) Code</h3>
-                                <span className="text-xs text-gray-500">Others</span>
                               </div>
-                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
-                                Use sample
-                              </button>
                             </div>
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
-                              Hi {`{{name}}`},
-
-                              For added security, please use the following code to complete your login:
-
-                              🔑 **Your Code**: [Authentication Code]
-
-                              If you did not request this, please contact our support team immediately at (support_method).
-                            </p>
-                          </div>
-
-                          {/* Template 7 */}
-                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h3 className="font-semibold text-gray-900 mb-1">Booking_Confirmation</h3>
-                                <span className="text-xs text-gray-500">Travel</span>
-                              </div>
-                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
-                                Use sample
-                              </button>
+                          <div className="p-8 text-center">
+                            <div className="text-gray-400 mb-4">
+                              <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
                             </div>
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
-                              Hi [Customer Name],
-
-                              Great news! Your trip to [Destination] is confirmed! 🎉 Here are your booking details:
-
-                              🌍 Destination: [Destination Name]
-
-                              📅 Travel Dates: [Start Date] - [End Date]
-
-                              ✈️ Flight Number: [Flight Number]
-
-                              🏨 Hotel: [Hotel Name]
-
-                              👉 You can access your full itinerary here: [Link]
-
-                              If you have any questions or need further assistance, feel free to reply to this message or contact us at [Phone Number].
-
-                              Safe travels and thank you for choosing [Travel Agency Name]!
+                            <p className="text-sm font-medium text-gray-900 mb-1">No broadcast history</p>
+                            <p className="text-xs text-gray-500 mb-4">You haven't sent any broadcasts yet.</p>
+                            <p className="text-xs text-gray-600 mb-4">
+                              Start sending broadcast messages and they will appear here.
                             </p>
-                          </div>
-
-                          {/* Template 8 */}
-                          <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h3 className="font-semibold text-gray-900 mb-1">Prescription_Renewal_Reminder</h3>
-                                <span className="text-xs text-gray-500">Healthcare</span>
-                              </div>
-                              <button className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
-                                Use sample
-                              </button>
-                            </div>
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
-                              Hi {`{{name}}`},
-
-                              This is a friendly reminder that it's time to renew your prescription for [Medication Name]. To ensure you don't run out of your medication, please submit a renewal request before [Date].
-                            </p>
+                            <button 
+                              onClick={() => setBroadcastView('new-broadcast')}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                            >
+                              New Broadcast
+                            </button>
                           </div>
                         </div>
                       </div>
                     )}
+                    
+                    {broadcastView === 'scheduled-broadcasts' && (
+                      <div className="space-y-6">
+                        <div className="flex items-start justify-between">
+                              <div>
+                            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Scheduled Broadcasts</h2>
+                            <p className="text-sm text-gray-600 mb-4">
+                              Manage your scheduled broadcast messages.
+                            </p>
+                              </div>
+                          <button className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                            Watch Tutorial
+                              </button>
+                            </div>
+
+                        <div className="border border-gray-200 rounded-lg bg-white">
+                          <div className="p-4 border-b border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-semibold text-gray-900">Upcoming Broadcasts</h3>
+                              <div className="flex items-center gap-2">
+                                <button className="px-3 py-1 text-sm font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
+                                  Export
+                                </button>
+                                <button className="px-3 py-1 text-sm font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors">
+                                  Filter
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-8 text-center">
+                            <div className="text-gray-400 mb-4">
+                              <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <p className="text-sm font-medium text-gray-900 mb-1">No scheduled broadcasts</p>
+                            <p className="text-xs text-gray-500 mb-4">You don't have any scheduled broadcasts yet.</p>
+                            <p className="text-xs text-gray-600 mb-4">
+                              Schedule a broadcast message and it will appear here.
+                            </p>
+                            <button 
+                              onClick={() => setBroadcastView('new-broadcast')}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                            >
+                              New Broadcast
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     {broadcastView === 'analytics' && (
                       <div className="space-y-6">
                         <div className="flex items-start justify-between">
@@ -3268,7 +3627,6 @@ const Dashboard = () => {
                         </div>
                       </div>
                     )}
-                  </div>
                 </div>
               </div>
             </div>
