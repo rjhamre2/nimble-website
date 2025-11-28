@@ -49,6 +49,9 @@ jobs:
           REACT_APP_WEBSOCKET_API_GATEWAY: "https://api.nimbleai.in/api/database"
           REACT_APP_DB_SERVER_URL: "https://api.nimbleai.in/api/database"
           REACT_APP_RP_ID: "rzp_live_RWPVPdgjJN0s7P"
+          REACT_APP_FIREBASE_API_KEY: ${{ secrets.REACT_APP_FIREBASE_API_KEY }}
+          REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}
+          REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}
       # --- 2. Continuous Delivery (CD) to AWS ---
 
       - name: 🔐 Configure AWS Credentials
