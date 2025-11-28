@@ -86,6 +86,16 @@ const Dashboard = () => {
   const [templateFooter, setTemplateFooter] = useState('');
   const [templateSampleContent, setTemplateSampleContent] = useState('');
   const [templateButtons, setTemplateButtons] = useState('');
+  // Broadcast title state
+  const [broadcastTitleType, setBroadcastTitleType] = useState('none'); // 'none', 'text', 'image', 'video', 'document'
+  const [broadcastTitleText, setBroadcastTitleText] = useState('');
+  const [broadcastTitleImageLink, setBroadcastTitleImageLink] = useState('');
+  const [broadcastTitleVideoLink, setBroadcastTitleVideoLink] = useState('');
+  const [broadcastTitleDocumentLink, setBroadcastTitleDocumentLink] = useState('');
+  const [broadcastTitleImageFile, setBroadcastTitleImageFile] = useState(null);
+  const [broadcastTitleVideoFile, setBroadcastTitleVideoFile] = useState(null);
+  const [broadcastTitleDocumentFile, setBroadcastTitleDocumentFile] = useState(null);
+  const [broadcastTitleError, setBroadcastTitleError] = useState('');
 
   // Populate form when template is selected
   useEffect(() => {
@@ -109,6 +119,16 @@ const Dashboard = () => {
       setTemplateFooter(selectedTemplate.footer || '');
       setTemplateSampleContent('');
       setTemplateButtons('');
+      // Reset broadcast title when selecting a new template
+      setBroadcastTitleType('none');
+      setBroadcastTitleText('');
+      setBroadcastTitleImageLink('');
+      setBroadcastTitleVideoLink('');
+      setBroadcastTitleDocumentLink('');
+      setBroadcastTitleImageFile(null);
+      setBroadcastTitleVideoFile(null);
+      setBroadcastTitleDocumentFile(null);
+      setBroadcastTitleError('');
     }
   }, [selectedTemplate]);
 
@@ -2854,7 +2874,7 @@ const Dashboard = () => {
                             // Show template form when a template is selected
                             <div className="space-y-6">
                               {/* Back button and header */}
-                              <div className="flex items-center gap-4 mb-6">
+                              <div className="flex items-center justify-between mb-6">
                                 <button
                                   onClick={() => {
                                     setSelectedTemplate(null);
@@ -2865,12 +2885,105 @@ const Dashboard = () => {
                                     setTemplateFooter('');
                                     setTemplateSampleContent('');
                                     setTemplateButtons('');
+                                    setBroadcastTitleType('none');
+                                    setBroadcastTitleText('');
+                                    setBroadcastTitleImageLink('');
+                                    setBroadcastTitleVideoLink('');
+                                    setBroadcastTitleDocumentLink('');
+                                    setBroadcastTitleImageFile(null);
+                                    setBroadcastTitleVideoFile(null);
+                                    setBroadcastTitleDocumentFile(null);
+                                    setBroadcastTitleError('');
                                   }}
                                   className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
                                 >
                                   <ArrowLeftIcon className="h-5 w-5" />
                                   <span>New Templates</span>
                                 </button>
+                                
+                                {/* Action Buttons */}
+                                <div className="flex justify-end space-x-3">
+                                  <button
+                                    type="button"
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+                                    onClick={() => {
+                                      setSelectedTemplate(null);
+                                      setTemplateName('');
+                                      setTemplateCategory('');
+                                      setTemplateLanguage('English');
+                                      setTemplateBody('');
+                                      setTemplateFooter('');
+                                      setTemplateSampleContent('');
+                                      setTemplateButtons('');
+                                      setBroadcastTitleType('none');
+                                      setBroadcastTitleText('');
+                                      setBroadcastTitleImageLink('');
+                                      setBroadcastTitleVideoLink('');
+                                      setBroadcastTitleDocumentLink('');
+                                      setBroadcastTitleImageFile(null);
+                                      setBroadcastTitleVideoFile(null);
+                                      setBroadcastTitleDocumentFile(null);
+                                      setBroadcastTitleError('');
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
+                                    onClick={() => {
+                                      // Handle save as draft
+                                      console.log('Template saved as draft:', {
+                                        templateName,
+                                        templateCategory,
+                                        templateLanguage,
+                                        templateBody,
+                                        templateFooter,
+                                        templateButtons,
+                                        templateSampleContent
+                                      });
+                                      // Don't reset form, just save as draft
+                                    }}
+                                  >
+                                    Save as draft
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+                                    onClick={() => {
+                                      // Handle form submission here
+                                      console.log('Template form submitted:', {
+                                        templateName,
+                                        templateCategory,
+                                        templateLanguage,
+                                        templateBody,
+                                        templateFooter,
+                                        templateButtons,
+                                        templateSampleContent
+                                      });
+                                      // Reset form after submission
+                                      setSelectedTemplate(null);
+                                      setTemplateName('');
+                                      setTemplateCategory('');
+                                      setTemplateLanguage('English');
+                                      setTemplateBody('');
+                                      setTemplateFooter('');
+                                      setTemplateSampleContent('');
+                                      setTemplateButtons('');
+                                      setBroadcastTitleType('none');
+                                      setBroadcastTitleText('');
+                                      setBroadcastTitleImageLink('');
+                                      setBroadcastTitleVideoLink('');
+                                      setBroadcastTitleDocumentLink('');
+                                      setBroadcastTitleImageFile(null);
+                                      setBroadcastTitleVideoFile(null);
+                                      setBroadcastTitleDocumentFile(null);
+                                      setBroadcastTitleError('');
+                                    }}
+                                  >
+                                    Save and submit
+                                </button>
+                                </div>
                               </div>
 
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -2886,10 +2999,24 @@ const Dashboard = () => {
                                       <input
                                         type="text"
                                         value={templateName}
-                                        onChange={(e) => setTemplateName(e.target.value)}
+                                        onChange={(e) => {
+                                          let value = e.target.value;
+                                          // Convert spaces to underscores
+                                          value = value.replace(/\s/g, '_');
+                                          // Only allow lowercase alphanumeric characters and underscores
+                                          value = value.replace(/[^a-z0-9_]/g, '');
+                                          // Limit to 512 characters
+                                          if (value.length <= 512) {
+                                            setTemplateName(value);
+                                          }
+                                        }}
+                                        maxLength={512}
                                         className="w-full h-8 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 box-border"
                                         placeholder="Template Name"
                                       />
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Only lowercase alphanumeric characters and underscores, up to 512 characters
+                                      </p>
                                     </div>
 
                                     {/* Category */}
@@ -2927,6 +3054,283 @@ const Dashboard = () => {
                                         <option value="Other">Other</option>
                                       </select>
                                     </div>
+                                  </div>
+
+                                  {/* Broadcast Title */}
+                                  <div>
+                                    <div className="mb-2">
+                                      <label className="block text-sm font-medium text-gray-700">
+                                        Broadcast title (Optional)
+                                      </label>
+                                      <p className="text-xs text-gray-600 mt-1">
+                                        Highlight your brand by using the images, videos or documents.
+                                      </p>
+                                    </div>
+                                    
+                                    {/* Radio Buttons */}
+                                    <div className="flex flex-wrap gap-4 mb-4">
+                                      <label className="flex items-center">
+                                        <input
+                                          type="radio"
+                                          name="broadcastTitleType"
+                                          value="none"
+                                          checked={broadcastTitleType === 'none'}
+                                          onChange={(e) => {
+                                            setBroadcastTitleType(e.target.value);
+                                            setBroadcastTitleError('');
+                                          }}
+                                          className="mr-2"
+                                        />
+                                        <span className="text-sm text-gray-700">None</span>
+                                      </label>
+                                      <label className="flex items-center">
+                                        <input
+                                          type="radio"
+                                          name="broadcastTitleType"
+                                          value="text"
+                                          checked={broadcastTitleType === 'text'}
+                                          onChange={(e) => {
+                                            setBroadcastTitleType(e.target.value);
+                                            setBroadcastTitleError('');
+                                          }}
+                                          className="mr-2"
+                                        />
+                                        <span className="text-sm text-gray-700">Text</span>
+                                      </label>
+                                      <label className="flex items-center">
+                                        <input
+                                          type="radio"
+                                          name="broadcastTitleType"
+                                          value="image"
+                                          checked={broadcastTitleType === 'image'}
+                                          onChange={(e) => {
+                                            setBroadcastTitleType(e.target.value);
+                                            setBroadcastTitleError('');
+                                          }}
+                                          className="mr-2"
+                                        />
+                                        <span className="text-sm text-gray-700">Image</span>
+                                      </label>
+                                      <label className="flex items-center">
+                                        <input
+                                          type="radio"
+                                          name="broadcastTitleType"
+                                          value="video"
+                                          checked={broadcastTitleType === 'video'}
+                                          onChange={(e) => {
+                                            setBroadcastTitleType(e.target.value);
+                                            setBroadcastTitleError('');
+                                          }}
+                                          className="mr-2"
+                                        />
+                                        <span className="text-sm text-gray-700">Video</span>
+                                      </label>
+                                      <label className="flex items-center">
+                                        <input
+                                          type="radio"
+                                          name="broadcastTitleType"
+                                          value="document"
+                                          checked={broadcastTitleType === 'document'}
+                                          onChange={(e) => {
+                                            setBroadcastTitleType(e.target.value);
+                                            setBroadcastTitleError('');
+                                          }}
+                                          className="mr-2"
+                                        />
+                                        <span className="text-sm text-gray-700">Document</span>
+                                      </label>
+                                    </div>
+
+                                    {/* Text Input */}
+                                    {broadcastTitleType === 'text' && (
+                                      <div className="mb-4">
+                                        <div className="relative">
+                                          <input
+                                            type="text"
+                                            value={broadcastTitleText}
+                                            onChange={(e) => {
+                                              if (e.target.value.length <= 60) {
+                                                setBroadcastTitleText(e.target.value);
+                                              }
+                                            }}
+                                            maxLength={60}
+                                            className="w-full px-3 py-2 pr-16 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter broadcast title text"
+                                          />
+                                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
+                                            {broadcastTitleText.length}/60
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Image Input */}
+                                    {broadcastTitleType === 'image' && (
+                                      <div className="mb-4">
+                                        <div className="flex gap-2 items-center">
+                                          <input
+                                            type="text"
+                                            value={broadcastTitleImageLink}
+                                            onChange={(e) => {
+                                              setBroadcastTitleImageLink(e.target.value);
+                                              setBroadcastTitleError('');
+                                            }}
+                                            onBlur={(e) => {
+                                              const link = e.target.value.trim();
+                                              if (link) {
+                                                const lowerLink = link.toLowerCase();
+                                                const validExtensions = ['.jpeg', '.png'];
+                                                const hasValidExtension = validExtensions.some(ext => lowerLink.endsWith(ext));
+                                                if (!hasValidExtension) {
+                                                  setBroadcastTitleError('Please paste a valid image link (must end with .jpeg or .png)');
+                                                } else {
+                                                  setBroadcastTitleError('');
+                                                }
+                                              }
+                                            }}
+                                            placeholder="Paste image link"
+                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          />
+                                          <span className="text-sm text-gray-500 flex-shrink-0">Or</span>
+                                          <label className="flex-shrink-0">
+                                            <input
+                                              type="file"
+                                              accept="image/jpeg,image/png"
+                                              onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                  const fileName = file.name.toLowerCase();
+                                                  const validExtensions = ['.jpeg', '.png'];
+                                                  const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+                                                  
+                                                  if (!hasValidExtension) {
+                                                    setBroadcastTitleError('Please upload a valid image file (must be .jpeg or .png)');
+                                                    setBroadcastTitleImageFile(null);
+                                                  } else {
+                                                    setBroadcastTitleImageFile(file);
+                                                    setBroadcastTitleImageLink('');
+                                                    setBroadcastTitleError('');
+                                                  }
+                                                }
+                                              }}
+                                              className="hidden"
+                                            />
+                                            <span className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 cursor-pointer inline-block text-sm whitespace-nowrap">
+                                              Upload image
+                                            </span>
+                                          </label>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">Valid formats: JPEG, PNG</p>
+                                        {broadcastTitleError && broadcastTitleType === 'image' && (
+                                          <p className="text-xs text-red-600 mt-1">{broadcastTitleError}</p>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Video Input */}
+                                    {broadcastTitleType === 'video' && (
+                                      <div className="mb-4">
+                                        <div className="flex gap-2 items-center">
+                                          <input
+                                            type="text"
+                                            value={broadcastTitleVideoLink}
+                                            onChange={(e) => {
+                                              setBroadcastTitleVideoLink(e.target.value);
+                                              setBroadcastTitleError('');
+                                            }}
+                                            onBlur={(e) => {
+                                              const link = e.target.value.trim();
+                                              if (link && !link.toLowerCase().endsWith('.mp4')) {
+                                                setBroadcastTitleError('Please paste a valid video link (must end with .mp4)');
+                                              } else {
+                                                setBroadcastTitleError('');
+                                              }
+                                            }}
+                                            placeholder="Paste video link"
+                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          />
+                                          <span className="text-sm text-gray-500 flex-shrink-0">Or</span>
+                                          <label className="flex-shrink-0">
+                                            <input
+                                              type="file"
+                                              accept="video/mp4"
+                                              onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                  const fileName = file.name.toLowerCase();
+                                                  
+                                                  if (!fileName.endsWith('.mp4')) {
+                                                    setBroadcastTitleError('Please upload a valid video file (must be .mp4)');
+                                                    setBroadcastTitleVideoFile(null);
+                                                  } else {
+                                                    setBroadcastTitleVideoFile(file);
+                                                    setBroadcastTitleVideoLink('');
+                                                    setBroadcastTitleError('');
+                                                  }
+                                                }
+                                              }}
+                                              className="hidden"
+                                            />
+                                            <span className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 cursor-pointer inline-block text-sm whitespace-nowrap">
+                                              Upload video
+                                            </span>
+                                          </label>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">Valid formats: MP4</p>
+                                        {broadcastTitleError && broadcastTitleType === 'video' && (
+                                          <p className="text-xs text-red-600 mt-1">{broadcastTitleError}</p>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Document Input */}
+                                    {broadcastTitleType === 'document' && (
+                                      <div className="mb-4">
+                                        <div className="flex gap-2 items-center">
+                                          <input
+                                            type="text"
+                                            value={broadcastTitleDocumentLink}
+                                            onChange={(e) => {
+                                              setBroadcastTitleDocumentLink(e.target.value);
+                                              setBroadcastTitleError('');
+                                            }}
+                                            onBlur={(e) => {
+                                              const link = e.target.value.trim();
+                                              if (link && !link.toLowerCase().endsWith('.pdf')) {
+                                                setBroadcastTitleError('Please paste a valid document link (must end with .pdf)');
+                                              } else {
+                                                setBroadcastTitleError('');
+                                              }
+                                            }}
+                                            placeholder="Paste document link"
+                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          />
+                                          <span className="text-sm text-gray-500 flex-shrink-0">Or</span>
+                                          <label className="flex-shrink-0">
+                                            <input
+                                              type="file"
+                                              accept="application/pdf"
+                                              onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                  setBroadcastTitleDocumentFile(file);
+                                                  setBroadcastTitleDocumentLink('');
+                                                  setBroadcastTitleError('');
+                                                }
+                                              }}
+                                              className="hidden"
+                                            />
+                                            <span className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 cursor-pointer inline-block text-sm whitespace-nowrap">
+                                              Upload document
+                                            </span>
+                                          </label>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">Valid formats: PDF</p>
+                                        {broadcastTitleError && broadcastTitleType === 'document' && (
+                                          <p className="text-xs text-red-600 mt-1">{broadcastTitleError}</p>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
 
                                   {/* Body */}
@@ -3034,79 +3438,211 @@ const Dashboard = () => {
                                 <div>
                                   <div className="sticky top-0">
                                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Preview</h3>
-                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 min-h-[400px]">
-                                      <div className="space-y-2">
+                                    {/* Mobile Phone Mockup with WhatsApp Preview */}
+                                    <div className="flex justify-center">
+                                      <div className="relative w-[260px] h-[520px] bg-gray-900 rounded-[2.5rem] p-1.5 shadow-2xl">
+                                        {/* Phone Frame */}
+                                        <div className="w-full h-full bg-white rounded-[2rem] overflow-hidden border-[3px] border-gray-800">
+                                          {/* Status Bar */}
+                                          <div className="bg-[#075e54] h-10 flex items-center justify-between px-3 text-white text-[10px]">
+                                            <div className="flex items-center gap-1">
+                                              <span>9:41</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                                              </svg>
+                                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M17.778 8.222c-4.296-4.296-11.26-4.296-15.556 0A1 1 0 01.808 6.808c5.076-5.076 13.308-5.076 18.384 0a1 1 0 01-1.414 1.414zM14.95 11.05a7 7 0 00-9.9 0 1 1 0 01-1.414-1.414 9 9 0 0112.728 0 1 1 0 01-1.414 1.414zM12.12 13.88a3 3 0 00-4.242 0 1 1 0 01-1.415-1.415 5 5 0 017.072 0 1 1 0 01-1.415 1.415zM9 16a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clipRule="evenodd"/>
+                                              </svg>
+                                            </div>
+                                          </div>
+                                          
+                                          {/* WhatsApp Header */}
+                                          <div className="bg-[#075e54] px-3 py-2 flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
+                                              <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd"/>
+                                              </svg>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <div className="text-white font-medium text-xs truncate">Business Name</div>
+                                              <div className="text-[#d4edda] text-[10px]">online</div>
+                                            </div>
+                                            <div className="flex gap-2 flex-shrink-0">
+                                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                                              </svg>
+                                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                              </svg>
+                                            </div>
+                                          </div>
+                                          
+                                          {/* Chat Area */}
+                                          <div className="bg-[#ece5dd] h-[calc(100%-10rem)] overflow-y-auto p-3" style={{
+                                            backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='grid' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='%23d4d4d4' stroke-width='0.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grid)' opacity='0.1'/%3E%3C/svg%3E")`
+                                          }}>
+                                            {/* Template Message Bubble */}
+                                            {(templateBody || broadcastTitleType !== 'none') ? (
+                                              <div className="flex justify-start mb-2">
+                                                <div className="max-w-[85%] bg-white rounded-lg shadow-sm p-2.5 relative">
+                                                  {/* Message Header Badge */}
+                                                  <div className="absolute -top-1.5 left-2.5 bg-[#25d366] text-white text-[9px] px-1.5 py-0.5 rounded-full font-medium">
+                                                    TEMPLATE
+                                                  </div>
+                                                  <div className="pt-1.5">
+                                                    {/* Broadcast Title - Text */}
+                                                    {broadcastTitleType === 'text' && broadcastTitleText && (
+                                                      <div className="font-bold text-xs text-gray-800 mb-2">
+                                                        {broadcastTitleText}
+                                                      </div>
+                                                    )}
+                                                    
+                                                    {/* Broadcast Title - Image */}
+                                                    {broadcastTitleType === 'image' && (
+                                                      <>
+                                                        {broadcastTitleImageLink && (
+                                                          <div className="mb-2">
+                                                            <img 
+                                                              src={broadcastTitleImageLink} 
+                                                              alt="Broadcast" 
+                                                              className="w-full rounded-lg object-cover max-h-32"
+                                                              onError={(e) => {
+                                                                e.target.style.display = 'none';
+                                                              }}
+                                                            />
+                                                          </div>
+                                                        )}
+                                                        {broadcastTitleImageFile && (
+                                                          <div className="mb-2">
+                                                            <img 
+                                                              src={URL.createObjectURL(broadcastTitleImageFile)} 
+                                                              alt="Broadcast" 
+                                                              className="w-full rounded-lg object-cover max-h-32"
+                                                            />
+                                                          </div>
+                                                        )}
+                                                      </>
+                                                    )}
+                                                    
+                                                    {/* Broadcast Title - Video */}
+                                                    {broadcastTitleType === 'video' && (
+                                                      <>
+                                                        {broadcastTitleVideoLink && (
+                                                          <div className="mb-2 relative">
+                                                            <video 
+                                                              src={broadcastTitleVideoLink} 
+                                                              className="w-full rounded-lg object-cover max-h-32"
+                                                              controls={false}
+                                                              onError={(e) => {
+                                                                e.target.style.display = 'none';
+                                                              }}
+                                                            />
+                                                            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg">
+                                                              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                                              </svg>
+                                                            </div>
+                                                          </div>
+                                                        )}
+                                                        {broadcastTitleVideoFile && (
+                                                          <div className="mb-2 relative">
+                                                            <video 
+                                                              src={URL.createObjectURL(broadcastTitleVideoFile)} 
+                                                              className="w-full rounded-lg object-cover max-h-32"
+                                                              controls={false}
+                                                            />
+                                                            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg">
+                                                              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                                              </svg>
+                                                            </div>
+                                                          </div>
+                                                        )}
+                                                      </>
+                                                    )}
+                                                    
+                                                    {/* Broadcast Title - Document */}
+                                                    {broadcastTitleType === 'document' && (
+                                                      <>
+                                                        {broadcastTitleDocumentLink && (
+                                                          <div className="mb-2 border border-gray-300 rounded-lg overflow-hidden bg-gray-50" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                                                            <iframe 
+                                                              src={broadcastTitleDocumentLink} 
+                                                              className="w-full h-32"
+                                                              title="Document preview"
+                                                              onError={(e) => {
+                                                                e.target.style.display = 'none';
+                                                              }}
+                                                            />
+                                                          </div>
+                                                        )}
+                                                        {broadcastTitleDocumentFile && (
+                                                          <div className="mb-2 border border-gray-300 rounded-lg overflow-hidden bg-gray-50" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                                                            <iframe 
+                                                              src={URL.createObjectURL(broadcastTitleDocumentFile)} 
+                                                              className="w-full h-32"
+                                                              title="Document preview"
+                                                            />
+                                                          </div>
+                                                        )}
+                                                      </>
+                                                    )}
+                                                    
+                                                    {/* Message Body */}
                                         {templateBody && (
-                                          <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                                                      <div className="text-xs text-gray-800 whitespace-pre-wrap mb-1.5">
                                             {templateBody.replace(/\[.*?\]/g, templateSampleContent || '[Sample]')}
                                           </div>
                                         )}
+                                                    
+                                                    {/* Footer */}
                                         {templateFooter && (
-                                          <div className="text-xs text-gray-600 mt-4 pt-4 border-t border-gray-300">
+                                                      <div className="text-[9px] text-gray-500 mt-1.5 pt-1.5 border-t border-gray-200">
                                             {templateFooter}
                                           </div>
                                         )}
+                                                    
+                                                    {/* Buttons */}
                                         {templateButtons && (
-                                          <div className="mt-4 pt-4 border-t border-gray-300">
-                                            <button className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                                                      <div className="mt-2 space-y-1.5">
+                                                        <button className="w-full px-2.5 py-1.5 bg-[#25d366] text-white text-[10px] rounded-lg hover:bg-[#20ba5a] transition-colors text-center">
                                               {templateButtons}
                                             </button>
                                           </div>
                                         )}
-                                        {!templateBody && (
-                                          <p className="text-gray-400 text-sm italic">Preview will appear here</p>
-                                        )}
+                                                    
+                                                    {/* Timestamp */}
+                                                    <div className="text-[9px] text-gray-400 mt-1.5 text-right">
+                                                      {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                       </div>
                                     </div>
                                   </div>
                                 </div>
+                                            ) : (
+                                              <div className="flex items-center justify-center h-full">
+                                                <p className="text-gray-400 text-xs italic">Preview will appear here</p>
+                                              </div>
+                                            )}
                               </div>
 
-                              {/* Action Buttons */}
-                              <div className="flex justify-end space-x-3 pt-6 border-t">
-                                <button
-                                  type="button"
-                                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-                                  onClick={() => {
-                                    setSelectedTemplate(null);
-                                    setTemplateName('');
-                                    setTemplateCategory('');
-                                    setTemplateLanguage('English');
-                                    setTemplateBody('');
-                                    setTemplateFooter('');
-                                    setTemplateSampleContent('');
-                                    setTemplateButtons('');
-                                  }}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
-                                  onClick={() => {
-                                    // Handle form submission here
-                                    console.log('Template form submitted:', {
-                                      templateName,
-                                      templateCategory,
-                                      templateLanguage,
-                                      templateBody,
-                                      templateFooter,
-                                      templateButtons,
-                                      templateSampleContent
-                                    });
-                                    // Reset form after submission
-                                    setSelectedTemplate(null);
-                                    setTemplateName('');
-                                    setTemplateCategory('');
-                                    setTemplateLanguage('English');
-                                    setTemplateBody('');
-                                    setTemplateFooter('');
-                                    setTemplateSampleContent('');
-                                    setTemplateButtons('');
-                                  }}
-                                >
-                                  Save and submit
-                                </button>
+                                          {/* Input Area (Optional - for visual completeness) */}
+                                          <div className="bg-gray-100 h-12 border-t border-gray-200 flex items-center px-3">
+                                            <div className="flex-1 bg-white rounded-full px-3 py-1.5 text-xs text-gray-500">
+                                              Type a message
+                                            </div>
+                                            <div className="ml-1.5 w-8 h-8 bg-[#25d366] rounded-full flex items-center justify-center">
+                                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                              </svg>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           ) : (
@@ -3125,7 +3661,30 @@ const Dashboard = () => {
                   </div>
 
                         <div className="flex items-center justify-between mb-4">
-                          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
+                          <button 
+                            onClick={() => {
+                              // Set selectedTemplate to empty object to show form, but don't populate fields
+                              setSelectedTemplate({});
+                              // Reset all form fields
+                              setTemplateName('');
+                              setTemplateCategory('');
+                              setTemplateLanguage('English');
+                              setTemplateBody('');
+                              setTemplateFooter('');
+                              setTemplateSampleContent('');
+                              setTemplateButtons('');
+                              setBroadcastTitleType('none');
+                              setBroadcastTitleText('');
+                              setBroadcastTitleImageLink('');
+                              setBroadcastTitleVideoLink('');
+                              setBroadcastTitleDocumentLink('');
+                              setBroadcastTitleImageFile(null);
+                              setBroadcastTitleVideoFile(null);
+                              setBroadcastTitleDocumentFile(null);
+                              setBroadcastTitleError('');
+                            }}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                          >
                             New Template Message
                           </button>
                           <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
