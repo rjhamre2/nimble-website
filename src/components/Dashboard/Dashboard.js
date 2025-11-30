@@ -96,6 +96,13 @@ const Dashboard = () => {
   const [broadcastTitleVideoFile, setBroadcastTitleVideoFile] = useState(null);
   const [broadcastTitleDocumentFile, setBroadcastTitleDocumentFile] = useState(null);
   const [broadcastTitleError, setBroadcastTitleError] = useState('');
+  // Broadcast title variables
+  const [broadcastTitleVariables, setBroadcastTitleVariables] = useState([]);
+  const [showAddVariable, setShowAddVariable] = useState(false);
+  const [newVariableName, setNewVariableName] = useState('');
+  const [newVariableValue, setNewVariableValue] = useState('');
+  const broadcastTitleTextRef = useRef(null);
+  const skipNextEffectUpdate = useRef(false);
 
   // Populate form when template is selected
   useEffect(() => {
@@ -129,8 +136,138 @@ const Dashboard = () => {
       setBroadcastTitleVideoFile(null);
       setBroadcastTitleDocumentFile(null);
       setBroadcastTitleError('');
+      setBroadcastTitleVariables([]);
+      setShowAddVariable(false);
+      setNewVariableName('');
+      setNewVariableValue('');
     }
   }, [selectedTemplate]);
+
+  // Update contentEditable HTML when broadcastTitleText changes (e.g., when variable is added)
+  useEffect(() => {
+    // Skip update if we just added a variable (cursor positioning will handle it)
+    if (skipNextEffectUpdate.current) {
+      skipNextEffectUpdate.current = false;
+      return;
+    }
+    
+    if (broadcastTitleTextRef.current && broadcastTitleType === 'text') {
+      const currentInnerText = broadcastTitleTextRef.current.innerText || broadcastTitleTextRef.current.textContent || '';
+      // Remove placeholder text from current text for comparison
+      const cleanCurrentText = currentInnerText.replace(/Enter broadcast title text/g, '').trim();
+      const currentHTML = broadcastTitleTextRef.current.innerHTML;
+      const isFocused = document.activeElement === broadcastTitleTextRef.current;
+      
+      // Build expected HTML - only show placeholder if empty and not focused
+      const expectedHTML = broadcastTitleText ? broadcastTitleText.split(/(\{\{[\w_]+\}\})/g).map((part) => {
+        const isVariable = /^\{\{[\w_]+\}\}$/.test(part);
+        if (isVariable) {
+          return `<span contenteditable="false" data-variable="true" class="bg-blue-100 text-blue-700 px-1 rounded font-mono">${part}</span>`;
+        }
+        return part.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }).join('') : (isFocused ? '' : '<span class="text-gray-400">Enter broadcast title text</span>');
+      
+      // Only update if HTML doesn't match and we're not currently typing (text matches)
+      // Don't update if user is actively typing (current text matches state)
+      if (currentHTML !== expectedHTML && cleanCurrentText !== broadcastTitleText) {
+        const selection = window.getSelection();
+        let savedOffset = 0;
+        
+        // Save cursor position before updating (only if cursor is in the element)
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          if (broadcastTitleTextRef.current.contains(range.commonAncestorContainer)) {
+            // Calculate offset in plain text
+            const preRange = range.cloneRange();
+            preRange.selectNodeContents(broadcastTitleTextRef.current);
+            preRange.setEnd(range.endContainer, range.endOffset);
+            savedOffset = preRange.toString().length;
+          }
+        }
+        
+        // Update HTML
+        broadcastTitleTextRef.current.innerHTML = expectedHTML;
+        
+        // Restore cursor position after a brief delay to ensure DOM is updated
+        setTimeout(() => {
+          if (broadcastTitleTextRef.current) {
+            const selection = window.getSelection();
+            const textContent = broadcastTitleTextRef.current.innerText || broadcastTitleTextRef.current.textContent || '';
+            
+            // If we have a saved offset, use it
+            if (savedOffset > 0 && savedOffset <= textContent.length) {
+              try {
+                // Find the text node and position
+                const walker = document.createTreeWalker(
+                  broadcastTitleTextRef.current,
+                  NodeFilter.SHOW_TEXT,
+                  null
+                );
+                
+                let currentOffset = 0;
+                let targetNode = null;
+                let targetOffset = 0;
+                
+                let node;
+                while (node = walker.nextNode()) {
+                  const nodeLength = node.textContent.length;
+                  if (currentOffset + nodeLength >= savedOffset) {
+                    targetNode = node;
+                    targetOffset = savedOffset - currentOffset;
+                    break;
+                  }
+                  currentOffset += nodeLength;
+                }
+                
+                // If we found a target node, set cursor there
+                if (targetNode) {
+                  const newRange = document.createRange();
+                  newRange.setStart(targetNode, Math.min(targetOffset, targetNode.textContent.length));
+                  newRange.collapse(true);
+                  selection.removeAllRanges();
+                  selection.addRange(newRange);
+                } else {
+                  // Fallback: place cursor at end
+                  const range = document.createRange();
+                  range.selectNodeContents(broadcastTitleTextRef.current);
+                  range.collapse(false);
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                }
+                
+                // Ensure the element has focus and cursor is visible
+                broadcastTitleTextRef.current.focus();
+              } catch (e) {
+                // Fallback: place cursor at end
+                try {
+                  const range = document.createRange();
+                  range.selectNodeContents(broadcastTitleTextRef.current);
+                  range.collapse(false);
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                  broadcastTitleTextRef.current.focus();
+                } catch (e2) {
+                  // Ignore errors
+                }
+              }
+            } else if (textContent.length > 0) {
+              // No saved offset but has content, place cursor at end
+              try {
+                const range = document.createRange();
+                range.selectNodeContents(broadcastTitleTextRef.current);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                broadcastTitleTextRef.current.focus();
+              } catch (e) {
+                // Ignore errors
+              }
+            }
+          }
+        }, 20);
+      }
+    }
+  }, [broadcastTitleText, broadcastTitleType]);
 
   const [activeAutomationView, setActiveAutomationView] = useState('ai-agents');
   const [activeChannel, setActiveChannel] = useState('whatsapp');
@@ -2894,6 +3031,10 @@ const Dashboard = () => {
                                     setBroadcastTitleVideoFile(null);
                                     setBroadcastTitleDocumentFile(null);
                                     setBroadcastTitleError('');
+                                    setBroadcastTitleVariables([]);
+                                    setShowAddVariable(false);
+                                    setNewVariableName('');
+                                    setNewVariableValue('');
                                   }}
                                   className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
                                 >
@@ -2924,6 +3065,10 @@ const Dashboard = () => {
                                       setBroadcastTitleVideoFile(null);
                                       setBroadcastTitleDocumentFile(null);
                                       setBroadcastTitleError('');
+                                      setBroadcastTitleVariables([]);
+                                      setShowAddVariable(false);
+                                      setNewVariableName('');
+                                      setNewVariableValue('');
                                     }}
                                   >
                                     Cancel
@@ -2979,6 +3124,10 @@ const Dashboard = () => {
                                       setBroadcastTitleVideoFile(null);
                                       setBroadcastTitleDocumentFile(null);
                                       setBroadcastTitleError('');
+                                      setBroadcastTitleVariables([]);
+                                      setShowAddVariable(false);
+                                      setNewVariableName('');
+                                      setNewVariableValue('');
                                     }}
                                   >
                                     Save and submit
@@ -3055,6 +3204,9 @@ const Dashboard = () => {
                                       </select>
                                     </div>
                                   </div>
+                                  
+                                  {/* Divider above Broadcast Title */}
+                                  <div className="border-t border-gray-300 my-6"></div>
 
                                   {/* Broadcast Title */}
                                   <div>
@@ -3078,6 +3230,8 @@ const Dashboard = () => {
                                           onChange={(e) => {
                                             setBroadcastTitleType(e.target.value);
                                             setBroadcastTitleError('');
+                                            setBroadcastTitleVariables([]);
+                                            setShowAddVariable(false);
                                           }}
                                           className="mr-2"
                                         />
@@ -3106,6 +3260,8 @@ const Dashboard = () => {
                                           onChange={(e) => {
                                             setBroadcastTitleType(e.target.value);
                                             setBroadcastTitleError('');
+                                            setBroadcastTitleVariables([]);
+                                            setShowAddVariable(false);
                                           }}
                                           className="mr-2"
                                         />
@@ -3120,6 +3276,8 @@ const Dashboard = () => {
                                           onChange={(e) => {
                                             setBroadcastTitleType(e.target.value);
                                             setBroadcastTitleError('');
+                                            setBroadcastTitleVariables([]);
+                                            setShowAddVariable(false);
                                           }}
                                           className="mr-2"
                                         />
@@ -3134,6 +3292,8 @@ const Dashboard = () => {
                                           onChange={(e) => {
                                             setBroadcastTitleType(e.target.value);
                                             setBroadcastTitleError('');
+                                            setBroadcastTitleVariables([]);
+                                            setShowAddVariable(false);
                                           }}
                                           className="mr-2"
                                         />
@@ -3143,24 +3303,460 @@ const Dashboard = () => {
 
                                     {/* Text Input */}
                                     {broadcastTitleType === 'text' && (
-                                      <div className="mb-4">
+                                      <div className="mb-4 space-y-3">
                                         <div className="relative">
-                                          <input
-                                            type="text"
-                                            value={broadcastTitleText}
-                                            onChange={(e) => {
-                                              if (e.target.value.length <= 60) {
-                                                setBroadcastTitleText(e.target.value);
+                                          <div
+                                            ref={broadcastTitleTextRef}
+                                            contentEditable
+                                            onInput={(e) => {
+                                              const element = e.target;
+                                              
+                                              // Get plain text content, excluding placeholder
+                                              let plainText = element.innerText || element.textContent || '';
+                                              // Remove placeholder text if it appears
+                                              plainText = plainText.replace(/Enter broadcast title text/g, '').trim();
+                                              
+                                              // Check for deleted variables - compare with previous text
+                                              const previousVariables = broadcastTitleText.match(/\{\{[\w_]+\}\}/g) || [];
+                                              const currentVariables = plainText.match(/\{\{[\w_]+\}\}/g) || [];
+                                              
+                                              // Find deleted variables
+                                              const deletedVariables = previousVariables.filter(v => !currentVariables.includes(v));
+                                              if (deletedVariables.length > 0) {
+                                                // Remove deleted variables from the list
+                                                deletedVariables.forEach(deletedVar => {
+                                                  const varName = deletedVar.replace(/[{}]/g, '');
+                                                  setBroadcastTitleVariables(prev => 
+                                                    prev.filter(v => v.name !== varName)
+                                                  );
+                                                });
+                                              }
+                                              
+                                              // Count only non-variable characters
+                                              const variablePattern = /\{\{[\w_]+\}\}/g;
+                                              const variableMatches = plainText.match(variablePattern) || [];
+                                              const variableLength = variableMatches.join('').length;
+                                              const plainTextLength = plainText.length - variableLength;
+                                              
+                                              if (plainTextLength <= 60) {
+                                                // Update state with plain text only
+                                                setBroadcastTitleText(plainText);
+                                              } else {
+                                                // Revert to previous text
+                                                const currentText = broadcastTitleText;
+                                                const html = currentText ? currentText.split(/(\{\{[\w_]+\}\})/g).map((part) => {
+                                                  const isVariable = /^\{\{[\w_]+\}\}$/.test(part);
+                                                  if (isVariable) {
+                                                    return `<span contenteditable="false" data-variable="true" class="bg-blue-100 text-blue-700 px-1 rounded font-mono">${part}</span>`;
+                                                  }
+                                                  return part.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                                }).join('') : '';
+                                                element.innerHTML = html;
                                               }
                                             }}
-                                            maxLength={60}
-                                            className="w-full px-3 py-2 pr-16 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="Enter broadcast title text"
+                                            onClick={(e) => {
+                                              // Handle click to position cursor correctly, especially after variables
+                                              if (broadcastTitleTextRef.current) {
+                                                setTimeout(() => {
+                                                  const selection = window.getSelection();
+                                                  
+                                                  if (selection.rangeCount > 0) {
+                                                    const range = selection.getRangeAt(0);
+                                                    const clickX = e.clientX;
+                                                    const clickY = e.clientY;
+                                                    
+                                                    // Check if click is near a variable
+                                                    const variableSpans = broadcastTitleTextRef.current.querySelectorAll('[data-variable="true"]');
+                                                    let clickedAfterVariable = false;
+                                                    let targetVariable = null;
+                                                    
+                                                    for (let span of variableSpans) {
+                                                      const rect = span.getBoundingClientRect();
+                                                      // Check if click is to the right of this variable
+                                                      if (clickX >= rect.right - 5 && clickX <= rect.right + 20 && 
+                                                          clickY >= rect.top && clickY <= rect.bottom) {
+                                                        clickedAfterVariable = true;
+                                                        targetVariable = span;
+                                                        break;
+                                                      }
+                                                    }
+                                                    
+                                                    if (clickedAfterVariable && targetVariable) {
+                                                      // Position cursor right after the variable (after the last })
+                                                      const newRange = document.createRange();
+                                                      
+                                                      // Check if there's a text node after the variable
+                                                      let nextSibling = targetVariable.nextSibling;
+                                                      if (nextSibling && nextSibling.nodeType === 3) {
+                                                        // There's a text node after the variable, position at start
+                                                        newRange.setStart(nextSibling, 0);
+                                                        newRange.collapse(true);
+                                                      } else {
+                                                        // No text node after, create an empty text node for proper cursor positioning
+                                                        const textNode = document.createTextNode('');
+                                                        if (targetVariable.nextSibling) {
+                                                          broadcastTitleTextRef.current.insertBefore(textNode, targetVariable.nextSibling);
+                                                        } else {
+                                                          broadcastTitleTextRef.current.appendChild(textNode);
+                                                        }
+                                                        newRange.setStart(textNode, 0);
+                                                        newRange.collapse(true);
+                                                      }
+                                                      
+                                                      selection.removeAllRanges();
+                                                      selection.addRange(newRange);
+                                                      broadcastTitleTextRef.current.focus();
+                                                    } else {
+                                                      // Normal click - check if cursor is inside
+                                                      const isInside = broadcastTitleTextRef.current.contains(range.commonAncestorContainer);
+                                                      
+                                                      if (!isInside) {
+                                                        // Cursor is outside, position it at the end
+                                                        const textContent = broadcastTitleTextRef.current.innerText || broadcastTitleTextRef.current.textContent || '';
+                                                        
+                                                        if (textContent.length > 0) {
+                                                          // Find the last text node
+                                                          const walker = document.createTreeWalker(
+                                                            broadcastTitleTextRef.current,
+                                                            NodeFilter.SHOW_TEXT,
+                                                            null
+                                                          );
+                                                          
+                                                          let lastNode = null;
+                                                          let node;
+                                                          while (node = walker.nextNode()) {
+                                                            lastNode = node;
+                                                          }
+                                                          
+                                                          if (lastNode) {
+                                                            const newRange = document.createRange();
+                                                            newRange.setStart(lastNode, lastNode.textContent.length);
+                                                            newRange.collapse(true);
+                                                            selection.removeAllRanges();
+                                                            selection.addRange(newRange);
+                                                          } else {
+                                                            // Fallback: select all and collapse to end
+                                                            const newRange = document.createRange();
+                                                            newRange.selectNodeContents(broadcastTitleTextRef.current);
+                                                            newRange.collapse(false);
+                                                            selection.removeAllRanges();
+                                                            selection.addRange(newRange);
+                                                          }
+                                                        }
+                                                      }
+                                                      broadcastTitleTextRef.current.focus();
+                                                    }
+                                                  }
+                                                }, 10);
+                                              }
+                                            }}
+                                            onFocus={(e) => {
+                                              // Remove placeholder when focused
+                                              if (!broadcastTitleText && e.target.innerHTML.includes('Enter broadcast title text')) {
+                                                e.target.innerHTML = '';
+                                              }
+                                            }}
+                                            onBlur={(e) => {
+                                              // Show placeholder when blurred and empty
+                                              if (!broadcastTitleText && !e.target.innerHTML.trim()) {
+                                                e.target.innerHTML = '<span class="text-gray-400">Enter broadcast title text</span>';
+                                              }
+                                            }}
+                                            onKeyDown={(e) => {
+                                              const selection = window.getSelection();
+                                              if (selection.rangeCount > 0) {
+                                                const range = selection.getRangeAt(0);
+                                                const container = range.commonAncestorContainer;
+                                                const parent = container.nodeType === 3 ? container.parentElement : container;
+                                                
+                                                // Only prevent editing if cursor is INSIDE a variable span (not in regular text)
+                                                if (parent && parent.hasAttribute && parent.hasAttribute('data-variable')) {
+                                                  const offset = range.startOffset;
+                                                  const textLength = parent.textContent.length;
+                                                  
+                                                  // If cursor is inside the variable (not at boundary), prevent editing
+                                                  if (offset > 0 && offset < textLength) {
+                                                    // Prevent editing inside variable
+                                                    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                                                      e.preventDefault();
+                                                      return false;
+                                                    }
+                                                  }
+                                                  
+                                                  // Allow backspace/delete at boundaries to delete the entire variable
+                                                  if ((e.key === 'Backspace' && offset === 0) || (e.key === 'Delete' && offset === textLength)) {
+                                                    // Delete the entire variable
+                                                    e.preventDefault();
+                                                    const varName = parent.textContent;
+                                                    const varNameWithoutBraces = varName.replace(/[{}]/g, '');
+                                                    
+                                                    // Remove from text
+                                                    const newText = broadcastTitleText.replace(new RegExp(`\\{\\{${varNameWithoutBraces}\\}\\}`, 'g'), '');
+                                                    setBroadcastTitleText(newText);
+                                                    
+                                                    // Remove from variables list
+                                                    setBroadcastTitleVariables(prev => 
+                                                      prev.filter(v => v.name !== varNameWithoutBraces)
+                                                    );
+                                                    
+                                                    return false;
+                                                  }
+                                                }
+                                              }
+                                            }}
+                                            className="w-full px-3 py-2 pr-16 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[2.5rem]"
+                                            style={{ whiteSpace: 'pre-wrap' }}
+                                            suppressContentEditableWarning={true}
                                           />
-                                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
-                                            {broadcastTitleText.length}/60
+                                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 pointer-events-none">
+                                            {(() => {
+                                              const variablePattern = /\{\{[\w_]+\}\}/g;
+                                              const variableMatches = broadcastTitleText.match(variablePattern) || [];
+                                              const variableLength = variableMatches.join('').length;
+                                              return (broadcastTitleText.length - variableLength) + '/' + 60;
+                                            })()}
                                           </span>
                                         </div>
+                                        
+                                        {/* Add Variable Button */}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setShowAddVariable(true);
+                                            setNewVariableName('');
+                                            setNewVariableValue('');
+                                          }}
+                                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                        >
+                                          + Add variable
+                                        </button>
+                                        
+                                        {/* Variable Input Form */}
+                                        {showAddVariable && (
+                                          <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 space-y-3">
+                                            <div>
+                                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                Variable Name
+                                              </label>
+                                              <input
+                                                type="text"
+                                                value={newVariableName}
+                                                onChange={(e) => {
+                                                  // Only allow alphanumeric and underscores
+                                                  const value = e.target.value.replace(/[^a-zA-Z0-9_]/g, '');
+                                                  setNewVariableName(value);
+                                                }}
+                                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="e.g., name"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                Example Value
+                                              </label>
+                                              <input
+                                                type="text"
+                                                value={newVariableValue}
+                                                onChange={(e) => setNewVariableValue(e.target.value)}
+                                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="e.g., John"
+                                              />
+                                            </div>
+                                            <div className="flex gap-2">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  if (newVariableName.trim()) {
+                                                    // Save variable name before resetting
+                                                    const varNameToAdd = newVariableName.trim();
+                                                    
+                                                    // Get current cursor position
+                                                    let insertPosition = broadcastTitleText.length;
+                                                    if (broadcastTitleTextRef.current) {
+                                                      const selection = window.getSelection();
+                                                      if (selection.rangeCount > 0) {
+                                                        const range = selection.getRangeAt(0);
+                                                        if (broadcastTitleTextRef.current.contains(range.commonAncestorContainer)) {
+                                                          const preRange = range.cloneRange();
+                                                          preRange.selectNodeContents(broadcastTitleTextRef.current);
+                                                          preRange.setEnd(range.endContainer, range.endOffset);
+                                                          insertPosition = preRange.toString().length;
+                                                        }
+                                                      }
+                                                    }
+                                                    
+                                                    // Insert {{variableName}} into the text at cursor position
+                                                    const variablePlaceholder = `{{${varNameToAdd}}}`;
+                                                    const beforeText = broadcastTitleText.substring(0, insertPosition);
+                                                    const afterText = broadcastTitleText.substring(insertPosition);
+                                                    const newText = beforeText + variablePlaceholder + (afterText ? ' ' + afterText : '');
+                                                    
+                                                    if (newText.length <= 60) {
+                                                      setBroadcastTitleText(newText);
+                                                      // Add to variables list
+                                                      setBroadcastTitleVariables([
+                                                        ...broadcastTitleVariables,
+                                                        {
+                                                          name: varNameToAdd,
+                                                          value: newVariableValue.trim()
+                                                        }
+                                                      ]);
+                                                      // Reset form
+                                                      setShowAddVariable(false);
+                                                      setNewVariableName('');
+                                                      setNewVariableValue('');
+                                                      
+                                                      // Skip the next useEffect update to prevent cursor reset
+                                                      skipNextEffectUpdate.current = true;
+                                                      
+                                                      // Manually update HTML with variable spans
+                                                      if (broadcastTitleTextRef.current) {
+                                                        const html = newText.split(/(\{\{[\w_]+\}\})/g).map((part) => {
+                                                          const isVariable = /^\{\{[\w_]+\}\}$/.test(part);
+                                                          if (isVariable) {
+                                                            return `<span contenteditable="false" data-variable="true" class="bg-blue-100 text-blue-700 px-1 rounded font-mono">${part}</span>`;
+                                                          }
+                                                          return part.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                                        }).join('');
+                                                        broadcastTitleTextRef.current.innerHTML = html;
+                                                      }
+                                                      
+                                                      // Set cursor position after the variable (after the last })
+                                                      setTimeout(() => {
+                                                        if (broadcastTitleTextRef.current) {
+                                                          const selection = window.getSelection();
+                                                          
+                                                          // Find the variable span that was just added
+                                                          const variableSpans = broadcastTitleTextRef.current.querySelectorAll('[data-variable="true"]');
+                                                          if (variableSpans.length > 0) {
+                                                            // Get the variable span that matches the name we just added
+                                                            let targetSpan = null;
+                                                            
+                                                            for (let span of variableSpans) {
+                                                              if (span.textContent === variablePlaceholder) {
+                                                                targetSpan = span;
+                                                                break;
+                                                              }
+                                                            }
+                                                            
+                                                            // If not found, use the last one
+                                                            if (!targetSpan && variableSpans.length > 0) {
+                                                              targetSpan = variableSpans[variableSpans.length - 1];
+                                                            }
+                                                            
+                                                            if (targetSpan) {
+                                                              // Position cursor right after the variable span (after the last })
+                                                              try {
+                                                                const selection = window.getSelection();
+                                                                const range = document.createRange();
+                                                                
+                                                                // Check if there's a text node after the variable
+                                                                let nextSibling = targetSpan.nextSibling;
+                                                                if (nextSibling && nextSibling.nodeType === 3) {
+                                                                  // There's a text node after the variable, position at start
+                                                                  range.setStart(nextSibling, 0);
+                                                                  range.collapse(true);
+                                                                } else {
+                                                                  // No text node after, create an empty text node for proper cursor positioning
+                                                                  const textNode = document.createTextNode('');
+                                                                  if (targetSpan.nextSibling) {
+                                                                    broadcastTitleTextRef.current.insertBefore(textNode, targetSpan.nextSibling);
+                                                                  } else {
+                                                                    broadcastTitleTextRef.current.appendChild(textNode);
+                                                                  }
+                                                                  range.setStart(textNode, 0);
+                                                                  range.collapse(true);
+                                                                }
+                                                                
+                                                                selection.removeAllRanges();
+                                                                selection.addRange(range);
+                                                                broadcastTitleTextRef.current.focus();
+                                                              } catch (e) {
+                                                                // Fallback: place cursor at end of content
+                                                                try {
+                                                                  const range = document.createRange();
+                                                                  range.selectNodeContents(broadcastTitleTextRef.current);
+                                                                  range.collapse(false);
+                                                                  selection.removeAllRanges();
+                                                                  selection.addRange(range);
+                                                                  broadcastTitleTextRef.current.focus();
+                                                                } catch (e2) {
+                                                                  // Ignore errors
+                                                                }
+                                                              }
+                                                            }
+                                                          } else {
+                                                            // No variables, place cursor at end
+                                                            try {
+                                                              const range = document.createRange();
+                                                              range.selectNodeContents(broadcastTitleTextRef.current);
+                                                              range.collapse(false);
+                                                              selection.removeAllRanges();
+                                                              selection.addRange(range);
+                                                              broadcastTitleTextRef.current.focus();
+                                                            } catch (e) {
+                                                              // Ignore errors
+                                                            }
+                                                          }
+                                                        }
+                                                      }, 50);
+                                                    }
+                                                  }
+                                                }}
+                                                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                                              >
+                                                Add
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setShowAddVariable(false);
+                                                  setNewVariableName('');
+                                                  setNewVariableValue('');
+                                                }}
+                                                className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                                              >
+                                                Cancel
+                                              </button>
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Show Added Variables */}
+                                        {broadcastTitleVariables.length > 0 && (
+                                          <div className="space-y-2">
+                                            <p className="text-xs font-medium text-gray-700">Variables:</p>
+                                            {broadcastTitleVariables.map((variable, index) => (
+                                              <div key={index} className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded text-xs">
+                                                <span className="text-gray-700">
+                                                  <span className="font-mono">{`{{${variable.name}}}`}</span>
+                                                  {variable.value && (
+                                                    <span className="text-gray-500 ml-2">= {variable.value}</span>
+                                                  )}
+                                                </span>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    // Remove variable from list
+                                                    const updatedVariables = broadcastTitleVariables.filter((_, i) => i !== index);
+                                                    setBroadcastTitleVariables(updatedVariables);
+                                                    // Remove {{variableName}} from text
+                                                    const variablePlaceholder = `{{${variable.name}}}`;
+                                                    let updatedText = broadcastTitleText;
+                                                    // Remove all occurrences of this variable (with optional spaces)
+                                                    updatedText = updatedText.replace(new RegExp(`\\s*${variablePlaceholder.replace(/[{}]/g, '\\$&')}\\s*`, 'g'), ' ').trim();
+                                                    // Clean up multiple spaces
+                                                    updatedText = updatedText.replace(/\s+/g, ' ');
+                                                    setBroadcastTitleText(updatedText);
+                                                  }}
+                                                  className="text-red-600 hover:text-red-700 ml-2"
+                                                >
+                                                  Remove
+                                                </button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
                                       </div>
                                     )}
 
@@ -3332,6 +3928,9 @@ const Dashboard = () => {
                                       </div>
                                     )}
                                   </div>
+                                  
+                                  {/* Divider after Broadcast Title */}
+                                  <div className="border-t border-gray-300 my-6"></div>
 
                                   {/* Body */}
                                   <div>
@@ -3361,6 +3960,9 @@ const Dashboard = () => {
                                       placeholder="Enter template body"
                                     />
                                   </div>
+                                  
+                                  {/* Divider after Body */}
+                                  <div className="border-t border-gray-300 my-6"></div>
 
                                   {/* Footer */}
                                   <div>
@@ -3388,6 +3990,9 @@ const Dashboard = () => {
                                       placeholder="Enter footer (optional)"
                                     />
                                   </div>
+                                  
+                                  {/* Divider after Footer */}
+                                  <div className="border-t border-gray-300 my-6"></div>
 
                                   {/* Buttons */}
                                   <div>
@@ -3402,6 +4007,9 @@ const Dashboard = () => {
                                       placeholder="Enter button text (optional)"
                                     />
                                   </div>
+                                  
+                                  {/* Divider after Buttons */}
+                                  <div className="border-t border-gray-300 my-6"></div>
 
                                   {/* Sample Content */}
                                   <div>
@@ -3495,7 +4103,16 @@ const Dashboard = () => {
                                                     {/* Broadcast Title - Text */}
                                                     {broadcastTitleType === 'text' && broadcastTitleText && (
                                                       <div className="font-bold text-xs text-gray-800 mb-2">
-                                                        {broadcastTitleText}
+                                                        {(() => {
+                                                          // Replace variables with their example values
+                                                          let displayText = broadcastTitleText;
+                                                          broadcastTitleVariables.forEach(variable => {
+                                                            const varPattern = new RegExp(`\\{\\{${variable.name}\\}\\}`, 'g');
+                                                            const replacement = variable.value || variable.name;
+                                                            displayText = displayText.replace(varPattern, replacement);
+                                                          });
+                                                          return displayText;
+                                                        })()}
                                                       </div>
                                                     )}
                                                     
@@ -3682,6 +4299,10 @@ const Dashboard = () => {
                               setBroadcastTitleVideoFile(null);
                               setBroadcastTitleDocumentFile(null);
                               setBroadcastTitleError('');
+                              setBroadcastTitleVariables([]);
+                              setShowAddVariable(false);
+                              setNewVariableName('');
+                              setNewVariableValue('');
                             }}
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
                           >
