@@ -85,7 +85,7 @@ const Dashboard = () => {
   const [templateBody, setTemplateBody] = useState('');
   const [templateFooter, setTemplateFooter] = useState('');
   const [templateSampleContent, setTemplateSampleContent] = useState('');
-  const [templateButtons, setTemplateButtons] = useState('');
+  const [templateButtons, setTemplateButtons] = useState([]); // Array of button objects: { type: 'copy_code'|'otp'|'phone'|'quick_reply'|'url', text: string, value: string (phone/url/copy text), index?: number }
   // Broadcast title state
   const [broadcastTitleType, setBroadcastTitleType] = useState('none'); // 'none', 'text', 'image', 'video', 'document'
   const [broadcastTitleText, setBroadcastTitleText] = useState('');
@@ -95,7 +95,13 @@ const Dashboard = () => {
   const [broadcastTitleImageFile, setBroadcastTitleImageFile] = useState(null);
   const [broadcastTitleVideoFile, setBroadcastTitleVideoFile] = useState(null);
   const [broadcastTitleDocumentFile, setBroadcastTitleDocumentFile] = useState(null);
+  // Store handles for media headers
+  const [broadcastTitleImageHandle, setBroadcastTitleImageHandle] = useState('');
+  const [broadcastTitleVideoHandle, setBroadcastTitleVideoHandle] = useState('');
+  const [broadcastTitleDocumentHandle, setBroadcastTitleDocumentHandle] = useState('');
   const [broadcastTitleError, setBroadcastTitleError] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [showJSONModal, setShowJSONModal] = useState(false);
   // Broadcast title variables
   const [broadcastTitleVariables, setBroadcastTitleVariables] = useState([]);
   const [showAddVariable, setShowAddVariable] = useState(false);
@@ -103,6 +109,17 @@ const Dashboard = () => {
   const [newVariableValue, setNewVariableValue] = useState('');
   const broadcastTitleTextRef = useRef(null);
   const skipNextEffectUpdate = useRef(false);
+  // Body variables
+  const [bodyVariables, setBodyVariables] = useState([]);
+  const [showAddBodyVariable, setShowAddBodyVariable] = useState(false);
+  const [newBodyVariableName, setNewBodyVariableName] = useState('');
+  const [newBodyVariableValue, setNewBodyVariableValue] = useState('');
+  const bodyTextRef = useRef(null);
+  const skipNextBodyEffectUpdate = useRef(false);
+  // Button management state
+  const [newButtonType, setNewButtonType] = useState('');
+  const [newButtonText, setNewButtonText] = useState('');
+  const [newButtonValue, setNewButtonValue] = useState('');
 
   // Populate form when template is selected
   useEffect(() => {
@@ -125,7 +142,7 @@ const Dashboard = () => {
       setTemplateBody(selectedTemplate.content || '');
       setTemplateFooter(selectedTemplate.footer || '');
       setTemplateSampleContent('');
-      setTemplateButtons('');
+      setTemplateButtons([]);
       // Reset broadcast title when selecting a new template
       setBroadcastTitleType('none');
       setBroadcastTitleText('');
@@ -140,6 +157,11 @@ const Dashboard = () => {
       setShowAddVariable(false);
       setNewVariableName('');
       setNewVariableValue('');
+      // Reset body variables when selecting a new template
+      setBodyVariables([]);
+      setShowAddBodyVariable(false);
+      setNewBodyVariableName('');
+      setNewBodyVariableValue('');
     }
   }, [selectedTemplate]);
 
@@ -268,6 +290,110 @@ const Dashboard = () => {
       }
     }
   }, [broadcastTitleText, broadcastTitleType]);
+
+  // Update contentEditable HTML when templateBody changes (e.g., when variable is added)
+  useEffect(() => {
+    // Skip update if we just added a variable (cursor positioning will handle it)
+    if (skipNextBodyEffectUpdate.current) {
+      skipNextBodyEffectUpdate.current = false;
+      return;
+    }
+    
+    if (bodyTextRef.current) {
+      const currentInnerText = bodyTextRef.current.innerText || bodyTextRef.current.textContent || '';
+      // Remove placeholder text from current text for comparison
+      const cleanCurrentText = currentInnerText.replace(/Enter template body/g, '').trim();
+      const currentHTML = bodyTextRef.current.innerHTML;
+      const isFocused = document.activeElement === bodyTextRef.current;
+      
+      // Build expected HTML - only show placeholder if empty and not focused
+      const expectedHTML = templateBody ? templateBody.split(/(\{\{[\w_]+\}\})/g).map((part) => {
+        const isVariable = /^\{\{[\w_]+\}\}$/.test(part);
+        if (isVariable) {
+          return `<span contenteditable="false" data-variable="true" class="bg-blue-100 text-blue-700 px-1 rounded font-mono">${part}</span>`;
+        }
+        return part.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }).join('') : (isFocused ? '' : '<span class="text-gray-400">Enter template body</span>');
+      
+      // Only update if HTML doesn't match and we're not currently typing (text matches)
+      // Don't update if user is actively typing (current text matches state)
+      if (currentHTML !== expectedHTML && cleanCurrentText !== templateBody) {
+        const selection = window.getSelection();
+        let savedOffset = 0;
+        
+        // Save cursor position before updating (only if cursor is in the element)
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          if (bodyTextRef.current.contains(range.commonAncestorContainer)) {
+            // Calculate offset in plain text
+            const preRange = range.cloneRange();
+            preRange.selectNodeContents(bodyTextRef.current);
+            preRange.setEnd(range.endContainer, range.endOffset);
+            savedOffset = preRange.toString().length;
+          }
+        }
+        
+        // Update HTML
+        bodyTextRef.current.innerHTML = expectedHTML;
+        
+        // Restore cursor position after a brief delay to ensure DOM is updated
+        setTimeout(() => {
+          if (bodyTextRef.current) {
+            const selection = window.getSelection();
+            const textContent = bodyTextRef.current.innerText || bodyTextRef.current.textContent || '';
+            
+            // If we have a saved offset, use it
+            if (savedOffset > 0 && savedOffset <= textContent.length) {
+              try {
+                // Find the text node and position
+                const walker = document.createTreeWalker(
+                  bodyTextRef.current,
+                  NodeFilter.SHOW_TEXT,
+                  null
+                );
+                
+                let currentOffset = 0;
+                let targetNode = null;
+                let targetOffset = 0;
+                
+                let node;
+                while (node = walker.nextNode()) {
+                  const nodeLength = node.textContent.length;
+                  if (currentOffset + nodeLength >= savedOffset) {
+                    targetNode = node;
+                    targetOffset = savedOffset - currentOffset;
+                    break;
+                  }
+                  currentOffset += nodeLength;
+                }
+                
+                // If we found a target node, set cursor there
+                if (targetNode) {
+                  const newRange = document.createRange();
+                  newRange.setStart(targetNode, Math.min(targetOffset, targetNode.textContent.length));
+                  newRange.collapse(true);
+                  selection.removeAllRanges();
+                  selection.addRange(newRange);
+                } else {
+                  // Fallback: place cursor at end
+                  const range = document.createRange();
+                  range.selectNodeContents(bodyTextRef.current);
+                  range.collapse(false);
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                }
+                
+                // Ensure the element has focus and cursor is visible
+                bodyTextRef.current.focus();
+              } catch (e) {
+                // Ignore errors
+              }
+            }
+          }
+        }, 10);
+      }
+    }
+  }, [templateBody]);
 
   const [activeAutomationView, setActiveAutomationView] = useState('ai-agents');
   const [activeChannel, setActiveChannel] = useState('whatsapp');
@@ -2620,6 +2746,345 @@ const Dashboard = () => {
     }
   }, [user, userData, isWelcomeModalOpen, welcomeCountry, isSubmittingWelcome]);
 
+  // Function to upload image to API
+  const uploadImageToAPI = useCallback(async (file) => {
+    try {
+      const dbId = userData?.db_id || user?.db_id;
+      if (!dbId) {
+        throw new Error('User ID not found');
+      }
+
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('DB Server URL is not configured');
+      }
+
+      const uploadUrl = `${dbServerUrl}/api/users/${dbId}/templates/upload_media`;
+      
+      console.log('📤 Uploading image to:', uploadUrl);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Image upload response:', result);
+      
+      // Extract uploaded_file_handle from response
+      // The API response structure might be:
+      // { data: { uploaded_file_handle: "..." } }
+      // or { handle: { handle: "...", url: {...} } }
+      // or { data: { handle: { handle: "...", url: {...} } } }
+      
+      let handle = null;
+      
+      // Try different paths to find the handle string
+      if (result.data?.uploaded_file_handle) {
+        handle = result.data.uploaded_file_handle;
+      } else if (result.uploaded_file_handle) {
+        handle = result.uploaded_file_handle;
+      } else if (result.data?.handle?.handle) {
+        // Nested structure: { data: { handle: { handle: "..." } } }
+        handle = result.data.handle.handle;
+      } else if (result.handle?.handle) {
+        // Nested structure: { handle: { handle: "..." } }
+        handle = result.handle.handle;
+      } else if (result.data?.handle && typeof result.data.handle === 'string') {
+        handle = result.data.handle;
+      } else if (result.handle && typeof result.handle === 'string') {
+        handle = result.handle;
+      }
+      
+      // Ensure handle is a string
+      if (handle && typeof handle !== 'string') {
+        // If it's still an object, try to extract the string value
+        handle = handle.handle || handle.uploaded_file_handle || null;
+      }
+      
+      const imageUrl = result.data?.url || result.url || result.data?.handle?.url || result.handle?.url || null;
+      
+      return { handle: handle || '', url: imageUrl || '' };
+    } catch (error) {
+      console.error('❌ Error uploading image:', error);
+      throw error;
+    }
+  }, [user, userData]);
+
+  // Function to save template as draft
+  const saveTemplateAsDraft = useCallback(async (templateJSON) => {
+    try {
+      const dbId = userData?.db_id || user?.db_id;
+      if (!dbId) {
+        throw new Error('User ID not found');
+      }
+
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        throw new Error('DB Server URL is not configured');
+      }
+
+      const url = `${dbServerUrl}/api/users/${dbId}/templates`;
+      
+      console.log('📤 Saving template as draft:', url);
+      console.log('📤 Template JSON:', templateJSON);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          template_status: 'draft',
+          object: templateJSON
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Save failed' }));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Template saved as draft:', result);
+      
+      return result;
+    } catch (error) {
+      console.error('❌ Error saving template as draft:', error);
+      throw error;
+    }
+  }, [user, userData]);
+
+  // Function to generate template JSON object
+  const generateTemplateJSON = useCallback(() => {
+    const components = [];
+
+    // 1. Header Component
+    if (broadcastTitleType === 'text' && broadcastTitleText) {
+      const headerComponent = {
+        type: "header",
+        format: "text",
+        text: broadcastTitleText
+      };
+
+      // Add named parameters if variables exist
+      if (broadcastTitleVariables.length > 0) {
+        headerComponent.example = {
+          header_text_named_params: broadcastTitleVariables.map(variable => ({
+            param_name: `{{${variable.name}}}`,
+            example: variable.value || variable.name
+          }))
+        };
+      }
+
+      components.push(headerComponent);
+    } else if (broadcastTitleType === 'image' && (broadcastTitleImageHandle || broadcastTitleImageLink || broadcastTitleImageFile)) {
+      // For image, use the handle from upload API response
+      // Ensure handle is a string, not an object
+      let handle = broadcastTitleImageHandle || broadcastTitleImageLink;
+      
+      // If handle is an object, extract the handle string
+      if (handle && typeof handle === 'object') {
+        handle = handle.handle || handle.uploaded_file_handle || JSON.stringify(handle);
+      }
+      
+      // Ensure handle is a string
+      handle = String(handle || '');
+      
+      if (handle) {
+        const headerComponent = {
+          type: "HEADER",
+          format: "IMAGE",
+          example: {
+            header_handle: [handle]
+          }
+        };
+        components.push(headerComponent);
+      }
+    } else if (broadcastTitleType === 'video' && (broadcastTitleVideoHandle || broadcastTitleVideoLink || broadcastTitleVideoFile)) {
+      // For video, use the handle from upload API response
+      let handle = broadcastTitleVideoHandle || broadcastTitleVideoLink;
+      
+      // If handle is an object, extract the handle string
+      if (handle && typeof handle === 'object') {
+        handle = handle.handle || handle.uploaded_file_handle || JSON.stringify(handle);
+      }
+      
+      // Ensure handle is a string
+      handle = String(handle || '');
+      
+      if (handle) {
+        const headerComponent = {
+          type: "HEADER",
+          format: "VIDEO",
+          example: {
+            header_handle: [handle]
+          }
+        };
+        components.push(headerComponent);
+      }
+    } else if (broadcastTitleType === 'document' && (broadcastTitleDocumentHandle || broadcastTitleDocumentLink || broadcastTitleDocumentFile)) {
+      // For document, use the handle from upload API response
+      let handle = broadcastTitleDocumentHandle || broadcastTitleDocumentLink;
+      
+      // If handle is an object, extract the handle string
+      if (handle && typeof handle === 'object') {
+        handle = handle.handle || handle.uploaded_file_handle || JSON.stringify(handle);
+      }
+      
+      // Ensure handle is a string
+      handle = String(handle || '');
+      
+      if (handle) {
+        const headerComponent = {
+          type: "HEADER",
+          format: "DOCUMENT",
+          example: {
+            header_handle: [handle]
+          }
+        };
+        components.push(headerComponent);
+      }
+    }
+
+    // 2. Body Component
+    if (templateBody) {
+      const bodyComponent = {
+        type: "body",
+        text: templateBody
+      };
+
+      // Add named parameters if variables exist
+      if (bodyVariables.length > 0) {
+        bodyComponent.example = {
+          body_text_named_params: bodyVariables.map(variable => ({
+            param_name: `{{${variable.name}}}`,
+            example: variable.value || variable.name
+          }))
+        };
+      }
+
+      components.push(bodyComponent);
+    }
+
+    // 3. Footer Component
+    if (templateFooter) {
+      components.push({
+        type: "FOOTER",
+        text: templateFooter
+      });
+    }
+
+    // 4. Buttons Components
+    // Automatically group quick reply buttons together (at the end)
+    if (Array.isArray(templateButtons) && templateButtons.length > 0) {
+      // Separate quick reply buttons from other buttons
+      const quickReplyButtons = templateButtons.filter(b => b.type === 'quick_reply');
+      const otherButtons = templateButtons.filter(b => b.type !== 'quick_reply');
+      
+      // Process other buttons first
+      otherButtons.forEach(button => {
+        if (button.type === 'copy_code') {
+          components.push({
+            type: "COPY_CODE",
+            example: button.value || button.text
+          });
+        } else if (button.type === 'phone') {
+          components.push({
+            type: "PHONE_NUMBER",
+            text: button.text,
+            phone_number: button.value
+          });
+        } else if (button.type === 'url') {
+          const urlComponent = {
+            type: "URL",
+            text: button.text,
+            url: button.value
+          };
+          
+          // Check if URL contains a variable ({{variable_name}})
+          if (button.value && button.value.includes('{{')) {
+            // Extract variables from URL and replace with example values
+            // Find all {{variable}} patterns and replace them
+            let exampleUrl = button.value;
+            const variablePattern = /\{\{([\w_]+)\}\}/g;
+            let match;
+            const variables = [];
+            
+            while ((match = variablePattern.exec(button.value)) !== null) {
+              variables.push(match[1]);
+            }
+            
+            // Replace variables with example values (you might want to store these separately)
+            // For now, we'll use a placeholder
+            exampleUrl = exampleUrl.replace(/\{\{[\w_]+\}\}/g, 'example');
+            urlComponent.example = [exampleUrl];
+          }
+          
+          components.push(urlComponent);
+        } else if (button.type === 'otp') {
+          // OTP button format - need to check the exact format
+          // Based on WhatsApp API, OTP is typically a URL button with special handling
+          components.push({
+            type: "URL",
+            text: button.text,
+            url: button.value || ""
+          });
+        }
+      });
+      
+      // Then add all quick reply buttons grouped together at the end
+      quickReplyButtons.forEach((button, index) => {
+        components.push({
+          type: "QUICK_REPLY",
+          text: button.text
+        });
+      });
+    }
+
+    // Build the final template object
+    const categoryMap = {
+      'Authentication': 'AUTHENTICATION',
+      'Marketing': 'MARKETING',
+      'Utility': 'UTILITY'
+    };
+    
+    const templateObject = {
+      name: templateName,
+      category: categoryMap[templateCategory] || templateCategory.toUpperCase(),
+      language: templateLanguage,
+      parameter_format: "named",
+      components: components
+    };
+
+    return templateObject;
+  }, [
+    templateName,
+    templateCategory,
+    templateLanguage,
+    broadcastTitleType,
+    broadcastTitleText,
+    broadcastTitleImageLink,
+    broadcastTitleImageHandle,
+    broadcastTitleVideoLink,
+    broadcastTitleVideoHandle,
+    broadcastTitleDocumentLink,
+    broadcastTitleDocumentHandle,
+    broadcastTitleVariables,
+    templateBody,
+    bodyVariables,
+    templateFooter,
+    templateButtons
+  ]);
+
   // Check WABA details
   const checkWabaDetails = useCallback(async () => {
     console.log('🔍 checkWabaDetails called', { hasUser: !!user, hasUserData: !!userData });
@@ -3021,7 +3486,7 @@ const Dashboard = () => {
                                     setTemplateBody('');
                                     setTemplateFooter('');
                                     setTemplateSampleContent('');
-                                    setTemplateButtons('');
+                                    setTemplateButtons([]);
                                     setBroadcastTitleType('none');
                                     setBroadcastTitleText('');
                                     setBroadcastTitleImageLink('');
@@ -3030,11 +3495,21 @@ const Dashboard = () => {
                                     setBroadcastTitleImageFile(null);
                                     setBroadcastTitleVideoFile(null);
                                     setBroadcastTitleDocumentFile(null);
+                                    setBroadcastTitleImageHandle('');
+                                    setBroadcastTitleVideoHandle('');
+                                    setBroadcastTitleDocumentHandle('');
                                     setBroadcastTitleError('');
                                     setBroadcastTitleVariables([]);
                                     setShowAddVariable(false);
                                     setNewVariableName('');
                                     setNewVariableValue('');
+                                    setBodyVariables([]);
+                                    setShowAddBodyVariable(false);
+                                    setNewBodyVariableName('');
+                                    setNewBodyVariableValue('');
+                                    setNewButtonType('');
+                                    setNewButtonText('');
+                                    setNewButtonValue('');
                                   }}
                                   className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
                                 >
@@ -3046,6 +3521,16 @@ const Dashboard = () => {
                                 <div className="flex justify-end space-x-3">
                                   <button
                                     type="button"
+                                    onClick={() => {
+                                      const templateJSON = generateTemplateJSON();
+                                      setShowJSONModal(true);
+                                    }}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
+                                  >
+                                    View JSON
+                                  </button>
+                                  <button
+                                    type="button"
                                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
                                     onClick={() => {
                                       setSelectedTemplate(null);
@@ -3055,7 +3540,7 @@ const Dashboard = () => {
                                       setTemplateBody('');
                                       setTemplateFooter('');
                                       setTemplateSampleContent('');
-                                      setTemplateButtons('');
+                                      setTemplateButtons([]);
                                       setBroadcastTitleType('none');
                                       setBroadcastTitleText('');
                                       setBroadcastTitleImageLink('');
@@ -3069,6 +3554,13 @@ const Dashboard = () => {
                                       setShowAddVariable(false);
                                       setNewVariableName('');
                                       setNewVariableValue('');
+                                      setBodyVariables([]);
+                                      setShowAddBodyVariable(false);
+                                      setNewBodyVariableName('');
+                                      setNewBodyVariableValue('');
+                                      setNewButtonType('');
+                                      setNewButtonText('');
+                                      setNewButtonValue('');
                                     }}
                                   >
                                     Cancel
@@ -3076,18 +3568,26 @@ const Dashboard = () => {
                                   <button
                                     type="button"
                                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
-                                    onClick={() => {
-                                      // Handle save as draft
-                                      console.log('Template saved as draft:', {
-                                        templateName,
-                                        templateCategory,
-                                        templateLanguage,
-                                        templateBody,
-                                        templateFooter,
-                                        templateButtons,
-                                        templateSampleContent
-                                      });
-                                      // Don't reset form, just save as draft
+                                    onClick={async () => {
+                                      try {
+                                        // Generate template JSON
+                                        const templateJSON = generateTemplateJSON();
+                                        
+                                        // Validate required fields
+                                        if (!templateName || !templateCategory || !templateBody) {
+                                          alert('Please fill in all required fields (Template Name, Category, and Body)');
+                                          return;
+                                        }
+                                        
+                                        // Save as draft
+                                        await saveTemplateAsDraft(templateJSON);
+                                        alert('Template saved as draft successfully!');
+                                        
+                                        // Don't reset form, just save as draft
+                                      } catch (error) {
+                                        console.error('Error saving draft:', error);
+                                        alert(error.message || 'Failed to save template as draft. Please try again.');
+                                      }
                                     }}
                                   >
                                     Save as draft
@@ -3096,6 +3596,10 @@ const Dashboard = () => {
                                     type="button"
                                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
                                     onClick={() => {
+                                      // Generate template JSON
+                                      const templateJSON = generateTemplateJSON();
+                                      console.log('Template JSON:', JSON.stringify(templateJSON, null, 2));
+                                      
                                       // Handle form submission here
                                       console.log('Template form submitted:', {
                                         templateName,
@@ -3104,7 +3608,8 @@ const Dashboard = () => {
                                         templateBody,
                                         templateFooter,
                                         templateButtons,
-                                        templateSampleContent
+                                        templateSampleContent,
+                                        templateJSON
                                       });
                                       // Reset form after submission
                                       setSelectedTemplate(null);
@@ -3114,7 +3619,7 @@ const Dashboard = () => {
                                       setTemplateBody('');
                                       setTemplateFooter('');
                                       setTemplateSampleContent('');
-                                      setTemplateButtons('');
+                                      setTemplateButtons([]);
                                       setBroadcastTitleType('none');
                                       setBroadcastTitleText('');
                                       setBroadcastTitleImageLink('');
@@ -3128,6 +3633,13 @@ const Dashboard = () => {
                                       setShowAddVariable(false);
                                       setNewVariableName('');
                                       setNewVariableValue('');
+                                      setBodyVariables([]);
+                                      setShowAddBodyVariable(false);
+                                      setNewBodyVariableName('');
+                                      setNewBodyVariableValue('');
+                                      setNewButtonType('');
+                                      setNewButtonText('');
+                                      setNewButtonValue('');
                                     }}
                                   >
                                     Save and submit
@@ -3519,17 +4031,23 @@ const Dashboard = () => {
                                         </div>
                                         
                                         {/* Add Variable Button */}
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setShowAddVariable(true);
-                                            setNewVariableName('');
-                                            setNewVariableValue('');
-                                          }}
-                                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                                        >
-                                          + Add variable
-                                        </button>
+                                        {broadcastTitleVariables.length === 0 ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setShowAddVariable(true);
+                                              setNewVariableName('');
+                                              setNewVariableValue('');
+                                            }}
+                                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                          >
+                                            + Add variable
+                                          </button>
+                                        ) : (
+                                          <p className="text-xs text-gray-500">
+                                            Maximum 1 variable allowed in broadcast title
+                                          </p>
+                                        )}
                                         
                                         {/* Variable Input Form */}
                                         {showAddVariable && (
@@ -3566,6 +4084,12 @@ const Dashboard = () => {
                                               <button
                                                 type="button"
                                                 onClick={() => {
+                                                  // Check if variable limit is reached
+                                                  if (broadcastTitleVariables.length >= 1) {
+                                                    alert('Maximum 1 variable allowed in broadcast title');
+                                                    return;
+                                                  }
+                                                  
                                                   if (newVariableName.trim()) {
                                                     // Save variable name before resetting
                                                     const varNameToAdd = newVariableName.trim();
@@ -3775,10 +4299,10 @@ const Dashboard = () => {
                                               const link = e.target.value.trim();
                                               if (link) {
                                                 const lowerLink = link.toLowerCase();
-                                                const validExtensions = ['.jpeg', '.png'];
+                                                const validExtensions = ['.jpeg', '.jpg', '.png'];
                                                 const hasValidExtension = validExtensions.some(ext => lowerLink.endsWith(ext));
                                                 if (!hasValidExtension) {
-                                                  setBroadcastTitleError('Please paste a valid image link (must end with .jpeg or .png)');
+                                                  setBroadcastTitleError('Please paste a valid image link (must end with .jpeg, .jpg, or .png)');
                                                 } else {
                                                   setBroadcastTitleError('');
                                                 }
@@ -3791,32 +4315,60 @@ const Dashboard = () => {
                                           <label className="flex-shrink-0">
                                             <input
                                               type="file"
-                                              accept="image/jpeg,image/png"
-                                              onChange={(e) => {
+                                              accept="image/jpeg,image/jpg,image/png"
+                                              onChange={async (e) => {
                                                 const file = e.target.files[0];
                                                 if (file) {
                                                   const fileName = file.name.toLowerCase();
-                                                  const validExtensions = ['.jpeg', '.png'];
+                                                  const validExtensions = ['.jpeg', '.jpg', '.png'];
                                                   const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
                                                   
                                                   if (!hasValidExtension) {
-                                                    setBroadcastTitleError('Please upload a valid image file (must be .jpeg or .png)');
+                                                    setBroadcastTitleError('Please upload a valid image file (must be .jpeg, .jpg, or .png)');
                                                     setBroadcastTitleImageFile(null);
-                                                  } else {
+                                                    return;
+                                                  }
+
+                                                  // Upload to API
+                                                  setIsUploadingImage(true);
+                                                  setBroadcastTitleError('');
+                                                  
+                                                  try {
+                                                    const uploadResult = await uploadImageToAPI(file);
+                                                    
+                                                    // Extract handle string - ensure it's a string, not an object
+                                                    let handle = uploadResult.handle;
+                                                    if (handle && typeof handle !== 'string') {
+                                                      // If handle is an object, try to extract the string value
+                                                      handle = handle.handle || handle.uploaded_file_handle || null;
+                                                    }
+                                                    handle = String(handle || '');
+                                                    
+                                                    setBroadcastTitleImageLink(uploadResult.url || '');
+                                                    setBroadcastTitleImageHandle(handle);
                                                     setBroadcastTitleImageFile(file);
-                                                    setBroadcastTitleImageLink('');
                                                     setBroadcastTitleError('');
+                                                  } catch (error) {
+                                                    console.error('Error uploading image:', error);
+                                                    setBroadcastTitleError(error.message || 'Failed to upload image. Please try again.');
+                                                    setBroadcastTitleImageFile(null);
+                                                  } finally {
+                                                    setIsUploadingImage(false);
                                                   }
                                                 }
                                               }}
                                               className="hidden"
                                             />
-                                            <span className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 cursor-pointer inline-block text-sm whitespace-nowrap">
-                                              Upload image
+                                            <span className={`px-4 py-2 border border-gray-300 rounded-lg inline-block text-sm whitespace-nowrap ${
+                                              isUploadingImage 
+                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                                : 'bg-gray-100 hover:bg-gray-200 cursor-pointer'
+                                            }`}>
+                                              {isUploadingImage ? 'Uploading...' : 'Upload image'}
                                             </span>
                                           </label>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">Valid formats: JPEG, PNG</p>
+                                        <p className="text-xs text-gray-500 mt-1">Valid formats: JPEG, JPG, PNG</p>
                                         {broadcastTitleError && broadcastTitleType === 'image' && (
                                           <p className="text-xs text-red-600 mt-1">{broadcastTitleError}</p>
                                         )}
@@ -3939,26 +4491,473 @@ const Dashboard = () => {
                                         Body
                                       </label>
                                       <span className="text-xs text-gray-500">
-                                        {templateBody.length}/1024
+                                        {(() => {
+                                          const variablePattern = /\{\{[\w_]+\}\}/g;
+                                          const variableMatches = templateBody.match(variablePattern) || [];
+                                          const variableLength = variableMatches.join('').length;
+                                          return (templateBody.length - variableLength) + '/1024';
+                                        })()}
                                       </span>
                                     </div>
-                                    <div className="mb-2">
-                                      <p className="text-xs text-gray-600 italic">
-                                        Content for authentication message templates can't be edited. You can add/remove additional content from the option below
-                                      </p>
+                                    <div className="relative mb-2">
+                                      <div
+                                        ref={bodyTextRef}
+                                        contentEditable
+                                        onInput={(e) => {
+                                          const element = e.target;
+                                          
+                                          // Get plain text content, excluding placeholder
+                                          let plainText = element.innerText || element.textContent || '';
+                                          // Remove placeholder text if it appears
+                                          plainText = plainText.replace(/Enter template body/g, '').trim();
+                                          
+                                          // Check for deleted variables - compare with previous text
+                                          const previousVariables = templateBody.match(/\{\{[\w_]+\}\}/g) || [];
+                                          const currentVariables = plainText.match(/\{\{[\w_]+\}\}/g) || [];
+                                          
+                                          // Find deleted variables
+                                          const deletedVariables = previousVariables.filter(v => !currentVariables.includes(v));
+                                          if (deletedVariables.length > 0) {
+                                            // Remove deleted variables from the list
+                                            deletedVariables.forEach(deletedVar => {
+                                              const varName = deletedVar.replace(/[{}]/g, '');
+                                              setBodyVariables(prev => 
+                                                prev.filter(v => v.name !== varName)
+                                              );
+                                            });
+                                          }
+                                          
+                                          // Count only non-variable characters
+                                          const variablePattern = /\{\{[\w_]+\}\}/g;
+                                          const variableMatches = plainText.match(variablePattern) || [];
+                                          const variableLength = variableMatches.join('').length;
+                                          const plainTextLength = plainText.length - variableLength;
+                                          
+                                          if (plainTextLength <= 1024) {
+                                            // Update state with plain text only
+                                            setTemplateBody(plainText);
+                                          } else {
+                                            // Revert to previous text
+                                            const currentText = templateBody;
+                                            const html = currentText ? currentText.split(/(\{\{[\w_]+\}\})/g).map((part) => {
+                                              const isVariable = /^\{\{[\w_]+\}\}$/.test(part);
+                                              if (isVariable) {
+                                                return `<span contenteditable="false" data-variable="true" class="bg-blue-100 text-blue-700 px-1 rounded font-mono">${part}</span>`;
+                                              }
+                                              return part.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                            }).join('') : '';
+                                            element.innerHTML = html;
+                                          }
+                                        }}
+                                        onClick={(e) => {
+                                          // Handle click to position cursor correctly, especially after variables
+                                          if (bodyTextRef.current) {
+                                            setTimeout(() => {
+                                              const selection = window.getSelection();
+                                              
+                                              if (selection.rangeCount > 0) {
+                                                const range = selection.getRangeAt(0);
+                                                const clickX = e.clientX;
+                                                const clickY = e.clientY;
+                                                
+                                                // Check if click is near a variable
+                                                const variableSpans = bodyTextRef.current.querySelectorAll('[data-variable="true"]');
+                                                let clickedAfterVariable = false;
+                                                let targetVariable = null;
+                                                
+                                                for (let span of variableSpans) {
+                                                  const rect = span.getBoundingClientRect();
+                                                  // Check if click is to the right of this variable
+                                                  if (clickX >= rect.right - 5 && clickX <= rect.right + 20 && 
+                                                      clickY >= rect.top && clickY <= rect.bottom) {
+                                                    clickedAfterVariable = true;
+                                                    targetVariable = span;
+                                                    break;
+                                                  }
+                                                }
+                                                
+                                                if (clickedAfterVariable && targetVariable) {
+                                                  // Position cursor right after the variable (after the last })
+                                                  const newRange = document.createRange();
+                                                  
+                                                  // Check if there's a text node after the variable
+                                                  let nextSibling = targetVariable.nextSibling;
+                                                  if (nextSibling && nextSibling.nodeType === 3) {
+                                                    // There's a text node after the variable, position at start
+                                                    newRange.setStart(nextSibling, 0);
+                                                    newRange.collapse(true);
+                                                  } else {
+                                                    // No text node after, create an empty text node for proper cursor positioning
+                                                    const textNode = document.createTextNode('');
+                                                    if (targetVariable.nextSibling) {
+                                                      bodyTextRef.current.insertBefore(textNode, targetVariable.nextSibling);
+                                                    } else {
+                                                      bodyTextRef.current.appendChild(textNode);
+                                                    }
+                                                    newRange.setStart(textNode, 0);
+                                                    newRange.collapse(true);
+                                                  }
+                                                  
+                                                  selection.removeAllRanges();
+                                                  selection.addRange(newRange);
+                                                  bodyTextRef.current.focus();
+                                                } else {
+                                                  // Normal click - check if cursor is inside
+                                                  const isInside = bodyTextRef.current.contains(range.commonAncestorContainer);
+                                                  
+                                                  if (!isInside) {
+                                                    // Cursor is outside, position it at the end
+                                                    const textContent = bodyTextRef.current.innerText || bodyTextRef.current.textContent || '';
+                                                    
+                                                    if (textContent.length > 0) {
+                                                      // Find the last text node
+                                                      const walker = document.createTreeWalker(
+                                                        bodyTextRef.current,
+                                                        NodeFilter.SHOW_TEXT,
+                                                        null
+                                                      );
+                                                      
+                                                      let lastNode = null;
+                                                      let node;
+                                                      while (node = walker.nextNode()) {
+                                                        lastNode = node;
+                                                      }
+                                                      
+                                                      if (lastNode) {
+                                                        const newRange = document.createRange();
+                                                        newRange.setStart(lastNode, lastNode.textContent.length);
+                                                        newRange.collapse(true);
+                                                        selection.removeAllRanges();
+                                                        selection.addRange(newRange);
+                                                      } else {
+                                                        // Fallback: select all and collapse to end
+                                                        const newRange = document.createRange();
+                                                        newRange.selectNodeContents(bodyTextRef.current);
+                                                        newRange.collapse(false);
+                                                        selection.removeAllRanges();
+                                                        selection.addRange(newRange);
+                                                      }
+                                                    }
+                                                  }
+                                                  bodyTextRef.current.focus();
+                                                }
+                                              }
+                                            }, 10);
+                                          }
+                                        }}
+                                        onFocus={(e) => {
+                                          // Remove placeholder when focused
+                                          if (!templateBody && e.target.innerHTML.includes('Enter template body')) {
+                                            e.target.innerHTML = '';
+                                          }
+                                        }}
+                                        onBlur={(e) => {
+                                          // Show placeholder when blurred and empty
+                                          if (!templateBody && !e.target.innerHTML.trim()) {
+                                            e.target.innerHTML = '<span class="text-gray-400">Enter template body</span>';
+                                          }
+                                        }}
+                                        onKeyDown={(e) => {
+                                          const selection = window.getSelection();
+                                          if (selection.rangeCount > 0) {
+                                            const range = selection.getRangeAt(0);
+                                            const container = range.commonAncestorContainer;
+                                            const parent = container.nodeType === 3 ? container.parentElement : container;
+                                            
+                                            // Only prevent editing if cursor is INSIDE a variable span (not in regular text)
+                                            if (parent && parent.hasAttribute && parent.hasAttribute('data-variable')) {
+                                              const offset = range.startOffset;
+                                              const textLength = parent.textContent.length;
+                                              
+                                              // If cursor is inside the variable (not at boundary), prevent editing
+                                              if (offset > 0 && offset < textLength) {
+                                                // Prevent editing inside variable
+                                                if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                                                  e.preventDefault();
+                                                  return false;
+                                                }
+                                              }
+                                              
+                                              // Allow backspace/delete at boundaries to delete the entire variable
+                                              if ((e.key === 'Backspace' && offset === 0) || (e.key === 'Delete' && offset === textLength)) {
+                                                // Delete the entire variable
+                                                e.preventDefault();
+                                                const varName = parent.textContent;
+                                                const varNameWithoutBraces = varName.replace(/[{}]/g, '');
+                                                
+                                                // Remove from text
+                                                const newText = templateBody.replace(new RegExp(`\\{\\{${varNameWithoutBraces}\\}\\}`, 'g'), '');
+                                                setTemplateBody(newText);
+                                                
+                                                // Remove from variables list
+                                                setBodyVariables(prev => 
+                                                  prev.filter(v => v.name !== varNameWithoutBraces)
+                                                );
+                                                
+                                                return false;
+                                              }
+                                            }
+                                          }
+                                        }}
+                                        className="w-full px-3 py-2 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[8rem]"
+                                        style={{ whiteSpace: 'pre-wrap' }}
+                                        suppressContentEditableWarning={true}
+                                      />
+                                      <span className="absolute right-3 top-3 text-xs text-gray-500 pointer-events-none">
+                                        {(() => {
+                                          const variablePattern = /\{\{[\w_]+\}\}/g;
+                                          const variableMatches = templateBody.match(variablePattern) || [];
+                                          const variableLength = variableMatches.join('').length;
+                                          return (templateBody.length - variableLength) + '/1024';
+                                        })()}
+                                      </span>
                                     </div>
-                                    <textarea
-                                      value={templateBody}
-                                      onChange={(e) => {
-                                        if (e.target.value.length <= 1024) {
-                                          setTemplateBody(e.target.value);
-                                        }
+                                    
+                                    {/* Add Variable Button */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setShowAddBodyVariable(true);
+                                        setNewBodyVariableName('');
+                                        setNewBodyVariableValue('');
                                       }}
-                                      rows={8}
-                                      maxLength={1024}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                      placeholder="Enter template body"
+                                      className="text-sm text-blue-600 hover:text-blue-700 font-medium mb-3"
+                                    >
+                                      + Add variable
+                                    </button>
+                                    
+                                    {/* Variable Input Form */}
+                                    {showAddBodyVariable && (
+                                      <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 space-y-3 mb-3">
+                                        <div>
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Variable Name
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={newBodyVariableName}
+                                      onChange={(e) => {
+                                              // Only allow alphanumeric and underscores
+                                              const value = e.target.value.replace(/[^a-zA-Z0-9_]/g, '');
+                                              setNewBodyVariableName(value);
+                                            }}
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g., name"
                                     />
+                                  </div>
+                                        <div>
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Example Value
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={newBodyVariableValue}
+                                            onChange={(e) => setNewBodyVariableValue(e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g., John"
+                                          />
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (newBodyVariableName.trim()) {
+                                                // Save variable name before resetting
+                                                const varNameToAdd = newBodyVariableName.trim();
+                                                
+                                                // Get current cursor position
+                                                let insertPosition = templateBody.length;
+                                                if (bodyTextRef.current) {
+                                                  const selection = window.getSelection();
+                                                  if (selection.rangeCount > 0) {
+                                                    const range = selection.getRangeAt(0);
+                                                    if (bodyTextRef.current.contains(range.commonAncestorContainer)) {
+                                                      const preRange = range.cloneRange();
+                                                      preRange.selectNodeContents(bodyTextRef.current);
+                                                      preRange.setEnd(range.endContainer, range.endOffset);
+                                                      insertPosition = preRange.toString().length;
+                                                    }
+                                                  }
+                                                }
+                                                
+                                                // Insert {{variableName}} into the text at cursor position
+                                                const variablePlaceholder = `{{${varNameToAdd}}}`;
+                                                const beforeText = templateBody.substring(0, insertPosition);
+                                                const afterText = templateBody.substring(insertPosition);
+                                                const newText = beforeText + variablePlaceholder + (afterText ? ' ' + afterText : '');
+                                                
+                                                // Count only non-variable characters
+                                                const variablePattern = /\{\{[\w_]+\}\}/g;
+                                                const variableMatches = newText.match(variablePattern) || [];
+                                                const variableLength = variableMatches.join('').length;
+                                                const plainTextLength = newText.length - variableLength;
+                                                
+                                                if (plainTextLength <= 1024) {
+                                                  setTemplateBody(newText);
+                                                  // Add to variables list
+                                                  setBodyVariables([
+                                                    ...bodyVariables,
+                                                    {
+                                                      name: varNameToAdd,
+                                                      value: newBodyVariableValue.trim()
+                                                    }
+                                                  ]);
+                                                  // Reset form
+                                                  setShowAddBodyVariable(false);
+                                                  setNewBodyVariableName('');
+                                                  setNewBodyVariableValue('');
+                                                  
+                                                  // Skip the next useEffect update to prevent cursor reset
+                                                  skipNextBodyEffectUpdate.current = true;
+                                                  
+                                                  // Manually update HTML with variable spans
+                                                  if (bodyTextRef.current) {
+                                                    const html = newText.split(/(\{\{[\w_]+\}\})/g).map((part) => {
+                                                      const isVariable = /^\{\{[\w_]+\}\}$/.test(part);
+                                                      if (isVariable) {
+                                                        return `<span contenteditable="false" data-variable="true" class="bg-blue-100 text-blue-700 px-1 rounded font-mono">${part}</span>`;
+                                                      }
+                                                      return part.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                                    }).join('');
+                                                    bodyTextRef.current.innerHTML = html;
+                                                  }
+                                                  
+                                                  // Set cursor position after the variable (after the last })
+                                                  setTimeout(() => {
+                                                    if (bodyTextRef.current) {
+                                                      const selection = window.getSelection();
+                                                      
+                                                      // Find the variable span that was just added
+                                                      const variableSpans = bodyTextRef.current.querySelectorAll('[data-variable="true"]');
+                                                      if (variableSpans.length > 0) {
+                                                        // Get the variable span that matches the name we just added
+                                                        let targetSpan = null;
+                                                        
+                                                        for (let span of variableSpans) {
+                                                          if (span.textContent === variablePlaceholder) {
+                                                            targetSpan = span;
+                                                            break;
+                                                          }
+                                                        }
+                                                        
+                                                        // If not found, use the last one
+                                                        if (!targetSpan && variableSpans.length > 0) {
+                                                          targetSpan = variableSpans[variableSpans.length - 1];
+                                                        }
+                                                        
+                                                        if (targetSpan) {
+                                                          // Position cursor right after the variable span (after the last })
+                                                          try {
+                                                            const selection = window.getSelection();
+                                                            const range = document.createRange();
+                                                            
+                                                            // Check if there's a text node after the variable
+                                                            let nextSibling = targetSpan.nextSibling;
+                                                            if (nextSibling && nextSibling.nodeType === 3) {
+                                                              // There's a text node after the variable, position at start
+                                                              range.setStart(nextSibling, 0);
+                                                              range.collapse(true);
+                                                            } else {
+                                                              // No text node after, create an empty text node for proper cursor positioning
+                                                              const textNode = document.createTextNode('');
+                                                              if (targetSpan.nextSibling) {
+                                                                bodyTextRef.current.insertBefore(textNode, targetSpan.nextSibling);
+                                                              } else {
+                                                                bodyTextRef.current.appendChild(textNode);
+                                                              }
+                                                              range.setStart(textNode, 0);
+                                                              range.collapse(true);
+                                                            }
+                                                            
+                                                            selection.removeAllRanges();
+                                                            selection.addRange(range);
+                                                            bodyTextRef.current.focus();
+                                                          } catch (e) {
+                                                            // Fallback: place cursor at end of content
+                                                            try {
+                                                              const range = document.createRange();
+                                                              range.selectNodeContents(bodyTextRef.current);
+                                                              range.collapse(false);
+                                                              selection.removeAllRanges();
+                                                              selection.addRange(range);
+                                                              bodyTextRef.current.focus();
+                                                            } catch (e2) {
+                                                              // Ignore errors
+                                                            }
+                                                          }
+                                                        }
+                                                      } else {
+                                                        // No variables, place cursor at end
+                                                        try {
+                                                          const range = document.createRange();
+                                                          range.selectNodeContents(bodyTextRef.current);
+                                                          range.collapse(false);
+                                                          selection.removeAllRanges();
+                                                          selection.addRange(range);
+                                                          bodyTextRef.current.focus();
+                                                        } catch (e) {
+                                                          // Ignore errors
+                                                        }
+                                                      }
+                                                    }
+                                                  }, 50);
+                                                }
+                                              }
+                                            }}
+                                            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                                          >
+                                            Add
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setShowAddBodyVariable(false);
+                                              setNewBodyVariableName('');
+                                              setNewBodyVariableValue('');
+                                            }}
+                                            className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Show Added Variables */}
+                                    {bodyVariables.length > 0 && (
+                                      <div className="space-y-2 mb-3">
+                                        <p className="text-xs font-medium text-gray-700">Variables:</p>
+                                        {bodyVariables.map((variable, index) => (
+                                          <div key={index} className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded text-xs">
+                                            <span className="text-gray-700">
+                                              <span className="font-mono">{`{{${variable.name}}}`}</span>
+                                              {variable.value && (
+                                                <span className="text-gray-500 ml-2">= {variable.value}</span>
+                                              )}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                // Remove variable from list
+                                                const updatedVariables = bodyVariables.filter((_, i) => i !== index);
+                                                setBodyVariables(updatedVariables);
+                                                // Remove {{variableName}} from text
+                                                const variablePlaceholder = `{{${variable.name}}}`;
+                                                let updatedText = templateBody;
+                                                // Remove all occurrences of this variable (with optional spaces)
+                                                updatedText = updatedText.replace(new RegExp(`\\s*${variablePlaceholder.replace(/[{}]/g, '\\$&')}\\s*`, 'g'), ' ').trim();
+                                                // Clean up multiple spaces
+                                                updatedText = updatedText.replace(/\s+/g, ' ');
+                                                setTemplateBody(updatedText);
+                                              }}
+                                              className="text-red-600 hover:text-red-700 ml-2"
+                                            >
+                                              Remove
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                   
                                   {/* Divider after Body */}
@@ -3996,50 +4995,204 @@ const Dashboard = () => {
 
                                   {/* Buttons */}
                                   <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <label className="block text-sm font-medium text-gray-700">
                                       Buttons
+                                      </label>
+                                      <span className="text-xs text-gray-500">
+                                        {Array.isArray(templateButtons) ? templateButtons.length : 0}/10
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-600 mb-3">
+                                      A template can have up to 10 buttons total. Quick reply buttons will be automatically grouped in the generated JSON.
+                                    </p>
+                                    
+                                    {/* Button List */}
+                                    {Array.isArray(templateButtons) && templateButtons.length > 0 && (
+                                      <div className="space-y-2 mb-4">
+                                        {templateButtons.map((button, index) => {
+                                          const buttonTypeLabels = {
+                                            copy_code: 'Copy Code',
+                                            otp: 'One-Time Password',
+                                            phone: 'Phone Number',
+                                            quick_reply: 'Quick Reply',
+                                            url: 'URL'
+                                          };
+                                          
+                                          return (
+                                            <div key={index} className="border border-gray-300 rounded-lg p-3 bg-gray-50">
+                                              <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-xs font-medium text-gray-700">
+                                                    {buttonTypeLabels[button.type] || button.type}
+                                                  </span>
+                                                  {button.index !== undefined && (
+                                                    <span className="text-xs text-gray-500">(Index: {button.index})</span>
+                                                  )}
+                                                </div>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    const updated = templateButtons.filter((_, i) => i !== index);
+                                                    // Re-index quick reply buttons
+                                                    const quickReplyButtons = updated.filter(b => b.type === 'quick_reply');
+                                                    quickReplyButtons.forEach((btn, idx) => {
+                                                      btn.index = idx;
+                                                    });
+                                                    setTemplateButtons(updated);
+                                                  }}
+                                                  className="text-red-600 hover:text-red-700 text-xs"
+                                                >
+                                                  Remove
+                                                </button>
+                                              </div>
+                                              <div className="text-xs text-gray-700">
+                                                <div><strong>Text:</strong> {button.text}</div>
+                                                {button.value && (
+                                                  <div><strong>Value:</strong> {button.value}</div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Add Button */}
+                                    {Array.isArray(templateButtons) && templateButtons.length < 10 && (
+                                      <div className="border border-gray-300 rounded-lg p-3 bg-gray-50">
+                                        <div className="mb-3">
+                                          <label className="block text-xs font-medium text-gray-700 mb-2">
+                                            Button Type
+                                          </label>
+                                          <select
+                                            value={newButtonType}
+                                            onChange={(e) => {
+                                              setNewButtonType(e.target.value);
+                                              setNewButtonValue('');
+                                            }}
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          >
+                                            <option value="">Select button type</option>
+                                            {Array.isArray(templateButtons) && templateButtons.filter(b => b.type === 'copy_code').length === 0 && (
+                                              <option value="copy_code">Copy Code (1 allowed)</option>
+                                            )}
+                                            <option value="otp">One-Time Password</option>
+                                            <option value="phone">Phone Number</option>
+                                            {Array.isArray(templateButtons) && templateButtons.filter(b => b.type === 'quick_reply').length < 10 && (
+                                              <option value="quick_reply">Quick Reply ({templateButtons.filter(b => b.type === 'quick_reply').length}/10)</option>
+                                            )}
+                                            {Array.isArray(templateButtons) && templateButtons.filter(b => b.type === 'url').length < 2 && (
+                                              <option value="url">URL ({templateButtons.filter(b => b.type === 'url').length}/2)</option>
+                                            )}
+                                          </select>
+                                        </div>
+                                        
+                                        <div className="mb-3">
+                                          <label className="block text-xs font-medium text-gray-700 mb-2">
+                                            Button Text
                                     </label>
                                     <input
                                       type="text"
-                                      value={templateButtons}
-                                      onChange={(e) => setTemplateButtons(e.target.value)}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                      placeholder="Enter button text (optional)"
+                                            value={newButtonText}
+                                            onChange={(e) => setNewButtonText(e.target.value)}
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter button text"
+                                            maxLength={20}
                                     />
+                                  </div>
+                                        
+                                        {(newButtonType === 'copy_code' || newButtonType === 'phone' || newButtonType === 'url') && (
+                                          <div className="mb-3">
+                                            <label className="block text-xs font-medium text-gray-700 mb-2">
+                                              {newButtonType === 'copy_code' ? 'Copy Text' : newButtonType === 'phone' ? 'Phone Number' : 'URL'}
+                                            </label>
+                                            <input
+                                              type="text"
+                                              value={newButtonValue}
+                                              onChange={(e) => setNewButtonValue(e.target.value)}
+                                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              placeholder={newButtonType === 'copy_code' ? 'Enter text to copy' : newButtonType === 'phone' ? 'Enter phone number (e.g., +1234567890)' : 'Enter URL (e.g., https://example.com)'}
+                                            />
+                                          </div>
+                                        )}
+                                        
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (!newButtonType || !newButtonText.trim()) {
+                                              alert('Please select a button type and enter button text');
+                                              return;
+                                            }
+                                            
+                                            // Check limits
+                                            const currentCount = Array.isArray(templateButtons) ? templateButtons.filter(b => b.type === newButtonType).length : 0;
+                                            const limits = {
+                                              copy_code: 1,
+                                              phone: Infinity, // No limit on phone buttons
+                                              quick_reply: 10,
+                                              url: 2
+                                            };
+                                            
+                                            if (limits[newButtonType] !== Infinity && currentCount >= (limits[newButtonType] || 10)) {
+                                              alert(`Maximum ${limits[newButtonType]} ${newButtonType} button(s) allowed`);
+                                              return;
+                                            }
+                                            
+                                            // Note: Quick reply button grouping will be handled automatically in JSON generation
+                                            
+                                            // Get value based on type
+                                            let buttonValue = '';
+                                            if (newButtonType === 'copy_code' || newButtonType === 'phone' || newButtonType === 'url') {
+                                              buttonValue = newButtonValue.trim();
+                                              if (!buttonValue) {
+                                                const valueLabels = {
+                                                  copy_code: 'copy text',
+                                                  phone: 'phone number',
+                                                  url: 'URL'
+                                                };
+                                                alert(`Please enter ${valueLabels[newButtonType]}`);
+                                                return;
+                                              }
+                                            }
+                                            
+                                            // Create button object
+                                            const newButton = {
+                                              type: newButtonType,
+                                              text: newButtonText.trim(),
+                                              value: buttonValue
+                                            };
+                                            
+                                            // Set index for quick reply buttons
+                                            if (newButtonType === 'quick_reply') {
+                                              newButton.index = Array.isArray(templateButtons) ? templateButtons.filter(b => b.type === 'quick_reply').length : 0;
+                                            }
+                                            
+                                            // Add button
+                                            setTemplateButtons([...(Array.isArray(templateButtons) ? templateButtons : []), newButton]);
+                                            
+                                            // Reset form
+                                            setNewButtonType('');
+                                            setNewButtonText('');
+                                            setNewButtonValue('');
+                                          }}
+                                          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                                        >
+                                          Add Button
+                                        </button>
+                                      </div>
+                                    )}
+                                    
+                                    {Array.isArray(templateButtons) && templateButtons.length >= 10 && (
+                                      <p className="text-xs text-gray-500 mt-2">
+                                        Maximum 10 buttons reached
+                                      </p>
+                                    )}
                                   </div>
                                   
                                   {/* Divider after Buttons */}
                                   <div className="border-t border-gray-300 my-6"></div>
 
-                                  {/* Sample Content */}
-                                  <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                      <label className="block text-sm font-medium text-gray-700">
-                                        Sample Content
-                                      </label>
-                                      <span className="text-xs text-gray-500">
-                                        {templateSampleContent.length}/200
-                                      </span>
-                                    </div>
-                                    <p className="text-xs text-gray-600 mb-2 italic">
-                                      Just enter sample content here (it doesn't need to be exact!)
-                                    </p>
-                                    <textarea
-                                      value={templateSampleContent}
-                                      onChange={(e) => {
-                                        if (e.target.value.length <= 200) {
-                                          setTemplateSampleContent(e.target.value);
-                                        }
-                                      }}
-                                      rows={3}
-                                      maxLength={200}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                      placeholder="Enter sample content"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      Make sure not to include any actual user or customer information, and provide only sample content in your examples. <a href="https://developers.facebook.com/docs/whatsapp/message-templates/guidelines" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Learn more</a>
-                                    </p>
-                                  </div>
                                 </div>
 
                                 {/* Right Column - Preview */}
@@ -4210,7 +5363,17 @@ const Dashboard = () => {
                                                     {/* Message Body */}
                                         {templateBody && (
                                                       <div className="text-xs text-gray-800 whitespace-pre-wrap mb-1.5">
-                                            {templateBody.replace(/\[.*?\]/g, templateSampleContent || '[Sample]')}
+                                            {(() => {
+                                              // First replace variables with their example values
+                                              let displayBody = templateBody;
+                                              bodyVariables.forEach(variable => {
+                                                const varPattern = new RegExp(`\\{\\{${variable.name}\\}\\}`, 'g');
+                                                const replacement = variable.value || variable.name;
+                                                displayBody = displayBody.replace(varPattern, replacement);
+                                              });
+                                              // Return body as-is (sample content replacement removed)
+                                              return displayBody;
+                                            })()}
                                           </div>
                                         )}
                                                     
@@ -4222,11 +5385,36 @@ const Dashboard = () => {
                                         )}
                                                     
                                                     {/* Buttons */}
-                                        {templateButtons && (
+                                        {Array.isArray(templateButtons) && templateButtons.length > 0 && (
                                                       <div className="mt-2 space-y-1.5">
-                                                        <button className="w-full px-2.5 py-1.5 bg-[#25d366] text-white text-[10px] rounded-lg hover:bg-[#20ba5a] transition-colors text-center">
-                                              {templateButtons}
+                                                        {templateButtons.map((button, index) => {
+                                                          // Determine button style based on type
+                                                          let buttonClass = "w-full px-2.5 py-1.5 text-white text-[10px] rounded-lg transition-colors text-center";
+                                                          
+                                                          if (button.type === 'quick_reply') {
+                                                            buttonClass += " bg-gray-600 hover:bg-gray-700";
+                                                          } else {
+                                                            buttonClass += " bg-[#25d366] hover:bg-[#20ba5a]";
+                                                          }
+                                                          
+                                                          return (
+                                                            <button key={index} className={buttonClass}>
+                                                              {button.text}
+                                                              {button.type === 'phone' && button.value && (
+                                                                <span className="ml-1 text-[9px] opacity-75">📞</span>
+                                                              )}
+                                                              {button.type === 'url' && button.value && (
+                                                                <span className="ml-1 text-[9px] opacity-75">🔗</span>
+                                                              )}
+                                                              {button.type === 'copy_code' && (
+                                                                <span className="ml-1 text-[9px] opacity-75">📋</span>
+                                                              )}
+                                                              {button.type === 'otp' && (
+                                                                <span className="ml-1 text-[9px] opacity-75">🔐</span>
+                                                              )}
                                             </button>
+                                                          );
+                                                        })}
                                           </div>
                                         )}
                                                     
@@ -4289,7 +5477,7 @@ const Dashboard = () => {
                               setTemplateBody('');
                               setTemplateFooter('');
                               setTemplateSampleContent('');
-                              setTemplateButtons('');
+                              setTemplateButtons([]);
                               setBroadcastTitleType('none');
                               setBroadcastTitleText('');
                               setBroadcastTitleImageLink('');
@@ -4303,6 +5491,13 @@ const Dashboard = () => {
                               setShowAddVariable(false);
                               setNewVariableName('');
                               setNewVariableValue('');
+                              setBodyVariables([]);
+                              setShowAddBodyVariable(false);
+                              setNewBodyVariableName('');
+                              setNewBodyVariableValue('');
+                              setNewButtonType('');
+                              setNewButtonText('');
+                              setNewButtonValue('');
                             }}
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
                           >
@@ -9252,6 +10447,46 @@ const Dashboard = () => {
         </div>
       </div>
       </>
+      )}
+
+      {/* JSON Modal */}
+      {showJSONModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowJSONModal(false)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Template JSON</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const templateJSON = generateTemplateJSON();
+                    const jsonString = JSON.stringify(templateJSON, null, 2);
+                    navigator.clipboard.writeText(jsonString).then(() => {
+                      alert('JSON copied to clipboard!');
+                    }).catch(err => {
+                      console.error('Failed to copy:', err);
+                    });
+                  }}
+                  className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100"
+                >
+                  Copy JSON
+                </button>
+                <button
+                  onClick={() => setShowJSONModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-4 overflow-auto flex-1">
+              <pre className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm text-gray-800 overflow-x-auto">
+                {JSON.stringify(generateTemplateJSON(), null, 2)}
+              </pre>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
