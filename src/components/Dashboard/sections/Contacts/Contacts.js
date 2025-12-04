@@ -316,22 +316,6 @@ const Contacts = () => {
           </button>
         </div>
 
-        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="font-semibold text-gray-900">BUSINESS</span>
-              </div>
-              <p className="text-sm text-gray-700 mb-2">
-                Secure customer interactions by masking phone numbers during support conversations.
-              </p>
-              <button className="px-3 py-1 text-xs font-medium bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors">
-                Upgrade
-              </button>
-            </div>
-          </div>
-        </div>
-
         <div className="border border-gray-200 rounded-lg overflow-hidden">
           <div className="p-4 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between mb-4">

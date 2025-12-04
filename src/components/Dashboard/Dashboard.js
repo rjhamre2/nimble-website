@@ -78,16 +78,18 @@ const Dashboard = () => {
   const [templateSearchQuery, setTemplateSearchQuery] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [showTemplatesDropdown, setShowTemplatesDropdown] = useState(false);
+  const [userTemplates, setUserTemplates] = useState([]);
+  const [isLoadingUserTemplates, setIsLoadingUserTemplates] = useState(false);
   // Template form state
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState('');
-  const [templateLanguage, setTemplateLanguage] = useState('English');
+  const [templateLanguage, setTemplateLanguage] = useState('English(US)');
   const [templateBody, setTemplateBody] = useState('');
   const [templateFooter, setTemplateFooter] = useState('');
   const [templateSampleContent, setTemplateSampleContent] = useState('');
   const [templateButtons, setTemplateButtons] = useState([]); // Array of button objects: { type: 'copy_code'|'otp'|'phone'|'quick_reply'|'url', text: string, value: string (phone/url/copy text), index?: number }
   // Broadcast title state
-  const [broadcastTitleType, setBroadcastTitleType] = useState('none'); // 'none', 'text', 'image', 'video', 'document'
+  const [broadcastTitleType, setBroadcastTitleType] = useState('none'); // 'none', 'text', 'image', 'video', 'document', 'location'
   const [broadcastTitleText, setBroadcastTitleText] = useState('');
   const [broadcastTitleImageLink, setBroadcastTitleImageLink] = useState('');
   const [broadcastTitleVideoLink, setBroadcastTitleVideoLink] = useState('');
@@ -95,10 +97,16 @@ const Dashboard = () => {
   const [broadcastTitleImageFile, setBroadcastTitleImageFile] = useState(null);
   const [broadcastTitleVideoFile, setBroadcastTitleVideoFile] = useState(null);
   const [broadcastTitleDocumentFile, setBroadcastTitleDocumentFile] = useState(null);
-  // Store handles for media headers
+  // Store handles and media IDs for media headers
   const [broadcastTitleImageHandle, setBroadcastTitleImageHandle] = useState('');
+  const [broadcastTitleImageMediaId, setBroadcastTitleImageMediaId] = useState('');
   const [broadcastTitleVideoHandle, setBroadcastTitleVideoHandle] = useState('');
   const [broadcastTitleDocumentHandle, setBroadcastTitleDocumentHandle] = useState('');
+  // Location state
+  const [broadcastTitleLocationLatitude, setBroadcastTitleLocationLatitude] = useState('');
+  const [broadcastTitleLocationLongitude, setBroadcastTitleLocationLongitude] = useState('');
+  const [broadcastTitleLocationName, setBroadcastTitleLocationName] = useState('');
+  const [broadcastTitleLocationAddress, setBroadcastTitleLocationAddress] = useState('');
   const [broadcastTitleError, setBroadcastTitleError] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [showJSONModal, setShowJSONModal] = useState(false);
@@ -121,9 +129,221 @@ const Dashboard = () => {
   const [newButtonText, setNewButtonText] = useState('');
   const [newButtonValue, setNewButtonValue] = useState('');
 
+  // Function to parse API template format and populate form
+  const populateFormFromAPITemplate = useCallback((template) => {
+    // Extract template object - it might be in template.object if saved as draft
+    const templateData = template.object || template;
+    
+    // Basic template info
+    setTemplateName(templateData.name || '');
+    
+    // Map category from template to dropdown format
+    let category = '';
+    if (templateData.category) {
+      const categoryMap = {
+        'AUTHENTICATION': 'Authentication',
+        'MARKETING': 'Marketing',
+        'UTILITY': 'Utility'
+      };
+      category = categoryMap[templateData.category] || templateData.category;
+    }
+    setTemplateCategory(category);
+    
+    // Map API language code to display name
+    const apiToDisplayLanguage = {
+      'en_US': 'English(US)',
+      'es': 'Spanish',
+      'fr': 'French',
+      'de': 'German',
+      'hi': 'Hindi'
+    };
+    const apiLanguage = templateData.language || 'en_US';
+    const displayLanguage = apiToDisplayLanguage[apiLanguage] || 'English(US)';
+    setTemplateLanguage(displayLanguage);
+    
+    // Parse components array
+    const components = templateData.components || [];
+    
+    // Reset all fields first
+    setBroadcastTitleType('none');
+    setBroadcastTitleText('');
+    setBroadcastTitleImageLink('');
+    setBroadcastTitleVideoLink('');
+    setBroadcastTitleDocumentLink('');
+    setBroadcastTitleImageFile(null);
+    setBroadcastTitleVideoFile(null);
+    setBroadcastTitleDocumentFile(null);
+    setBroadcastTitleImageHandle(null);
+    setBroadcastTitleVideoHandle(null);
+    setBroadcastTitleDocumentHandle(null);
+    setBroadcastTitleLocationLatitude('');
+    setBroadcastTitleLocationLongitude('');
+    setBroadcastTitleLocationName('');
+    setBroadcastTitleLocationAddress('');
+    setBroadcastTitleError('');
+    setBroadcastTitleVariables([]);
+    setTemplateBody('');
+    setBodyVariables([]);
+    setTemplateFooter('');
+    setTemplateButtons([]);
+    
+    // Parse each component
+    components.forEach(component => {
+      // Header component
+      if (component.type === 'header' || component.type === 'HEADER') {
+        if (component.format === 'text' || component.format === 'TEXT') {
+          setBroadcastTitleType('text');
+          let headerText = component.text || '';
+          
+          // Extract variables from example if present
+          if (component.example && component.example.header_text_named_params) {
+            const variables = component.example.header_text_named_params.map(param => {
+              // Extract variable name from {{variable_name}} format
+              const varName = param.param_name.replace(/[{}]/g, '');
+              return {
+                name: varName,
+                value: param.example || varName
+              };
+            });
+            setBroadcastTitleVariables(variables);
+            
+            // Ensure variables are in {{variable_name}} format in the text
+            // The text from API should already have them, but we ensure consistency
+            if (variables.length > 0) {
+              variables.forEach(variable => {
+                const varPattern = new RegExp(`\\{\\{${variable.name}\\}\\}`, 'g');
+                if (!headerText.match(varPattern)) {
+                  // If variable not found in {{}} format, try to find it without braces
+                  const plainVarPattern = new RegExp(variable.name, 'g');
+                  if (headerText.match(plainVarPattern)) {
+                    headerText = headerText.replace(plainVarPattern, `{{${variable.name}}}`);
+                  }
+                }
+              });
+            }
+          }
+          
+          // Set the text - the useEffect will handle converting {{variable}} to spans
+          setBroadcastTitleText(headerText);
+        } else if (component.format === 'IMAGE') {
+          setBroadcastTitleType('image');
+          // Extract handle from header_handle array
+          if (component.example && component.example.header_handle && component.example.header_handle.length > 0) {
+            const handle = component.example.header_handle[0];
+            // Handle can be a string or an object with handle property
+            if (typeof handle === 'string') {
+              setBroadcastTitleImageHandle(handle);
+            } else if (handle && handle.handle) {
+              setBroadcastTitleImageHandle(handle.handle);
+            }
+          }
+        } else if (component.format === 'VIDEO') {
+          setBroadcastTitleType('video');
+          if (component.example && component.example.header_handle && component.example.header_handle.length > 0) {
+            const handle = component.example.header_handle[0];
+            if (typeof handle === 'string') {
+              setBroadcastTitleVideoHandle(handle);
+            } else if (handle && handle.handle) {
+              setBroadcastTitleVideoHandle(handle.handle);
+            }
+          }
+        } else if (component.format === 'DOCUMENT') {
+          setBroadcastTitleType('document');
+          if (component.example && component.example.header_handle && component.example.header_handle.length > 0) {
+            const handle = component.example.header_handle[0];
+            if (typeof handle === 'string') {
+              setBroadcastTitleDocumentHandle(handle);
+            } else if (handle && handle.handle) {
+              setBroadcastTitleDocumentHandle(handle.handle);
+            }
+          }
+        } else if (component.parameters && Array.isArray(component.parameters)) {
+          // Check for location parameter
+          const locationParam = component.parameters.find(p => p.type === 'location' && p.location);
+          if (locationParam && locationParam.location) {
+            setBroadcastTitleType('location');
+            setBroadcastTitleLocationLatitude(locationParam.location.latitude || '');
+            setBroadcastTitleLocationLongitude(locationParam.location.longitude || '');
+            setBroadcastTitleLocationName(locationParam.location.name || '');
+            setBroadcastTitleLocationAddress(locationParam.location.address || '');
+          }
+        }
+      }
+      
+      // Body component
+      if (component.type === 'body' || component.type === 'BODY') {
+        let bodyText = component.text || '';
+        
+        // Extract variables from example if present
+        if (component.example && component.example.body_text_named_params) {
+          const variables = component.example.body_text_named_params.map(param => {
+            const varName = param.param_name.replace(/[{}]/g, '');
+            return {
+              name: varName,
+              value: param.example || varName
+            };
+          });
+          setBodyVariables(variables);
+        }
+        
+        setTemplateBody(bodyText);
+      }
+      
+      // Footer component
+      if (component.type === 'FOOTER' || component.type === 'footer') {
+        setTemplateFooter(component.text || '');
+      }
+      
+      // Button components
+      if (component.type === 'COPY_CODE') {
+        setTemplateButtons(prev => [...prev, {
+          type: 'copy_code',
+          text: 'Copy Code',
+          value: component.example || ''
+        }]);
+      } else if (component.type === 'PHONE_NUMBER') {
+        setTemplateButtons(prev => [...prev, {
+          type: 'phone',
+          text: component.text || '',
+          value: component.phone_number || ''
+        }]);
+      } else if (component.type === 'URL') {
+        setTemplateButtons(prev => [...prev, {
+          type: 'url',
+          text: component.text || '',
+          value: component.url || ''
+        }]);
+      } else if (component.type === 'QUICK_REPLY') {
+        setTemplateButtons(prev => [...prev, {
+          type: 'quick_reply',
+          text: component.text || '',
+          value: ''
+        }]);
+      }
+    });
+    
+    // Reset other fields
+    setTemplateSampleContent('');
+    setShowAddVariable(false);
+    setNewVariableName('');
+    setNewVariableValue('');
+    setShowAddBodyVariable(false);
+    setNewBodyVariableName('');
+    setNewBodyVariableValue('');
+  }, []);
+
   // Populate form when template is selected
   useEffect(() => {
     if (selectedTemplate) {
+      // Check if this is an API template (has object.components or components array)
+      const templateData = selectedTemplate.object || selectedTemplate;
+      const hasComponents = templateData.components && Array.isArray(templateData.components);
+      
+      if (hasComponents) {
+        // This is an API template format - use the parser function
+        populateFormFromAPITemplate(selectedTemplate);
+      } else {
+        // This is a template library format - use the old logic
       setTemplateName(selectedTemplate.name || '');
       
       // Map category from template to dropdown format
@@ -138,32 +358,47 @@ const Dashboard = () => {
       }
       setTemplateCategory(category);
       
-      setTemplateLanguage(selectedTemplate.language || 'English');
+      // Map API language code to display name
+      const apiToDisplayLanguage = {
+        'en_US': 'English(US)',
+        'es': 'Spanish',
+        'fr': 'French',
+        'de': 'German',
+        'hi': 'Hindi'
+      };
+      const apiLanguage = selectedTemplate.language || 'en_US';
+      const displayLanguage = apiToDisplayLanguage[apiLanguage] || 'English(US)';
+      setTemplateLanguage(displayLanguage);
       setTemplateBody(selectedTemplate.content || '');
       setTemplateFooter(selectedTemplate.footer || '');
       setTemplateSampleContent('');
-      setTemplateButtons([]);
-      // Reset broadcast title when selecting a new template
-      setBroadcastTitleType('none');
-      setBroadcastTitleText('');
-      setBroadcastTitleImageLink('');
-      setBroadcastTitleVideoLink('');
-      setBroadcastTitleDocumentLink('');
-      setBroadcastTitleImageFile(null);
-      setBroadcastTitleVideoFile(null);
-      setBroadcastTitleDocumentFile(null);
-      setBroadcastTitleError('');
-      setBroadcastTitleVariables([]);
-      setShowAddVariable(false);
-      setNewVariableName('');
-      setNewVariableValue('');
-      // Reset body variables when selecting a new template
-      setBodyVariables([]);
-      setShowAddBodyVariable(false);
-      setNewBodyVariableName('');
-      setNewBodyVariableValue('');
+        setTemplateButtons([]);
+        // Reset broadcast title when selecting a new template
+        setBroadcastTitleType('none');
+        setBroadcastTitleText('');
+        setBroadcastTitleImageLink('');
+        setBroadcastTitleVideoLink('');
+        setBroadcastTitleDocumentLink('');
+        setBroadcastTitleImageFile(null);
+        setBroadcastTitleVideoFile(null);
+        setBroadcastTitleDocumentFile(null);
+        setBroadcastTitleLocationLatitude('');
+        setBroadcastTitleLocationLongitude('');
+        setBroadcastTitleLocationName('');
+        setBroadcastTitleLocationAddress('');
+        setBroadcastTitleError('');
+        setBroadcastTitleVariables([]);
+        setShowAddVariable(false);
+        setNewVariableName('');
+        setNewVariableValue('');
+        // Reset body variables when selecting a new template
+        setBodyVariables([]);
+        setShowAddBodyVariable(false);
+        setNewBodyVariableName('');
+        setNewBodyVariableValue('');
+      }
     }
-  }, [selectedTemplate]);
+  }, [selectedTemplate, populateFormFromAPITemplate]);
 
   // Update contentEditable HTML when broadcastTitleText changes (e.g., when variable is added)
   useEffect(() => {
@@ -290,6 +525,75 @@ const Dashboard = () => {
       }
     }
   }, [broadcastTitleText, broadcastTitleType]);
+
+  // Ensure cursor is positioned correctly when variables are present (especially after template load)
+  // This only runs when we're not manually adding a variable (skipNextEffectUpdate prevents it)
+  useEffect(() => {
+    // Skip if we just manually added a variable (cursor positioning is handled in onClick)
+    if (skipNextEffectUpdate.current) {
+      return;
+    }
+    
+    if (broadcastTitleTextRef.current && broadcastTitleType === 'text' && broadcastTitleVariables.length > 0) {
+      // Wait for DOM to be updated (longer delay to ensure HTML is rendered)
+      setTimeout(() => {
+        if (broadcastTitleTextRef.current) {
+          // Ensure the element is focused first
+          broadcastTitleTextRef.current.focus();
+          
+          const selection = window.getSelection();
+          
+          // Find all variable spans
+          const variableSpans = broadcastTitleTextRef.current.querySelectorAll('[data-variable="true"]');
+          
+          if (variableSpans.length > 0) {
+            // Get the last variable span
+            const lastVariableSpan = variableSpans[variableSpans.length - 1];
+            
+            // Position cursor right after the last variable
+            try {
+              const range = document.createRange();
+              
+              // Check if there's a text node after the variable
+              let nextSibling = lastVariableSpan.nextSibling;
+              if (nextSibling && nextSibling.nodeType === 3) {
+                // There's a text node after the variable, position at start
+                range.setStart(nextSibling, 0);
+                range.collapse(true);
+              } else {
+                // No text node after, create an empty text node for proper cursor positioning
+                const textNode = document.createTextNode('');
+                if (lastVariableSpan.nextSibling) {
+                  broadcastTitleTextRef.current.insertBefore(textNode, lastVariableSpan.nextSibling);
+                } else {
+                  broadcastTitleTextRef.current.appendChild(textNode);
+                }
+                range.setStart(textNode, 0);
+                range.collapse(true);
+              }
+              
+              selection.removeAllRanges();
+              selection.addRange(range);
+              // Ensure focus is maintained
+              broadcastTitleTextRef.current.focus();
+            } catch (e) {
+              // Fallback: place cursor at end of content
+              try {
+                const range = document.createRange();
+                range.selectNodeContents(broadcastTitleTextRef.current);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                broadcastTitleTextRef.current.focus();
+              } catch (e2) {
+                // Ignore errors
+              }
+            }
+          }
+        }
+      }, 150);
+    }
+  }, [broadcastTitleVariables, broadcastTitleType]);
 
   // Update contentEditable HTML when templateBody changes (e.g., when variable is added)
   useEffect(() => {
@@ -436,6 +740,7 @@ const Dashboard = () => {
   const [isLoadingTraining, setIsLoadingTraining] = useState(false);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(false);
   const [isCheckingWaba, setIsCheckingWaba] = useState(false);
+  const isCheckingWabaRef = useRef(false);
   
   // Modal states
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
@@ -466,6 +771,7 @@ const Dashboard = () => {
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   const [contactBirthday, setContactBirthday] = useState('');
   const [contactLeadStage, setContactLeadStage] = useState('');
+  const [contactTeamAssigned, setContactTeamAssigned] = useState('marketing'); // 'marketing' | 'sales' | 'support'
   
   // Contacts data state
   const [contacts, setContacts] = useState([]);
@@ -1577,6 +1883,7 @@ const Dashboard = () => {
     setContactTitle('');
     setContactUrl('');
     setContactUrlType('WORK');
+    setContactTeamAssigned('marketing');
     setContactError('');
     setContactSuccess('');
     setEditingContactId(null);
@@ -1813,7 +2120,8 @@ const Dashboard = () => {
           type: contactUrlType || 'WORK'
         }] : [],
         birthday: contactBirthday || '',
-        lead_stage: contactLeadStage || 'NEW'
+        lead_stage: contactLeadStage || 'NEW',
+        team_assigned: contactTeamAssigned || 'marketing'
       };
 
       const apiUrl = apiConfig.endpoints.contacts.createContact();
@@ -1905,7 +2213,8 @@ const Dashboard = () => {
           type: contactUrlType || 'WORK'
         }] : [],
         birthday: contactBirthday || '',
-        lead_stage: contactLeadStage || 'NEW'
+        lead_stage: contactLeadStage || 'NEW',
+        team_assigned: contactTeamAssigned || 'marketing'
       };
 
       const apiUrl = apiConfig.endpoints.contacts.updateContact(editingContactId);
@@ -2011,6 +2320,7 @@ const Dashboard = () => {
     setContactUrlType(urls.length > 0 ? urls[0].type || 'WORK' : 'WORK');
     setContactBirthday(contactData.birthday || '');
     setContactLeadStage(contactData.lead_stage || '');
+    setContactTeamAssigned(contactData.team_assigned || 'marketing');
     setIsEditContactModalOpen(true);
   };
 
@@ -2122,7 +2432,7 @@ const Dashboard = () => {
       }
 
       // Create CSV header
-      const headers = ['Name', 'First Name', 'Last Name', 'Phone', 'Email', 'Company', 'Title', 'Lead Stage', 'Source'];
+      const headers = ['Name', 'First Name', 'Last Name', 'Phone', 'Email', 'Company', 'Title', 'Lead Stage', 'Team Assigned', 'Source'];
       
       // Create CSV rows
       const rows = contacts.map(contact => {
@@ -2144,6 +2454,7 @@ const Dashboard = () => {
           org.company || '',
           org.title || '',
           contactData.lead_stage || '',
+          contactData.team_assigned || 'marketing',
           'NimbleAI'
         ];
       });
@@ -2779,11 +3090,17 @@ const Dashboard = () => {
       const result = await response.json();
       console.log('✅ Image upload response:', result);
       
-      // Extract uploaded_file_handle from response
-      // The API response structure might be:
-      // { data: { uploaded_file_handle: "..." } }
-      // or { handle: { handle: "...", url: {...} } }
-      // or { data: { handle: { handle: "...", url: {...} } } }
+      // Extract uploaded_file_handle and media_id from response
+      // Example response:
+      // {
+      //   success: true,
+      //   data: {
+      //     media_id: "...",
+      //     uploaded_file_handle: "...",
+      //     ...
+      //   }
+      // }
+      // or similar variations as noted below.
       
       let handle = null;
       
@@ -2811,16 +3128,70 @@ const Dashboard = () => {
       }
       
       const imageUrl = result.data?.url || result.url || result.data?.handle?.url || result.handle?.url || null;
+      const mediaId = result.data?.media_id || result.media_id || null;
       
-      return { handle: handle || '', url: imageUrl || '' };
+      return { handle: handle || '', url: imageUrl || '', mediaId: mediaId || '' };
     } catch (error) {
       console.error('❌ Error uploading image:', error);
       throw error;
     }
   }, [user, userData]);
 
+  // Function to fetch user templates
+  const fetchUserTemplates = useCallback(async () => {
+    try {
+      const dbId = userData?.db_id || user?.db_id;
+      if (!dbId) {
+        console.log('⚠️ No db_id found, skipping template fetch');
+        return;
+      }
+
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      if (!dbServerUrl) {
+        console.error('❌ DB Server URL is not configured!');
+        return;
+      }
+
+      setIsLoadingUserTemplates(true);
+      const url = `${dbServerUrl}/api/users/${dbId}/templates`;
+      
+      console.log('📤 Fetching user templates:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Fetch failed' }));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ User templates fetched:', result);
+      
+      // Extract templates array from response
+      const templates = result.data || result.templates || result || [];
+      setUserTemplates(Array.isArray(templates) ? templates : []);
+    } catch (error) {
+      console.error('❌ Error fetching user templates:', error);
+      setUserTemplates([]);
+    } finally {
+      setIsLoadingUserTemplates(false);
+    }
+  }, [user, userData]);
+
+  // Fetch templates when "Your Templates" tab is viewed
+  useEffect(() => {
+    if (templateSubView === 'your-templates' && user && userData && !loading) {
+      fetchUserTemplates();
+    }
+  }, [templateSubView, user, userData, loading, fetchUserTemplates]);
+
   // Function to save template as draft
-  const saveTemplateAsDraft = useCallback(async (templateJSON) => {
+  const saveTemplateAsDraft = useCallback(async (templateJSON, templateId = null) => {
     try {
       const dbId = userData?.db_id || user?.db_id;
       if (!dbId) {
@@ -2832,20 +3203,35 @@ const Dashboard = () => {
         throw new Error('DB Server URL is not configured');
       }
 
-      const url = `${dbServerUrl}/api/users/${dbId}/templates`;
+      // If templateId is provided, use PUT to update existing template
+      // Otherwise, use POST to create new template
+      const isUpdate = templateId !== null && templateId !== undefined;
+      const url = isUpdate 
+        ? `${dbServerUrl}/api/users/${dbId}/templates/${templateId}`
+        : `${dbServerUrl}/api/users/${dbId}/templates`;
       
-      console.log('📤 Saving template as draft:', url);
+      console.log(`📤 ${isUpdate ? 'Updating' : 'Saving'} template as draft:`, url);
       console.log('📤 Template JSON:', templateJSON);
+      if (isUpdate) {
+        console.log('📤 Template ID:', templateId);
+      }
       
+      const payload = {
+        template_status: 'draft',
+        object: templateJSON
+      };
+
+      // Attach media_id at the top level (not inside object)
+      if (broadcastTitleImageMediaId) {
+        payload.media_id = broadcastTitleImageMediaId;
+      }
+
       const response = await fetch(url, {
-        method: 'POST',
+        method: isUpdate ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          template_status: 'draft',
-          object: templateJSON
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
@@ -2854,14 +3240,14 @@ const Dashboard = () => {
       }
 
       const result = await response.json();
-      console.log('✅ Template saved as draft:', result);
+      console.log(`✅ Template ${isUpdate ? 'updated' : 'saved'} as draft:`, result);
       
       return result;
     } catch (error) {
       console.error('❌ Error saving template as draft:', error);
       throw error;
     }
-  }, [user, userData]);
+  }, [user, userData, broadcastTitleImageMediaId]);
 
   // Function to generate template JSON object
   const generateTemplateJSON = useCallback(() => {
@@ -2953,6 +3339,32 @@ const Dashboard = () => {
         };
         components.push(headerComponent);
       }
+    } else if (broadcastTitleType === 'location' && 
+               broadcastTitleLocationLatitude && 
+               broadcastTitleLocationLongitude) {
+      // Validate that location can only be used with UTILITY or MARKETING categories
+      if (templateCategory !== 'Utility' && templateCategory !== 'Marketing') {
+        // Don't add location header if category is invalid
+        // This should be caught by UI validation, but adding as a safety check
+        console.warn('Location headers can only be used in templates categorized as UTILITY or MARKETING.');
+      } else {
+        // For location header
+        const headerComponent = {
+          type: "header",
+          parameters: [
+            {
+              type: "location",
+              location: {
+                latitude: broadcastTitleLocationLatitude,
+                longitude: broadcastTitleLocationLongitude,
+                name: broadcastTitleLocationName || "",
+                address: broadcastTitleLocationAddress || ""
+              }
+            }
+          ]
+        };
+        components.push(headerComponent);
+      }
     }
 
     // 2. Body Component
@@ -2983,28 +3395,25 @@ const Dashboard = () => {
       });
     }
 
-    // 4. Buttons Components
-    // Automatically group quick reply buttons together (at the end)
+    // 4. Buttons Component - Group all buttons under a single BUTTONS component
     if (Array.isArray(templateButtons) && templateButtons.length > 0) {
-      // Separate quick reply buttons from other buttons
-      const quickReplyButtons = templateButtons.filter(b => b.type === 'quick_reply');
-      const otherButtons = templateButtons.filter(b => b.type !== 'quick_reply');
+      const buttonsArray = [];
       
-      // Process other buttons first
-      otherButtons.forEach(button => {
+      // Process all buttons and add them to the buttons array
+      templateButtons.forEach(button => {
         if (button.type === 'copy_code') {
-          components.push({
+          buttonsArray.push({
             type: "COPY_CODE",
             example: button.value || button.text
           });
         } else if (button.type === 'phone') {
-          components.push({
+          buttonsArray.push({
             type: "PHONE_NUMBER",
             text: button.text,
             phone_number: button.value
           });
         } else if (button.type === 'url') {
-          const urlComponent = {
+          const urlButton = {
             type: "URL",
             text: button.text,
             url: button.value
@@ -3013,41 +3422,34 @@ const Dashboard = () => {
           // Check if URL contains a variable ({{variable_name}})
           if (button.value && button.value.includes('{{')) {
             // Extract variables from URL and replace with example values
-            // Find all {{variable}} patterns and replace them
             let exampleUrl = button.value;
-            const variablePattern = /\{\{([\w_]+)\}\}/g;
-            let match;
-            const variables = [];
-            
-            while ((match = variablePattern.exec(button.value)) !== null) {
-              variables.push(match[1]);
-            }
-            
-            // Replace variables with example values (you might want to store these separately)
-            // For now, we'll use a placeholder
             exampleUrl = exampleUrl.replace(/\{\{[\w_]+\}\}/g, 'example');
-            urlComponent.example = [exampleUrl];
+            urlButton.example = [exampleUrl];
           }
           
-          components.push(urlComponent);
+          buttonsArray.push(urlButton);
         } else if (button.type === 'otp') {
-          // OTP button format - need to check the exact format
-          // Based on WhatsApp API, OTP is typically a URL button with special handling
-          components.push({
+          // OTP button format - typically a URL button with special handling
+          buttonsArray.push({
             type: "URL",
             text: button.text,
             url: button.value || ""
           });
+        } else if (button.type === 'quick_reply') {
+          buttonsArray.push({
+            type: "QUICK_REPLY",
+            text: button.text
+          });
         }
       });
       
-      // Then add all quick reply buttons grouped together at the end
-      quickReplyButtons.forEach((button, index) => {
+      // Add a single BUTTONS component with all buttons
+      if (buttonsArray.length > 0) {
         components.push({
-          type: "QUICK_REPLY",
-          text: button.text
+          type: "BUTTONS",
+          buttons: buttonsArray
         });
-      });
+      }
     }
 
     // Build the final template object
@@ -3057,10 +3459,22 @@ const Dashboard = () => {
       'Utility': 'UTILITY'
     };
     
+    // Map display language to API language code
+    const languageMap = {
+      'English(US)': 'en_US',
+      'Spanish': 'es',
+      'French': 'fr',
+      'German': 'de',
+      'Hindi': 'hi',
+      'Other': 'en_US' // Default to en_US for Other
+    };
+    
+    const apiLanguage = languageMap[templateLanguage] || 'en_US';
+    
     const templateObject = {
       name: templateName,
       category: categoryMap[templateCategory] || templateCategory.toUpperCase(),
-      language: templateLanguage,
+      language: apiLanguage,
       parameter_format: "named",
       components: components
     };
@@ -3094,6 +3508,13 @@ const Dashboard = () => {
       return;
     }
     
+    // Prevent concurrent calls
+    if (isCheckingWabaRef.current) {
+      console.log('⏸️ WABA check already in progress, skipping...');
+      return;
+    }
+    
+    isCheckingWabaRef.current = true;
     setIsCheckingWaba(true);
     try {
       const dbId = userData?.db_id || user?.db_id;
@@ -3149,8 +3570,9 @@ const Dashboard = () => {
           console.log('📋 waba_details is empty, navigating to channels and showing WABA modal');
           setUserName(result.data.username || userData?.username || user?.displayName || 'User');
           // Navigate to channels tab and select WhatsApp
-          setActiveTab('channels');
-          setActiveChannel('whatsapp');
+          // Use functional updates to avoid unnecessary re-renders if already set
+          setActiveTab(prev => prev !== 'channels' ? 'channels' : prev);
+          setActiveChannel(prev => prev !== 'whatsapp' ? 'whatsapp' : prev);
           // Show WABA modal
           setIsWabaModalOpen(true);
         } else {
@@ -3161,9 +3583,10 @@ const Dashboard = () => {
       console.error('❌ Error checking WABA details:', error);
       console.error('❌ Error stack:', error.stack);
     } finally {
+      isCheckingWabaRef.current = false;
       setIsCheckingWaba(false);
     }
-  }, [user, userData, isWelcomeModalOpen, isWabaModalOpen]);
+  }, [user, userData]);
 
   useEffect(() => {
     checkWelcomeModal();
@@ -3171,7 +3594,7 @@ const Dashboard = () => {
 
   // Call checkWabaDetails when userData becomes available
   useEffect(() => {
-    if (user && userData && !loading && !isWelcomeModalOpen) {
+    if (user && userData && !loading && !isWelcomeModalOpen && !isCheckingWabaRef.current) {
       console.log('🚀 User data available, checking WABA details...');
       // Small delay to ensure welcome modal check completes first
       const timer = setTimeout(() => {
@@ -3182,12 +3605,13 @@ const Dashboard = () => {
   }, [user, userData, loading, isWelcomeModalOpen, checkWabaDetails]);
 
   // Check WABA details when WhatsApp channel is selected in channels tab
+  // NOTE: We don't include isWabaDetailsEmpty, activeTab, activeChannel in deps because checkWabaDetails sets them
   useEffect(() => {
-    if (activeTab === 'channels' && activeChannel === 'whatsapp' && !isWabaModalOpen && user && userData && !isCheckingWaba && isWabaDetailsEmpty) {
+    if (activeTab === 'channels' && activeChannel === 'whatsapp' && !isWabaModalOpen && user && userData && !isCheckingWabaRef.current) {
       console.log('🔍 WhatsApp channel selected, checking WABA details...');
       checkWabaDetails();
     }
-  }, [activeTab, activeChannel, isWabaModalOpen, user, userData, isCheckingWaba, isWabaDetailsEmpty, checkWabaDetails]);
+  }, [activeTab, activeChannel, isWabaModalOpen, user, userData, checkWabaDetails]);
 
   // Debug: Track when WABA modal state changes
   useEffect(() => {
@@ -3267,7 +3691,7 @@ const Dashboard = () => {
         isWabaModalOpen
       });
     }
-  }, [user, loading, isWelcomeModalOpen, isCheckingWaba, isWabaModalOpen, checkWabaDetails, userData]);
+  }, [user, loading, isWelcomeModalOpen, isWabaModalOpen, checkWabaDetails, userData]);
 
   // Also listen for auth state changes to re-check immediately
   useEffect(() => {
@@ -3413,9 +3837,18 @@ const Dashboard = () => {
                     </button>
                       {/* Dropdown menu */}
                       {showTemplatesDropdown && (
-                        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[180px]">
+                        <div className="absolute top-full left-0 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[180px]">
                           <button
                             onClick={() => {
+                              // Check if a template is currently open
+                              if (selectedTemplate) {
+                                const confirmAbandon = window.confirm('Are you sure you want to abandon the current template? Any unsaved changes will be lost.');
+                                if (!confirmAbandon) {
+                                  return; // User cancelled, don't navigate
+                                }
+                                // Clear the selected template to close the form
+                                setSelectedTemplate(null);
+                              }
                               setBroadcastView('templates');
                               setTemplateSubView('template-library');
                               setShowTemplatesDropdown(false);
@@ -3430,6 +3863,15 @@ const Dashboard = () => {
                           </button>
                           <button
                             onClick={() => {
+                              // Check if a template is currently open
+                              if (selectedTemplate) {
+                                const confirmAbandon = window.confirm('Are you sure you want to abandon the current template? Any unsaved changes will be lost.');
+                                if (!confirmAbandon) {
+                                  return; // User cancelled, don't navigate
+                                }
+                                // Clear the selected template to close the form
+                                setSelectedTemplate(null);
+                              }
                               setBroadcastView('templates');
                               setTemplateSubView('your-templates');
                               setShowTemplatesDropdown(false);
@@ -3471,9 +3913,8 @@ const Dashboard = () => {
                   <div className="flex-1 overflow-y-auto p-6">
                     {broadcastView === 'templates' && (
                       <div className="space-y-6">
-                        {templateSubView === 'template-library' ? (
-                          selectedTemplate ? (
-                            // Show template form when a template is selected
+                        {selectedTemplate ? (
+                          // Show template form when a template is selected (from either template library or your templates)
                             <div className="space-y-6">
                               {/* Back button and header */}
                               <div className="flex items-center justify-between mb-6">
@@ -3482,7 +3923,7 @@ const Dashboard = () => {
                                     setSelectedTemplate(null);
                                     setTemplateName('');
                                     setTemplateCategory('');
-                                    setTemplateLanguage('English');
+                                    setTemplateLanguage('English(US)');
                                     setTemplateBody('');
                                     setTemplateFooter('');
                                     setTemplateSampleContent('');
@@ -3498,6 +3939,10 @@ const Dashboard = () => {
                                     setBroadcastTitleImageHandle('');
                                     setBroadcastTitleVideoHandle('');
                                     setBroadcastTitleDocumentHandle('');
+                                    setBroadcastTitleLocationLatitude('');
+                                    setBroadcastTitleLocationLongitude('');
+                                    setBroadcastTitleLocationName('');
+                                    setBroadcastTitleLocationAddress('');
                                     setBroadcastTitleError('');
                                     setBroadcastTitleVariables([]);
                                     setShowAddVariable(false);
@@ -3536,7 +3981,7 @@ const Dashboard = () => {
                                       setSelectedTemplate(null);
                                       setTemplateName('');
                                       setTemplateCategory('');
-                                      setTemplateLanguage('English');
+                                      setTemplateLanguage('English(US)');
                                       setTemplateBody('');
                                       setTemplateFooter('');
                                       setTemplateSampleContent('');
@@ -3549,6 +3994,10 @@ const Dashboard = () => {
                                       setBroadcastTitleImageFile(null);
                                       setBroadcastTitleVideoFile(null);
                                       setBroadcastTitleDocumentFile(null);
+                                      setBroadcastTitleLocationLatitude('');
+                                      setBroadcastTitleLocationLongitude('');
+                                      setBroadcastTitleLocationName('');
+                                      setBroadcastTitleLocationAddress('');
                                       setBroadcastTitleError('');
                                       setBroadcastTitleVariables([]);
                                       setShowAddVariable(false);
@@ -3579,9 +4028,23 @@ const Dashboard = () => {
                                           return;
                                         }
                                         
-                                        // Save as draft
-                                        await saveTemplateAsDraft(templateJSON);
-                                        alert('Template saved as draft successfully!');
+                                        // Validate location header can only be used with UTILITY or MARKETING
+                                        if (broadcastTitleType === 'location' && 
+                                            templateCategory !== 'Utility' && 
+                                            templateCategory !== 'Marketing') {
+                                          alert('Location headers can only be used in templates categorized as UTILITY or MARKETING.');
+                                          return;
+                                        }
+                                        
+                                        // Check if we're editing an existing template
+                                        // Template ID can be in template.template_id, template.id, or template._id
+                                        const templateId = selectedTemplate?.template_id || selectedTemplate?.id || selectedTemplate?._id || null;
+                                        
+                                        // Save as draft (will use PUT if templateId exists, POST otherwise)
+                                        await saveTemplateAsDraft(templateJSON, templateId);
+                                        alert(templateId 
+                                          ? 'Template updated as draft successfully!' 
+                                          : 'Template saved as draft successfully!');
                                         
                                         // Don't reset form, just save as draft
                                       } catch (error) {
@@ -3595,51 +4058,139 @@ const Dashboard = () => {
                                   <button
                                     type="button"
                                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
-                                    onClick={() => {
-                                      // Generate template JSON
-                                      const templateJSON = generateTemplateJSON();
-                                      console.log('Template JSON:', JSON.stringify(templateJSON, null, 2));
-                                      
-                                      // Handle form submission here
-                                      console.log('Template form submitted:', {
-                                        templateName,
-                                        templateCategory,
-                                        templateLanguage,
-                                        templateBody,
-                                        templateFooter,
-                                        templateButtons,
-                                        templateSampleContent,
-                                        templateJSON
-                                      });
-                                      // Reset form after submission
-                                      setSelectedTemplate(null);
-                                      setTemplateName('');
-                                      setTemplateCategory('');
-                                      setTemplateLanguage('English');
-                                      setTemplateBody('');
-                                      setTemplateFooter('');
-                                      setTemplateSampleContent('');
-                                      setTemplateButtons([]);
-                                      setBroadcastTitleType('none');
-                                      setBroadcastTitleText('');
-                                      setBroadcastTitleImageLink('');
-                                      setBroadcastTitleVideoLink('');
-                                      setBroadcastTitleDocumentLink('');
-                                      setBroadcastTitleImageFile(null);
-                                      setBroadcastTitleVideoFile(null);
-                                      setBroadcastTitleDocumentFile(null);
-                                      setBroadcastTitleError('');
-                                      setBroadcastTitleVariables([]);
-                                      setShowAddVariable(false);
-                                      setNewVariableName('');
-                                      setNewVariableValue('');
-                                      setBodyVariables([]);
-                                      setShowAddBodyVariable(false);
-                                      setNewBodyVariableName('');
-                                      setNewBodyVariableValue('');
-                                      setNewButtonType('');
-                                      setNewButtonText('');
-                                      setNewButtonValue('');
+                                    onClick={async () => {
+                                      try {
+                                        // Validate required fields
+                                        if (!templateName || !templateCategory || !templateBody) {
+                                          alert('Please fill in all required fields (Template Name, Category, and Body)');
+                                          return;
+                                        }
+                                        
+                                        // Validate location header can only be used with UTILITY or MARKETING
+                                        if (broadcastTitleType === 'location' && 
+                                            templateCategory !== 'Utility' && 
+                                            templateCategory !== 'Marketing') {
+                                          alert('Location headers can only be used in templates categorized as UTILITY or MARKETING.');
+                                          return;
+                                        }
+                                        
+                                        // Generate template JSON
+                                        const templateJSON = generateTemplateJSON();
+                                        
+                                        // Get template ID if editing a draft template
+                                        const templateId = selectedTemplate?.template_id || selectedTemplate?.id || selectedTemplate?._id || null;
+                                        
+                                        if (templateId) {
+                                          // Submit existing draft template
+                                          const dbId = userData?.db_id || user?.db_id;
+                                          if (!dbId) {
+                                            throw new Error('User ID not found');
+                                          }
+
+                                          const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+                                          if (!dbServerUrl) {
+                                            throw new Error('DB Server URL is not configured');
+                                          }
+
+                                          const submitUrl = `${dbServerUrl}/api/users/${dbId}/templates/${templateId}/submit`;
+                                          console.log('📤 [Submit Template] Calling API:', submitUrl);
+                                          
+                                          const token = localStorage.getItem('authToken');
+                                          const response = await fetch(submitUrl, {
+                                            method: 'POST',
+                                            headers: {
+                                              'Content-Type': 'application/json',
+                                              'Authorization': token ? `Bearer ${token}` : '',
+                                            },
+                                            body: JSON.stringify({
+                                              object: templateJSON
+                                            })
+                                          });
+
+                                          if (!response.ok) {
+                                            const errorData = await response.json().catch(() => ({}));
+                                            throw new Error(errorData.error || `Failed to submit template: ${response.status} ${response.statusText}`);
+                                          }
+
+                                          const result = await response.json();
+                                          console.log('✅ [Submit Template] Template submitted successfully:', result);
+                                          
+                                          alert('Template submitted successfully!');
+                                        } else {
+                                          // New template - submit directly
+                                          const dbId = userData?.db_id || user?.db_id;
+                                          if (!dbId) {
+                                            throw new Error('User ID not found');
+                                          }
+
+                                          const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+                                          if (!dbServerUrl) {
+                                            throw new Error('DB Server URL is not configured');
+                                          }
+
+                                          const submitUrl = `${dbServerUrl}/api/users/${dbId}/templates/submit`;
+                                          console.log('📤 [Submit New Template] Calling API:', submitUrl);
+                                          
+                                          const token = localStorage.getItem('authToken');
+                                          const response = await fetch(submitUrl, {
+                                            method: 'POST',
+                                            headers: {
+                                              'Content-Type': 'application/json',
+                                              'Authorization': token ? `Bearer ${token}` : '',
+                                            },
+                                            body: JSON.stringify({
+                                              object: templateJSON
+                                            })
+                                          });
+
+                                          if (!response.ok) {
+                                            const errorData = await response.json().catch(() => ({}));
+                                            throw new Error(errorData.error || `Failed to submit template: ${response.status} ${response.statusText}`);
+                                          }
+
+                                          const result = await response.json();
+                                          console.log('✅ [Submit New Template] Template submitted successfully:', result);
+                                          
+                                          alert('Template submitted successfully!');
+                                        }
+                                        
+                                        // Reset form after submission
+                                        setSelectedTemplate(null);
+                                        setTemplateName('');
+                                        setTemplateCategory('');
+                                        setTemplateLanguage('English(US)');
+                                        setTemplateBody('');
+                                        setTemplateFooter('');
+                                        setTemplateSampleContent('');
+                                        setTemplateButtons([]);
+                                        setBroadcastTitleType('none');
+                                        setBroadcastTitleText('');
+                                        setBroadcastTitleImageLink('');
+                                        setBroadcastTitleVideoLink('');
+                                        setBroadcastTitleDocumentLink('');
+                                        setBroadcastTitleImageFile(null);
+                                        setBroadcastTitleVideoFile(null);
+                                        setBroadcastTitleDocumentFile(null);
+                                        setBroadcastTitleLocationLatitude('');
+                                        setBroadcastTitleLocationLongitude('');
+                                        setBroadcastTitleLocationName('');
+                                        setBroadcastTitleLocationAddress('');
+                                        setBroadcastTitleError('');
+                                        setBroadcastTitleVariables([]);
+                                        setShowAddVariable(false);
+                                        setNewVariableName('');
+                                        setNewVariableValue('');
+                                        setBodyVariables([]);
+                                        setShowAddBodyVariable(false);
+                                        setNewBodyVariableName('');
+                                        setNewBodyVariableValue('');
+                                        setNewButtonType('');
+                                        setNewButtonText('');
+                                        setNewButtonValue('');
+                                      } catch (error) {
+                                        console.error('❌ [Submit Template] Error:', error);
+                                        alert(error.message || 'Failed to submit template. Please try again.');
+                                      }
                                     }}
                                   >
                                     Save and submit
@@ -3687,7 +4238,23 @@ const Dashboard = () => {
                                       </label>
                                       <select
                                         value={templateCategory}
-                                        onChange={(e) => setTemplateCategory(e.target.value)}
+                                        onChange={(e) => {
+                                          const newCategory = e.target.value;
+                                          setTemplateCategory(newCategory);
+                                          // If location is selected and category is changed to Authentication or empty, show error
+                                          if (broadcastTitleType === 'location' && newCategory !== 'Utility' && newCategory !== 'Marketing') {
+                                            setBroadcastTitleError('Location headers can only be used in templates categorized as UTILITY or MARKETING.');
+                                            // Optionally reset location type
+                                            setBroadcastTitleType('none');
+                                            setBroadcastTitleLocationLatitude('');
+                                            setBroadcastTitleLocationLongitude('');
+                                            setBroadcastTitleLocationName('');
+                                            setBroadcastTitleLocationAddress('');
+                                          } else if (broadcastTitleType === 'location') {
+                                            // Clear error if category is now valid
+                                            setBroadcastTitleError('');
+                                          }
+                                        }}
                                         className="w-full h-8  px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 box-border"
                                       >
                                         <option value="">Select Category</option>
@@ -3707,7 +4274,7 @@ const Dashboard = () => {
                                         onChange={(e) => setTemplateLanguage(e.target.value)}
                                         className="w-full h-8  px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 box-border"
                                       >
-                                        <option value="English">English</option>
+                                        <option value="English(US)">English(US)</option>
                                         <option value="Spanish">Spanish</option>
                                         <option value="French">French</option>
                                         <option value="German">German</option>
@@ -3811,6 +4378,35 @@ const Dashboard = () => {
                                         />
                                         <span className="text-sm text-gray-700">Document</span>
                                       </label>
+                                      <label className="flex items-center">
+                                        <input
+                                          type="radio"
+                                          name="broadcastTitleType"
+                                          value="location"
+                                          checked={broadcastTitleType === 'location'}
+                                          onChange={(e) => {
+                                            // Validate that location can only be used with UTILITY or MARKETING categories
+                                            if (templateCategory !== 'Utility' && templateCategory !== 'Marketing') {
+                                              setBroadcastTitleError('Location headers can only be used in templates categorized as UTILITY or MARKETING.');
+                                              return;
+                                            }
+                                            setBroadcastTitleType(e.target.value);
+                                            setBroadcastTitleError('');
+                                            setBroadcastTitleVariables([]);
+                                            setShowAddVariable(false);
+                                          }}
+                                          className="mr-2"
+                                          disabled={templateCategory !== 'Utility' && templateCategory !== 'Marketing'}
+                                        />
+                                        <span className={`text-sm ${templateCategory !== 'Utility' && templateCategory !== 'Marketing' ? 'text-gray-400' : 'text-gray-700'}`}>
+                                          Location
+                                        </span>
+                                      </label>
+                                      {templateCategory !== 'Utility' && templateCategory !== 'Marketing' && (
+                                        <p className="text-xs text-gray-500 mt-1 w-full">
+                                          Location headers can only be used in templates categorized as UTILITY or MARKETING.
+                                        </p>
+                                      )}
                                     </div>
 
                                     {/* Text Input */}
@@ -4146,8 +4742,12 @@ const Dashboard = () => {
                                                       }
                                                       
                                                       // Set cursor position after the variable (after the last })
+                                                      // Use a longer delay to ensure DOM is fully updated
                                                       setTimeout(() => {
                                                         if (broadcastTitleTextRef.current) {
+                                                          // Ensure the element is focused first
+                                                          broadcastTitleTextRef.current.focus();
+                                                          
                                                           const selection = window.getSelection();
                                                           
                                                           // Find the variable span that was just added
@@ -4171,7 +4771,6 @@ const Dashboard = () => {
                                                             if (targetSpan) {
                                                               // Position cursor right after the variable span (after the last })
                                                               try {
-                                                                const selection = window.getSelection();
                                                                 const range = document.createRange();
                                                                 
                                                                 // Check if there's a text node after the variable
@@ -4194,6 +4793,7 @@ const Dashboard = () => {
                                                                 
                                                                 selection.removeAllRanges();
                                                                 selection.addRange(range);
+                                                                // Ensure focus is maintained
                                                                 broadcastTitleTextRef.current.focus();
                                                               } catch (e) {
                                                                 // Fallback: place cursor at end of content
@@ -4223,7 +4823,7 @@ const Dashboard = () => {
                                                             }
                                                           }
                                                         }
-                                                      }, 50);
+                                                      }, 100);
                                                     }
                                                   }
                                                 }}
@@ -4287,7 +4887,8 @@ const Dashboard = () => {
                                     {/* Image Input */}
                                     {broadcastTitleType === 'image' && (
                                       <div className="mb-4">
-                                        <div className="flex gap-2 items-center">
+                                        {/* Link + Fetch & Upload row */}
+                                        <div className="flex gap-2 items-center mb-2">
                                           <input
                                             type="text"
                                             value={broadcastTitleImageLink}
@@ -4311,61 +4912,90 @@ const Dashboard = () => {
                                             placeholder="Paste image link"
                                             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                           />
-                                          <span className="text-sm text-gray-500 flex-shrink-0">Or</span>
-                                          <label className="flex-shrink-0">
+                                          <button
+                                            type="button"
+                                            className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 whitespace-nowrap"
+                                            onClick={() => {
+                                              const link = (broadcastTitleImageLink || '').trim();
+                                              if (!link) {
+                                                setBroadcastTitleError('Please paste an image link before fetching.');
+                                                return;
+                                              }
+                                              const lowerLink = link.toLowerCase();
+                                              const validExtensions = ['.jpeg', '.jpg', '.png'];
+                                              const hasValidExtension = validExtensions.some(ext => lowerLink.endsWith(ext));
+                                              if (!hasValidExtension) {
+                                                setBroadcastTitleError('Please paste a valid image link (must end with .jpeg, .jpg, or .png)');
+                                              } else {
+                                                // For now this just validates the link; preview already uses the URL directly
+                                                setBroadcastTitleError('');
+                                              }
+                                            }}
+                                          >
+                                            Fetch &amp; upload
+                                          </button>
+                                        </div>
+                                        {/* OR separator */}
+                                        <div className="flex justify-center my-1">
+                                          <span className="text-xs text-gray-500">Or</span>
+                                        </div>
+                                        {/* Upload button below */}
+                                        <div className="flex justify-center mt-1">
+                                          <label className="inline-block">
                                             <input
                                               type="file"
                                               accept="image/jpeg,image/jpg,image/png"
                                               onChange={async (e) => {
-                                                const file = e.target.files[0];
-                                                if (file) {
-                                                  const fileName = file.name.toLowerCase();
-                                                  const validExtensions = ['.jpeg', '.jpg', '.png'];
-                                                  const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
-                                                  
-                                                  if (!hasValidExtension) {
-                                                    setBroadcastTitleError('Please upload a valid image file (must be .jpeg, .jpg, or .png)');
-                                                    setBroadcastTitleImageFile(null);
-                                                    return;
-                                                  }
-
-                                                  // Upload to API
-                                                  setIsUploadingImage(true);
-                                                  setBroadcastTitleError('');
-                                                  
-                                                  try {
-                                                    const uploadResult = await uploadImageToAPI(file);
-                                                    
-                                                    // Extract handle string - ensure it's a string, not an object
-                                                    let handle = uploadResult.handle;
-                                                    if (handle && typeof handle !== 'string') {
-                                                      // If handle is an object, try to extract the string value
-                                                      handle = handle.handle || handle.uploaded_file_handle || null;
-                                                    }
-                                                    handle = String(handle || '');
-                                                    
-                                                    setBroadcastTitleImageLink(uploadResult.url || '');
-                                                    setBroadcastTitleImageHandle(handle);
-                                                    setBroadcastTitleImageFile(file);
-                                                    setBroadcastTitleError('');
-                                                  } catch (error) {
-                                                    console.error('Error uploading image:', error);
-                                                    setBroadcastTitleError(error.message || 'Failed to upload image. Please try again.');
-                                                    setBroadcastTitleImageFile(null);
-                                                  } finally {
-                                                    setIsUploadingImage(false);
-                                                  }
+                                              const file = e.target.files[0];
+                                              if (file) {
+                                                const fileName = file.name.toLowerCase();
+                                                const validExtensions = ['.jpeg', '.jpg', '.png'];
+                                                const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+                                                
+                                                if (!hasValidExtension) {
+                                                  setBroadcastTitleError('Please upload a valid image file (must be .jpeg, .jpg, or .png)');
+                                                  setBroadcastTitleImageFile(null);
+                                                  return;
                                                 }
-                                              }}
-                                              className="hidden"
-                                            />
-                                            <span className={`px-4 py-2 border border-gray-300 rounded-lg inline-block text-sm whitespace-nowrap ${
-                                              isUploadingImage 
-                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                                                : 'bg-gray-100 hover:bg-gray-200 cursor-pointer'
-                                            }`}>
-                                              {isUploadingImage ? 'Uploading...' : 'Upload image'}
-                                            </span>
+
+                                                // Upload to API
+                                                setIsUploadingImage(true);
+                                                setBroadcastTitleError('');
+                                                
+                                                try {
+                                                  const uploadResult = await uploadImageToAPI(file);
+                                                  
+                                                  // Extract handle string - ensure it's a string, not an object
+                                                  let handle = uploadResult.handle;
+                                                  if (handle && typeof handle !== 'string') {
+                                                    // If handle is an object, try to extract the string value
+                                                    handle = handle.handle || handle.uploaded_file_handle || null;
+                                                  }
+                                                  handle = String(handle || '');
+                                                  
+                                                  setBroadcastTitleImageLink(uploadResult.url || '');
+                                                  setBroadcastTitleImageHandle(handle);
+                                                  setBroadcastTitleImageMediaId(uploadResult.mediaId || '');
+                                                  setBroadcastTitleImageFile(file);
+                                                  setBroadcastTitleError('');
+                                                } catch (error) {
+                                                  console.error('Error uploading image:', error);
+                                                  setBroadcastTitleError(error.message || 'Failed to upload image. Please try again.');
+                                                  setBroadcastTitleImageFile(null);
+                                                } finally {
+                                                  setIsUploadingImage(false);
+                                                }
+                                              }
+                                            }}
+                                            className="hidden"
+                                          />
+                                          <span className={`px-4 py-2 border border-gray-300 rounded-lg inline-block text-sm whitespace-nowrap ${
+                                            isUploadingImage 
+                                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                              : 'bg-gray-100 hover:bg-gray-200 cursor-pointer'
+                                          }`}>
+                                            {isUploadingImage ? 'Uploading...' : 'Upload image'}
+                                          </span>
                                           </label>
                                         </div>
                                         <p className="text-xs text-gray-500 mt-1">Valid formats: JPEG, JPG, PNG</p>
@@ -4378,7 +5008,8 @@ const Dashboard = () => {
                                     {/* Video Input */}
                                     {broadcastTitleType === 'video' && (
                                       <div className="mb-4">
-                                        <div className="flex gap-2 items-center">
+                                        {/* Link + Fetch & Upload row */}
+                                        <div className="flex gap-2 items-center mb-2">
                                           <input
                                             type="text"
                                             value={broadcastTitleVideoLink}
@@ -4397,32 +5028,56 @@ const Dashboard = () => {
                                             placeholder="Paste video link"
                                             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                           />
-                                          <span className="text-sm text-gray-500 flex-shrink-0">Or</span>
-                                          <label className="flex-shrink-0">
+                                          <button
+                                            type="button"
+                                            className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 whitespace-nowrap"
+                                            onClick={() => {
+                                              const link = (broadcastTitleVideoLink || '').trim();
+                                              if (!link) {
+                                                setBroadcastTitleError('Please paste a video link before fetching.');
+                                                return;
+                                              }
+                                              if (!link.toLowerCase().endsWith('.mp4')) {
+                                                setBroadcastTitleError('Please paste a valid video link (must end with .mp4)');
+                                              } else {
+                                                setBroadcastTitleError('');
+                                              }
+                                            }}
+                                          >
+                                            Fetch &amp; upload
+                                          </button>
+                                        </div>
+                                        {/* OR separator */}
+                                        <div className="flex justify-center my-1">
+                                          <span className="text-xs text-gray-500">Or</span>
+                                        </div>
+                                        {/* Upload button below */}
+                                        <div className="flex justify-center mt-1">
+                                          <label className="inline-block">
                                             <input
                                               type="file"
                                               accept="video/mp4"
                                               onChange={(e) => {
-                                                const file = e.target.files[0];
-                                                if (file) {
-                                                  const fileName = file.name.toLowerCase();
-                                                  
-                                                  if (!fileName.endsWith('.mp4')) {
-                                                    setBroadcastTitleError('Please upload a valid video file (must be .mp4)');
-                                                    setBroadcastTitleVideoFile(null);
-                                                  } else {
-                                                    setBroadcastTitleVideoFile(file);
-                                                    setBroadcastTitleVideoLink('');
-                                                    setBroadcastTitleError('');
-                                                  }
+                                              const file = e.target.files[0];
+                                              if (file) {
+                                                const fileName = file.name.toLowerCase();
+                                                
+                                                if (!fileName.endsWith('.mp4')) {
+                                                  setBroadcastTitleError('Please upload a valid video file (must be .mp4)');
+                                                  setBroadcastTitleVideoFile(null);
+                                                } else {
+                                                  setBroadcastTitleVideoFile(file);
+                                                  setBroadcastTitleVideoLink('');
+                                                  setBroadcastTitleError('');
                                                 }
-                                              }}
-                                              className="hidden"
-                                            />
-                                            <span className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 cursor-pointer inline-block text-sm whitespace-nowrap">
-                                              Upload video
-                                            </span>
-                                          </label>
+                                              }
+                                            }}
+                                            className="hidden"
+                                          />
+                                          <span className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 cursor-pointer inline-block text-sm whitespace-nowrap">
+                                            Upload video
+                                          </span>
+                                        </label>
                                         </div>
                                         <p className="text-xs text-gray-500 mt-1">Valid formats: MP4</p>
                                         {broadcastTitleError && broadcastTitleType === 'video' && (
@@ -4434,7 +5089,8 @@ const Dashboard = () => {
                                     {/* Document Input */}
                                     {broadcastTitleType === 'document' && (
                                       <div className="mb-4">
-                                        <div className="flex gap-2 items-center">
+                                        {/* Link + Fetch & Upload row */}
+                                        <div className="flex gap-2 items-center mb-2">
                                           <input
                                             type="text"
                                             value={broadcastTitleDocumentLink}
@@ -4453,28 +5109,123 @@ const Dashboard = () => {
                                             placeholder="Paste document link"
                                             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                           />
-                                          <span className="text-sm text-gray-500 flex-shrink-0">Or</span>
-                                          <label className="flex-shrink-0">
+                                          <button
+                                            type="button"
+                                            className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 whitespace-nowrap"
+                                            onClick={() => {
+                                              const link = (broadcastTitleDocumentLink || '').trim();
+                                              if (!link) {
+                                                setBroadcastTitleError('Please paste a document link before fetching.');
+                                                return;
+                                              }
+                                              if (!link.toLowerCase().endsWith('.pdf')) {
+                                                setBroadcastTitleError('Please paste a valid document link (must end with .pdf)');
+                                              } else {
+                                                setBroadcastTitleError('');
+                                              }
+                                            }}
+                                          >
+                                            Fetch &amp; upload
+                                          </button>
+                                        </div>
+                                        {/* OR separator */}
+                                        <div className="flex justify-center my-1">
+                                          <span className="text-xs text-gray-500">Or</span>
+                                        </div>
+                                        {/* Upload button below */}
+                                        <div className="flex justify-center mt-1">
+                                          <label className="inline-block">
                                             <input
                                               type="file"
                                               accept="application/pdf"
                                               onChange={(e) => {
-                                                const file = e.target.files[0];
-                                                if (file) {
-                                                  setBroadcastTitleDocumentFile(file);
-                                                  setBroadcastTitleDocumentLink('');
-                                                  setBroadcastTitleError('');
-                                                }
-                                              }}
-                                              className="hidden"
-                                            />
-                                            <span className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 cursor-pointer inline-block text-sm whitespace-nowrap">
-                                              Upload document
-                                            </span>
-                                          </label>
+                                              const file = e.target.files[0];
+                                              if (file) {
+                                                setBroadcastTitleDocumentFile(file);
+                                                setBroadcastTitleDocumentLink('');
+                                                setBroadcastTitleError('');
+                                              }
+                                            }}
+                                            className="hidden"
+                                          />
+                                          <span className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 cursor-pointer inline-block text-sm whitespace-nowrap">
+                                            Upload document
+                                          </span>
+                                        </label>
                                         </div>
                                         <p className="text-xs text-gray-500 mt-1">Valid formats: PDF</p>
                                         {broadcastTitleError && broadcastTitleType === 'document' && (
+                                          <p className="text-xs text-red-600 mt-1">{broadcastTitleError}</p>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Location Input */}
+                                    {broadcastTitleType === 'location' && (
+                                      <div className="mb-4 space-y-3">
+                                        <div>
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Latitude
+                                          </label>
+                                          <input
+                                            type="number"
+                                            step="any"
+                                            value={broadcastTitleLocationLatitude}
+                                            onChange={(e) => {
+                                              setBroadcastTitleLocationLatitude(e.target.value);
+                                              setBroadcastTitleError('');
+                                            }}
+                                            placeholder="e.g., 40.7128"
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Longitude
+                                          </label>
+                                          <input
+                                            type="number"
+                                            step="any"
+                                            value={broadcastTitleLocationLongitude}
+                                            onChange={(e) => {
+                                              setBroadcastTitleLocationLongitude(e.target.value);
+                                              setBroadcastTitleError('');
+                                            }}
+                                            placeholder="e.g., -74.0060"
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Location Name
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={broadcastTitleLocationName}
+                                            onChange={(e) => {
+                                              setBroadcastTitleLocationName(e.target.value);
+                                              setBroadcastTitleError('');
+                                            }}
+                                            placeholder="e.g., Central Park"
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Address
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={broadcastTitleLocationAddress}
+                                            onChange={(e) => {
+                                              setBroadcastTitleLocationAddress(e.target.value);
+                                              setBroadcastTitleError('');
+                                            }}
+                                            placeholder="e.g., New York, NY 10024, USA"
+                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          />
+                                        </div>
+                                        {broadcastTitleError && broadcastTitleType === 'location' && (
                                           <p className="text-xs text-red-600 mt-1">{broadcastTitleError}</p>
                                         )}
                                       </div>
@@ -5101,12 +5852,12 @@ const Dashboard = () => {
                                             maxLength={20}
                                     />
                                   </div>
-                                        
+
                                         {(newButtonType === 'copy_code' || newButtonType === 'phone' || newButtonType === 'url') && (
                                           <div className="mb-3">
                                             <label className="block text-xs font-medium text-gray-700 mb-2">
                                               {newButtonType === 'copy_code' ? 'Copy Text' : newButtonType === 'phone' ? 'Phone Number' : 'URL'}
-                                            </label>
+                                      </label>
                                             <input
                                               type="text"
                                               value={newButtonValue}
@@ -5114,7 +5865,7 @@ const Dashboard = () => {
                                               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                               placeholder={newButtonType === 'copy_code' ? 'Enter text to copy' : newButtonType === 'phone' ? 'Enter phone number (e.g., +1234567890)' : 'Enter URL (e.g., https://example.com)'}
                                             />
-                                          </div>
+                                    </div>
                                         )}
                                         
                                         <button
@@ -5266,8 +6017,8 @@ const Dashboard = () => {
                                                           });
                                                           return displayText;
                                                         })()}
-                                                      </div>
-                                                    )}
+                                          </div>
+                                        )}
                                                     
                                                     {/* Broadcast Title - Image */}
                                                     {broadcastTitleType === 'image' && (
@@ -5282,8 +6033,8 @@ const Dashboard = () => {
                                                                 e.target.style.display = 'none';
                                                               }}
                                                             />
-                                                          </div>
-                                                        )}
+                                          </div>
+                                        )}
                                                         {broadcastTitleImageFile && (
                                                           <div className="mb-2">
                                                             <img 
@@ -5291,8 +6042,8 @@ const Dashboard = () => {
                                                               alt="Broadcast" 
                                                               className="w-full rounded-lg object-cover max-h-32"
                                                             />
-                                                          </div>
-                                                        )}
+                                          </div>
+                                        )}
                                                       </>
                                                     )}
                                                     
@@ -5313,8 +6064,8 @@ const Dashboard = () => {
                                                               <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                                                                 <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
                                                               </svg>
-                                                            </div>
-                                                          </div>
+                                      </div>
+                                    </div>
                                                         )}
                                                         {broadcastTitleVideoFile && (
                                                           <div className="mb-2 relative">
@@ -5327,8 +6078,8 @@ const Dashboard = () => {
                                                               <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                                                                 <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
                                                               </svg>
-                                                            </div>
-                                                          </div>
+                                  </div>
+                                </div>
                                                         )}
                                                       </>
                                                     )}
@@ -5355,6 +6106,31 @@ const Dashboard = () => {
                                                               className="w-full h-32"
                                                               title="Document preview"
                                                             />
+                                                          </div>
+                                                        )}
+                                                      </>
+                                                    )}
+                                                    {broadcastTitleType === 'location' && (
+                                                      <>
+                                                        {broadcastTitleLocationLatitude && broadcastTitleLocationLongitude && (
+                                                          <div className="mb-2 p-2 border border-gray-300 rounded-lg bg-gray-50">
+                                                            <div className="flex items-start gap-2">
+                                                              <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                              </svg>
+                                                              <div className="flex-1 min-w-0">
+                                                                {broadcastTitleLocationName && (
+                                                                  <p className="text-xs font-medium text-gray-900 mb-0.5">{broadcastTitleLocationName}</p>
+                                                                )}
+                                                                {broadcastTitleLocationAddress && (
+                                                                  <p className="text-xs text-gray-600 mb-0.5">{broadcastTitleLocationAddress}</p>
+                                                                )}
+                                                                <p className="text-xs text-gray-500">
+                                                                  {broadcastTitleLocationLatitude}, {broadcastTitleLocationLongitude}
+                                                                </p>
+                                                              </div>
+                                                            </div>
                                                           </div>
                                                         )}
                                                       </>
@@ -5412,7 +6188,7 @@ const Dashboard = () => {
                                                               {button.type === 'otp' && (
                                                                 <span className="ml-1 text-[9px] opacity-75">🔐</span>
                                                               )}
-                                            </button>
+                                </button>
                                                           );
                                                         })}
                                           </div>
@@ -5423,9 +6199,9 @@ const Dashboard = () => {
                                                       {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                       </div>
                                     </div>
-                                  </div>
-                                </div>
-                                            ) : (
+                              </div>
+                            </div>
+                          ) : (
                                               <div className="flex items-center justify-center h-full">
                                                 <p className="text-gray-400 text-xs italic">Preview will appear here</p>
                                               </div>
@@ -5450,8 +6226,8 @@ const Dashboard = () => {
                                 </div>
                               </div>
                             </div>
-                          ) : (
-                            // Show template library when no template is selected
+                          ) : null}
+                        {!selectedTemplate && templateSubView === 'template-library' && (
                           <>
                         <div className="flex items-start justify-between">
                   <div>
@@ -5466,41 +6242,45 @@ const Dashboard = () => {
                   </div>
 
                         <div className="flex items-center justify-between mb-4">
-                          <button 
-                            onClick={() => {
-                              // Set selectedTemplate to empty object to show form, but don't populate fields
-                              setSelectedTemplate({});
-                              // Reset all form fields
-                              setTemplateName('');
-                              setTemplateCategory('');
-                              setTemplateLanguage('English');
-                              setTemplateBody('');
-                              setTemplateFooter('');
-                              setTemplateSampleContent('');
-                              setTemplateButtons([]);
-                              setBroadcastTitleType('none');
-                              setBroadcastTitleText('');
-                              setBroadcastTitleImageLink('');
-                              setBroadcastTitleVideoLink('');
-                              setBroadcastTitleDocumentLink('');
-                              setBroadcastTitleImageFile(null);
-                              setBroadcastTitleVideoFile(null);
-                              setBroadcastTitleDocumentFile(null);
-                              setBroadcastTitleError('');
-                              setBroadcastTitleVariables([]);
-                              setShowAddVariable(false);
-                              setNewVariableName('');
-                              setNewVariableValue('');
-                              setBodyVariables([]);
-                              setShowAddBodyVariable(false);
-                              setNewBodyVariableName('');
-                              setNewBodyVariableValue('');
-                              setNewButtonType('');
-                              setNewButtonText('');
-                              setNewButtonValue('');
-                            }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
-                          >
+                              <button 
+                                onClick={() => {
+                                  // Set selectedTemplate to empty object to show form, but don't populate fields
+                                  setSelectedTemplate({});
+                                  // Reset all form fields
+                                  setTemplateName('');
+                                  setTemplateCategory('');
+                                  setTemplateLanguage('English');
+                                  setTemplateBody('');
+                                  setTemplateFooter('');
+                                  setTemplateSampleContent('');
+                                  setTemplateButtons([]);
+                                  setBroadcastTitleType('none');
+                                  setBroadcastTitleText('');
+                                  setBroadcastTitleImageLink('');
+                                  setBroadcastTitleVideoLink('');
+                                  setBroadcastTitleDocumentLink('');
+                                  setBroadcastTitleImageFile(null);
+                                  setBroadcastTitleVideoFile(null);
+                                  setBroadcastTitleDocumentFile(null);
+                                  setBroadcastTitleLocationLatitude('');
+                                  setBroadcastTitleLocationLongitude('');
+                                  setBroadcastTitleLocationName('');
+                                  setBroadcastTitleLocationAddress('');
+                                  setBroadcastTitleError('');
+                                  setBroadcastTitleVariables([]);
+                                  setShowAddVariable(false);
+                                  setNewVariableName('');
+                                  setNewVariableValue('');
+                                  setBodyVariables([]);
+                                  setShowAddBodyVariable(false);
+                                  setNewBodyVariableName('');
+                                  setNewBodyVariableValue('');
+                                  setNewButtonType('');
+                                  setNewButtonText('');
+                                  setNewButtonValue('');
+                                }}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                              >
                             New Template Message
                           </button>
                           <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -5608,8 +6388,8 @@ const Dashboard = () => {
                                 );
                               })()}
                           </>
-                          )
-                        ) : templateSubView === 'your-templates' ? (
+                        )}
+                        {!selectedTemplate && templateSubView === 'your-templates' && (
                           <div className="space-y-6">
                             <div className="flex items-start justify-between">
                               <div>
@@ -5622,11 +6402,181 @@ const Dashboard = () => {
                                 Watch Tutorial
                               </button>
                             </div>
+
+                            {isLoadingUserTemplates ? (
                             <div className="border border-gray-200 rounded-lg p-8 text-center">
-                              <p className="text-gray-500">No custom templates yet. Create your first template to get started.</p>
+                                <p className="text-gray-500">Loading templates...</p>
                           </div>
+                            ) : userTemplates.length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {userTemplates.map((template, index) => {
+                                  // Extract template data - it might be in template.object if saved as draft
+                                  const templateData = template.object || template;
+                                  const templateName = templateData.name || template.name || `Template ${index + 1}`;
+                                  const templateCategory = templateData.category || template.category || '';
+                                  const templateBody = templateData.components?.find(c => c.type === 'body' || c.type === 'BODY')?.text || templateData.body || template.content || '';
+                                  const templateStatus = template.template_status || template.status || 'draft';
+                                  
+                                  // Extract header component to check for media
+                                  const headerComponent = templateData.components?.find(c => 
+                                    (c.type === 'header' || c.type === 'HEADER') && 
+                                    (c.format === 'IMAGE' || c.format === 'VIDEO' || c.format === 'DOCUMENT')
+                                  );
+                                  
+                                  // Extract media from template.media
+                                  const media = template.media;
+                                  const mediaType = media?.file_type || '';
+                                  const mediaBase64 = media?.data_base64 || '';
+                                  const mediaFileName = media?.file_name || '';
+                                  
+                                  return (
+                                    <div key={template.id || template._id || index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow flex flex-col">
+                                      <div className="flex items-start justify-between mb-3">
+                                        <div className="flex-1 min-w-0">
+                                          <h3 className="font-semibold text-gray-900 mb-1 truncate">{templateName}</h3>
+                                          <div className="flex items-center gap-2">
+                                            {templateCategory && (
+                                              <span className="text-xs text-gray-500">{templateCategory}</span>
+                                            )}
+                                            <span className={`text-xs px-2 py-0.5 rounded ${
+                                              templateStatus === 'draft' 
+                                                ? 'bg-yellow-100 text-yellow-700' 
+                                                : templateStatus === 'pending'
+                                                ? 'bg-blue-100 text-blue-700'
+                                                : 'bg-green-100 text-green-700'
+                                            }`}>
+                                              {templateStatus}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 ml-2">
+                                          <button 
+                                            onClick={() => {
+                                              // Load template data into form - pass the full template object
+                                              // The populateFormFromAPITemplate function will extract template.object
+                                              setSelectedTemplate(template);
+                                            }}
+                                            className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors flex-shrink-0"
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={async () => {
+                                              try {
+                                                const confirmDelete = window.confirm(`Are you sure you want to delete the template "${templateName}"?`);
+                                                if (!confirmDelete) return;
+
+                                                const dbId = userData?.db_id || user?.db_id;
+                                                if (!dbId) {
+                                                  alert('User ID not found. Cannot delete template.');
+                                                  return;
+                                                }
+
+                                                const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+                                                if (!dbServerUrl) {
+                                                  alert('DB Server URL is not configured. Cannot delete template.');
+                                                  return;
+                                                }
+
+                                                const templateIdToDelete = template.template_id || template.id || template._id;
+                                                if (!templateIdToDelete) {
+                                                  alert('Template ID not found. Cannot delete template.');
+                                                  return;
+                                                }
+
+                                                const deleteUrl = `${dbServerUrl}/api/users/${dbId}/templates/${templateIdToDelete}`;
+                                                console.log('🗑 Deleting template:', deleteUrl);
+
+                                                const response = await fetch(deleteUrl, {
+                                                  method: 'DELETE',
+                                                  headers: {
+                                                    'Content-Type': 'application/json',
+                                                  },
+                                                });
+
+                                                if (!response.ok) {
+                                                  const errorData = await response.json().catch(() => ({ error: 'Delete failed' }));
+                                                  throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                                                }
+
+                                                // Optimistically remove from local state
+                                                setUserTemplates((prev) =>
+                                                  prev.filter((t) => (t.template_id || t.id || t._id || '') !== templateIdToDelete)
+                                                );
+
+                                                alert('Template deleted successfully.');
+                                              } catch (error) {
+                                                console.error('❌ Error deleting template:', error);
+                                                alert(error.message || 'Failed to delete template. Please try again.');
+                                              }
+                                            }}
+                                            className="px-3 py-1 text-xs font-medium text-red-600 border border-red-600 rounded hover:bg-red-50 transition-colors flex-shrink-0"
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Display media if available */}
+                                      {headerComponent && media && mediaBase64 && (
+                                        <div className="mb-3">
+                                          {headerComponent.format === 'IMAGE' && mediaType.startsWith('image/') && (
+                                            <div className="rounded-lg overflow-hidden border border-gray-200">
+                                              <img 
+                                                src={`data:${mediaType};base64,${mediaBase64}`}
+                                                alt={mediaFileName || 'Template image'}
+                                                className="w-full h-auto max-h-48 object-cover"
+                                              />
+                                            </div>
+                                          )}
+                                          {headerComponent.format === 'VIDEO' && mediaType.startsWith('video/') && (
+                                            <div className="rounded-lg overflow-hidden border border-gray-200">
+                                              <video 
+                                                src={`data:${mediaType};base64,${mediaBase64}`}
+                                                controls
+                                                className="w-full h-auto max-h-48"
+                                              >
+                                                Your browser does not support the video tag.
+                                              </video>
+                                            </div>
+                                          )}
+                                          {headerComponent.format === 'DOCUMENT' && mediaType === 'application/pdf' && (
+                                            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                              </svg>
+                                              <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-gray-900 truncate">{mediaFileName || 'Document'}</p>
+                                                <p className="text-xs text-gray-500">PDF Document</p>
+                                              </div>
+                                              <a
+                                                href={`data:${mediaType};base64,${mediaBase64}`}
+                                                download={mediaFileName || 'document.pdf'}
+                                                className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors"
+                                              >
+                                                Download
+                                              </a>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                      
+                                      <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2 flex-1 overflow-y-auto max-h-48">
+                                        {templateBody}
+                                      </p>
+                                    </div>
+                                  );
+                                })}
                               </div>
                         ) : (
+                              <div className="border border-gray-200 rounded-lg p-8 text-center">
+                                <p className="text-gray-500">No custom templates yet. Create your first template to get started.</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {!selectedTemplate && !templateSubView ? (
                           <div className="space-y-6">
                             <div className="flex items-start justify-between">
                               <div>
@@ -5637,7 +6587,7 @@ const Dashboard = () => {
                               </div>
                             </div>
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     )}
                     
@@ -6038,22 +6988,6 @@ const Dashboard = () => {
                   <span>Add Contact</span>
                   <span className="text-xs bg-blue-700 px-2 py-1 rounded">{contactsPagination.total || contacts.length} in total</span>
                 </button>
-              </div>
-
-              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-semibold text-gray-900">BUSINESS</span>
-                    </div>
-                    <p className="text-sm text-gray-700 mb-2">
-                      Secure customer interactions by masking phone numbers during support conversations.
-                    </p>
-                    <button className="px-3 py-1 text-xs font-medium bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors">
-                      Upgrade
-                    </button>
-                  </div>
-                </div>
               </div>
 
               <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -9693,8 +10627,29 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* URL Information */}
+              {/* Team Assigned & URL Information */}
               <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Team assigned <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      value={contactTeamAssigned}
+                      onChange={(e) => setContactTeamAssigned(e.target.value)}
+                      disabled={isSubmittingContact}
+                    >
+                      <option value="marketing">Marketing</option>
+                      <option value="sales">Sales</option>
+                      <option value="support">Support</option>
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Used to route this contact to the right team.
+                    </p>
+                  </div>
+                </div>
+
                 <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">URL Information (Optional)</h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="col-span-2">
@@ -10345,6 +11300,27 @@ const Dashboard = () => {
 
               {/* URL Information */}
               <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Team assigned <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      value={contactTeamAssigned}
+                      onChange={(e) => setContactTeamAssigned(e.target.value)}
+                      disabled={isSubmittingContact}
+                    >
+                      <option value="marketing">Marketing</option>
+                      <option value="sales">Sales</option>
+                      <option value="support">Support</option>
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Used to route this contact to the right team.
+                    </p>
+                  </div>
+                </div>
+
                 <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">URL Information (Optional)</h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="col-span-2">

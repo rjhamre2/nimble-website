@@ -19,6 +19,7 @@ const AddContactModal = ({ isOpen, onClose, onSuccess }) => {
   const [contactUrlType, setContactUrlType] = useState('WORK');
   const [contactBirthday, setContactBirthday] = useState('');
   const [contactLeadStage, setContactLeadStage] = useState('NEW');
+  const [contactTeamAssigned, setContactTeamAssigned] = useState('marketing'); // 'marketing' | 'sales' | 'support'
   const [contactError, setContactError] = useState('');
   const [contactSuccess, setContactSuccess] = useState('');
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
@@ -51,6 +52,7 @@ const AddContactModal = ({ isOpen, onClose, onSuccess }) => {
     setContactUrlType('WORK');
     setContactBirthday('');
     setContactLeadStage('NEW');
+    setContactTeamAssigned('marketing');
     setContactError('');
     setContactSuccess('');
   };
@@ -132,7 +134,8 @@ const AddContactModal = ({ isOpen, onClose, onSuccess }) => {
           type: contactUrlType || 'WORK'
         }] : [],
         birthday: contactBirthday || '',
-        lead_stage: contactLeadStage || 'NEW'
+        lead_stage: contactLeadStage || 'NEW',
+        team_assigned: contactTeamAssigned || 'marketing'
       };
 
       const apiUrl = apiConfig.endpoints.contacts.createContact();
@@ -537,8 +540,29 @@ const AddContactModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
           </div>
 
-          {/* URL Information */}
+          {/* Team Assigned & URL Information */}
           <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Team assigned <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  value={contactTeamAssigned}
+                  onChange={(e) => setContactTeamAssigned(e.target.value)}
+                  disabled={isSubmittingContact}
+                >
+                  <option value="marketing">Marketing</option>
+                  <option value="sales">Sales</option>
+                  <option value="support">Support</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Used to route this contact to the right team.
+                </p>
+              </div>
+            </div>
+
             <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">URL Information (Optional)</h3>
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-2">
