@@ -48,6 +48,7 @@ jobs:
           #REACT_APP_WEBSOCKET_API_GATEWAY: "wss://s687z96fob.execute-api.ap-south-1.amazonaws.com/prod"
           REACT_APP_WEBSOCKET_API_GATEWAY: "https://api.nimbleai.in/api/database"
           REACT_APP_DB_SERVER_URL: "https://api.nimbleai.in/api/database"
+          REACT_APP_CONTACTS_API: "https://api.nimbleai.in/api/database/api/contacts"
           REACT_APP_RP_ID: "rzp_live_RWPVPdgjJN0s7P"
           REACT_APP_FIREBASE_API_KEY: "AIzaSyDF7VLqX7qWmqre7L8lGZxx_GTiSiU9bHI"
           REACT_APP_FIREBASE_AUTH_DOMAIN: "nimbleai-firebase.firebaseapp.com"
