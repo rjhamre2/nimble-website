@@ -124,6 +124,7 @@ const Dashboard = () => {
   const [newBodyVariableValue, setNewBodyVariableValue] = useState('');
   const bodyTextRef = useRef(null);
   const skipNextBodyEffectUpdate = useRef(false);
+  const [bodyError, setBodyError] = useState('');
   // Button management state
   const [newButtonType, setNewButtonType] = useState('');
   const [newButtonText, setNewButtonText] = useState('');
@@ -5254,6 +5255,82 @@ const Dashboard = () => {
                                       <div
                                         ref={bodyTextRef}
                                         contentEditable
+                                        onPaste={(e) => {
+                                          e.preventDefault();
+                                          
+                                          // Get pasted text
+                                          const pastedText = (e.clipboardData || window.clipboardData).getData('text/plain');
+                                          
+                                          // Get current text
+                                          const currentText = templateBody || '';
+                                          
+                                          // Calculate current character count (excluding variables)
+                                          const variablePattern = /\{\{[\w_]+\}\}/g;
+                                          const currentVariableMatches = currentText.match(variablePattern) || [];
+                                          const currentVariableLength = currentVariableMatches.join('').length;
+                                          const currentPlainTextLength = currentText.length - currentVariableLength;
+                                          
+                                          // Calculate what the new text would be
+                                          const selection = window.getSelection();
+                                          let newText = currentText;
+                                          
+                                          if (selection.rangeCount > 0) {
+                                            const range = selection.getRangeAt(0);
+                                            const startOffset = range.startOffset;
+                                            const endOffset = range.endOffset;
+                                            
+                                            // Get the text node
+                                            const textNode = range.startContainer;
+                                            if (textNode.nodeType === 3) {
+                                              // Text node
+                                              const nodeText = textNode.textContent;
+                                              newText = nodeText.substring(0, startOffset) + pastedText + nodeText.substring(endOffset);
+                                            } else {
+                                              // For contentEditable divs, we need to get the full text
+                                              const element = bodyTextRef.current;
+                                              const currentInnerText = element.innerText || element.textContent || '';
+                                              const beforeText = currentInnerText.substring(0, startOffset);
+                                              const afterText = currentInnerText.substring(endOffset);
+                                              newText = beforeText + pastedText + afterText;
+                                            }
+                                          } else {
+                                            newText = currentText + pastedText;
+                                          }
+                                          
+                                          // Remove placeholder if present
+                                          newText = newText.replace(/Enter template body/g, '').trim();
+                                          
+                                          // Calculate new character count (excluding variables)
+                                          const newVariableMatches = newText.match(variablePattern) || [];
+                                          const newVariableLength = newVariableMatches.join('').length;
+                                          const newPlainTextLength = newText.length - newVariableLength;
+                                          
+                                          // Check if it exceeds the limit
+                                          if (newPlainTextLength > 1024) {
+                                            setBodyError(`Body text cannot exceed 1024 characters. Current: ${currentPlainTextLength}, Attempted to paste: ${pastedText.length} characters.`);
+                                            setTimeout(() => setBodyError(''), 5000); // Clear error after 5 seconds
+                                            return;
+                                          }
+                                          
+                                          // Clear any previous error
+                                          setBodyError('');
+                                          
+                                          // Insert the pasted text
+                                          if (selection.rangeCount > 0) {
+                                            const range = selection.getRangeAt(0);
+                                            range.deleteContents();
+                                            const textNode = document.createTextNode(pastedText);
+                                            range.insertNode(textNode);
+                                            range.setStartAfter(textNode);
+                                            range.collapse(true);
+                                            selection.removeAllRanges();
+                                            selection.addRange(range);
+                                          }
+                                          
+                                          // Trigger input event to update state
+                                          const inputEvent = new Event('input', { bubbles: true });
+                                          bodyTextRef.current.dispatchEvent(inputEvent);
+                                        }}
                                         onInput={(e) => {
                                           const element = e.target;
                                           
@@ -5287,7 +5364,12 @@ const Dashboard = () => {
                                           if (plainTextLength <= 1024) {
                                             // Update state with plain text only
                                             setTemplateBody(plainText);
+                                            setBodyError(''); // Clear error if within limit
                                           } else {
+                                            // Show error message
+                                            setBodyError(`Body text cannot exceed 1024 characters. Current: ${plainTextLength} characters.`);
+                                            setTimeout(() => setBodyError(''), 5000); // Clear error after 5 seconds
+                                            
                                             // Revert to previous text
                                             const currentText = templateBody;
                                             const html = currentText ? currentText.split(/(\{\{[\w_]+\}\})/g).map((part) => {
@@ -5463,6 +5545,11 @@ const Dashboard = () => {
                                         })()}
                                       </span>
                                     </div>
+                                    
+                                    {/* Error message for body character limit */}
+                                    {bodyError && (
+                                      <p className="text-xs text-red-600 mt-1 mb-2">{bodyError}</p>
+                                    )}
                                     
                                     {/* Add Variable Button */}
                                     <button
