@@ -1,254 +1,138 @@
-import { apiConfig } from '../config/api';
+import axios from 'axios';
 
-// Fetch recent customer chats for a user
-export const fetchRecentChats = async (userId, limit = 10) => {
-  try {
-    const url = apiConfig.endpoints.chats.recent();
-    console.log('🌐 Calling recent chats URL:', url);
-    console.log('📤 Request body:', { user_id: userId, limit });
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: userId,
-        limit: limit
-      }),
-    });
+// 1. CONFIG: Split the URLs based on your microservices
+const DB_BASE_URL = process.env.REACT_APP_DB_SERVER_URL || 'http://localhost:3000';
+const WA_BASE_URL = process.env.REACT_APP_WA_SERVER_URL || 'http://localhost:4000'; 
 
-    console.log('📥 Response status:', response.status);
-    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+// Helper to remove trailing slashes
+const cleanUrl = (url) => url.replace(/\/$/, '');
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Response error text:', errorText);
-      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+const DB_API = `${cleanUrl(DB_BASE_URL)}/api`;
+const WA_API = cleanUrl(WA_BASE_URL); 
+
+// --- HELPER: Get current user ID (STRICT MODE) ---
+const getUserId = () => {
+  const userString = localStorage.getItem('user') || localStorage.getItem('userData');
+  
+  if (userString) {
+    try {
+      const user = JSON.parse(userString);
+      const userId = user.db_id || user.uid;
+      
+      if (userId) return userId;
+      
+    } catch (e) {
+      console.error("❌ Error parsing user data from localStorage", e);
     }
+  }
+  
+  // No fallback allowed. Throw an error so the UI can catch it and handle the failed send.
+  throw new Error("Authentication Error: User ID not found. Please log in again.");
+};
 
-    const data = await response.json();
-    console.log('✅ Recent chats response data:', data);
-    return data;
+
+export const fetchRecentChats = async (userId, limit = 100) => {
+  try {
+    const url = `${DB_API}/messages/user/${userId}`;
+    console.log(`🌐 Fetching history from: ${url}`);
+    
+    const response = await axios.get(url, {
+      params: { limit, offset: 0 }
+    });
+    
+    return response.data; 
   } catch (error) {
-    console.error('❌ Error fetching recent chats:', error);
-    throw error;
+    console.error('❌ Error fetching messages:', error);
+    return { data: [] };
   }
 };
 
-// Fetch all chats for a user (for pagination)
-export const fetchAllChats = async (userId, page = 1, limit = 20) => {
-  try {
-    const url = apiConfig.endpoints.chats.all();
-    console.log('🌐 Calling all chats URL:', url);
-    console.log('📤 Request body:', { user_id: userId, page, limit });
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: userId,
-        page: page,
-        limit: limit
-      }),
+// --- SENDER METHODS (Point to WA Service) ---
+
+export const chatService = {
+  fetchRecentChats,
+  
+  // 1. SEND TEXT
+  sendText: async (recipientPhone, text) => {
+    const url = `${WA_API}/api/messages/send/text`; 
+    return axios.post(url, {
+      user_id: getUserId(), // Will throw error if no user is found
+      to: recipientPhone,
+      body: text, 
+      preview_url: true
     });
+  },
 
-    console.log('📥 Response status:', response.status);
-    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+  // 2. SEND REPLY BUTTONS (From our new Modal)
+  sendReplyButtons: async (recipientPhone, payload) => {
+    const url = `${WA_API}/send/interactive-reply-buttons`;
+    return axios.post(url, {
+      user_id: getUserId(), // Will throw error if no user is found
+      to: recipientPhone,
+      body: payload.body,
+      buttons: payload.buttons.map((btn, index) => ({
+        type: "reply",
+        reply: { 
+          id: `btn_${index}_${Date.now().toString().slice(-5)}`, 
+          title: btn 
+        }
+      })),
+      footer: payload.footer
+    });
+  },
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Response error text:', errorText);
-      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-    }
+  // UPLOAD MEDIA
+  uploadMedia: async (file) => {
+    const url = `${WA_API}/api/media/upload`;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', file.type.split('/')[0]); 
+    formData.append('user_id', getUserId()); // Will throw error if no user is found
 
-    const data = await response.json();
-    console.log('✅ All chats response data:', data);
-    return data;
-  } catch (error) {
-    console.error('❌ Error fetching all chats:', error);
-    throw error;
+    const response = await axios.post(url, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data; 
+  },
+
+  // SEND MEDIA
+  sendMedia: async (recipientPhone, mediaId, mediaType, caption = '') => {
+    const url = `${WA_API}/api/messages/send/media`;
+    return axios.post(url, {
+      user_id: getUserId(),
+      to: recipientPhone,
+      type: mediaType, 
+      id: mediaId,
+      caption: caption
+    });
+  },
+
+  // SEND LOCATION
+  sendLocation: async (recipientPhone, latitude, longitude, name = '', address = '') => {
+    const url = `${WA_API}/send/location`;
+    return axios.post(url, {
+      user_id: getUserId(),
+      to: recipientPhone,
+      latitude,
+      longitude,
+      name,
+      address
+    });
   }
 };
 
-// Fetch individual chat messages
-export const fetchChatMessages = async (chatId, userId) => {
-  try {
-    const url = apiConfig.endpoints.chats.messages();
-    console.log('🌐 Calling chat messages URL:', url);
-    console.log('📤 Request body:', { chat_id: chatId, user_id: userId });
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        user_id: userId
-      }),
-    });
-
-    console.log('📥 Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Response error text:', errorText);
-      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log('✅ Chat messages response data:', data);
-    return data;
-  } catch (error) {
-    console.error('❌ Error fetching chat messages:', error);
-    throw error;
-  }
-};
-
-// Send agent message to customer
-export const sendAgentMessage = async (chatId, message, userId) => {
-  try {
-    const url = apiConfig.endpoints.chats.sendMessage();
-    console.log('🌐 Calling send message URL:', url);
-    console.log('📤 Request body:', { chat_id: chatId, message, user_id: userId });
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        message: message,
-        user_id: userId,
-        sender_type: 'agent'
-      }),
-    });
-
-    console.log('📥 Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Response error text:', errorText);
-      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log('✅ Send message response data:', data);
-    return data;
-  } catch (error) {
-    console.error('❌ Error sending agent message:', error);
-    throw error;
-  }
-};
-
-// Update chat status (resolve, escalate, etc.)
-export const updateChatStatus = async (chatId, status, userId) => {
-  try {
-    const url = apiConfig.endpoints.chats.updateStatus();
-    console.log('🌐 Calling update status URL:', url);
-    console.log('📤 Request body:', { chat_id: chatId, status, user_id: userId });
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        status: status,
-        user_id: userId
-      }),
-    });
-
-    console.log('📥 Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Response error text:', errorText);
-      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log('✅ Update status response data:', data);
-    return data;
-  } catch (error) {
-    console.error('❌ Error updating chat status:', error);
-    throw error;
-  }
-};
-
-// Assign chat to agent
-export const assignChatToAgent = async (chatId, agentId, userId) => {
-  try {
-    const url = apiConfig.endpoints.chats.assign();
-    console.log('🌐 Calling assign chat URL:', url);
-    console.log('📤 Request body:', { chat_id: chatId, agent_id: agentId, user_id: userId });
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        agent_id: agentId,
-        user_id: userId
-      }),
-    });
-
-    console.log('📥 Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Response error text:', errorText);
-      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log('✅ Assign chat response data:', data);
-    return data;
-  } catch (error) {
-    console.error('❌ Error assigning chat:', error);
-    throw error;
-  }
-};
-
-// Format timestamp to relative time (e.g., "2 hours ago")
+// --- HELPERS ---
 export const formatRelativeTime = (timestamp) => {
+  if (!timestamp) return '';
+  const date = new Date(timestamp.toString().length === 10 ? timestamp * 1000 : timestamp);
+  
+  if (isNaN(date.getTime())) return '';
+
   const now = new Date();
-  const date = new Date(timestamp);
   const diffInSeconds = Math.floor((now - date) / 1000);
 
-  if (diffInSeconds < 60) {
-    return 'Just now';
-  } else if (diffInSeconds < 3600) {
-    const minutes = Math.floor(diffInSeconds / 60);
-    return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-  } else if (diffInSeconds < 86400) {
-    const hours = Math.floor(diffInSeconds / 3600);
-    return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  } else if (diffInSeconds < 2592000) {
-    const days = Math.floor(diffInSeconds / 86400);
-    return `${days} day${days > 1 ? 's' : ''} ago`;
-  } else {
-    return date.toLocaleDateString();
-  }
-};
-
-// Format duration in seconds to readable format (e.g., "3 min")
-export const formatDuration = (seconds) => {
-  if (seconds < 60) {
-    return `${seconds}s`;
-  } else if (seconds < 3600) {
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes} min`;
-  } else {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
-  }
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  return date.toLocaleDateString();
 };

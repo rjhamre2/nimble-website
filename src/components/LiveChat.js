@@ -1,385 +1,525 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import websocketService from '../services/websocketService';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { fetchRecentChats, chatService, formatRelativeTime } from '../services/chatService';
+import { ReplyButtonsBuilder, MediaBuilder, DummyBuilder } from './LiveChatModals';
+import { 
+  MagnifyingGlassIcon, 
+  PaperAirplaneIcon, 
+  PaperClipIcon, 
+  MapPinIcon, 
+  PhotoIcon, 
+  DocumentIcon, 
+  XMarkIcon,
+  MusicalNoteIcon, 
+  UserIcon, 
+  LinkIcon, 
+  ListBulletIcon, 
+  ViewColumnsIcon, 
+  ShoppingBagIcon, 
+  CheckCircleIcon
+} from '@heroicons/react/24/outline';
 
 const LiveChat = ({ isDarkMode }) => {
   const { user, userData } = useAuth();
-  const [conversations, setConversations] = useState([]);
-  const [selectedSender, setSelectedSender] = useState(null);
-  const [messages, setMessages] = useState([]);
+  
+  // 1. ONE Source of Truth
+  const [allMessages, setAllMessages] = useState([]); 
+  const [selectedSenderNumber, setSelectedSenderNumber] = useState(null); 
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const messagesEndRef = useRef(null);
-  const messagesContainerRef = useRef(null);
-  const selectedSenderRef = useRef(null);
+  
+  // Input State
+  const [inputText, setInputText] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(false);
+  
+  // Modal / Builder State
+  const [activeBuilder, setActiveBuilder] = useState(null);
 
-  // WebSocket connection and message handling
+  const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  // 2. Load Data
   useEffect(() => {
-    // Use db_id ONLY for WebSocket connection (database user ID)
-    // Check both user and userData as db_id might be in either
     const userId = user?.db_id || userData?.db_id;
     if (!userId) {
-      console.warn('⚠️ db_id not available, cannot connect to WebSocket');
       setLoading(false);
       return;
     }
 
-    console.log('🔌 Attempting to connect to WebSocket for user (db_id):', userId);
-    
-    // Connect to WebSocket using db_id (database user ID)
     websocketService.connect(userId);
 
-    // Handle connection status
-    const connectionHandler = (status, error) => {
-      console.log('🔌 WebSocket connection status:', status, error);
-      
-      if (status === 'error') {
-        console.error('❌ WebSocket connection error:', error);
-      }
-    };
-    const connectionId = websocketService.onConnection(connectionHandler);
-
-    // Handle database messages
-    const handleDatabaseMessages = (data) => {
-      if (data.messages && data.messages.length > 0) {
-        // Group messages by sender_number to show one conversation per sender
-        const groupedBySender = data.messages.reduce((acc, msg) => {
-          const senderKey = msg.sender_number || msg.sender_name || 'Unknown';
-          if (!acc[senderKey]) {
-            acc[senderKey] = {
-              sender_name: msg.sender_name || 'Unknown',
-              sender_number: msg.sender_number || '',
-              messages: []
-            };
-          }
-          acc[senderKey].messages.push({
-            id: msg.id,
-            message: msg.message,
-            sender_name: msg.sender_name,
-            sender_number: msg.sender_number,
-            time_stamp: msg.time_stamp,
-            created_at: msg.created_at,
-            message_type: msg.message_type || 'user',
-            conversation_id: msg.conversation_id
+    const loadData = async () => {
+      try {
+        const data = await fetchRecentChats(userId);
+        if (data && data.data) {
+          const sorted = data.data.sort((a, b) => {
+             const tA = new Date(a.created_at || a.time_stamp).getTime();
+             const tB = new Date(b.created_at || b.time_stamp).getTime();
+             return tA - tB;
           });
-          return acc;
-        }, {});
-
-        // Convert to conversations array with proper sorting
-        const conversationsList = Object.entries(groupedBySender).map(([senderKey, senderData]) => {
-          const sortedMessages = senderData.messages.sort((a, b) => 
-            new Date(a.created_at || a.time_stamp) - new Date(b.created_at || b.time_stamp)
-          );
-          
-          return {
-            conversation_id: senderKey, // Use sender as conversation ID
-            sender_name: senderData.sender_name,
-            sender_number: senderData.sender_number,
-            message_count: senderData.messages.length,
-            last_message: sortedMessages[sortedMessages.length - 1]?.message || '',
-            last_timestamp: sortedMessages[sortedMessages.length - 1]?.created_at || 
-                           sortedMessages[sortedMessages.length - 1]?.time_stamp || '',
-            messages: sortedMessages
-          };
-        }).sort((a, b) => new Date(b.last_timestamp) - new Date(a.last_timestamp)); // Most recent first
-
-        setConversations(conversationsList);
-        setLoading(false);
-      } else {
-        setConversations([]);
+          setAllMessages(sorted);
+        }
+      } catch (err) {
+        console.error('Failed to load messages', err);
+      } finally {
         setLoading(false);
       }
     };
+    loadData();
 
-    // Handle new message stored in database
-    const handleNewMessage = (data) => {
-      if (data.message) {
-        const newMessage = {
-          id: data.id,
-          message: data.message,
-          sender_name: data.sender_name,
-          sender_number: data.sender_number,
-          time_stamp: data.time_stamp,
-          created_at: data.created_at,
-          message_type: data.message_type || 'user',
-          conversation_id: data.conversation_id
-        };
+    const handleNewMessage = (newMessage) => {
+      setAllMessages(prev => [...prev, newMessage]);
+      if (selectedSenderNumber === newMessage.sender_number) {
+        scrollToBottom();
+      }
+    };
 
-        // Update conversations with new message
-        setConversations(prev => {
-          const updated = [...prev];
-          const senderKey = data.sender_number || data.sender_name || 'Unknown';
-          const conversationIndex = updated.findIndex(conv => 
-            conv.sender_number === data.sender_number || conv.sender_name === data.sender_name
-          );
-          
-          if (conversationIndex >= 0) {
-            // Update existing conversation
-            updated[conversationIndex] = {
-              ...updated[conversationIndex],
-              message_count: updated[conversationIndex].message_count + 1,
-              last_message: data.message,
-              last_timestamp: data.created_at || data.time_stamp,
-              messages: [...updated[conversationIndex].messages, newMessage]
-            };
-            
-            // If this conversation is currently selected, update the selectedSender and messages
-            if (selectedSenderRef.current && (
-              selectedSenderRef.current.sender_number === data.sender_number || 
-              selectedSenderRef.current.sender_name === data.sender_name
-            )) {
-              setSelectedSender(updated[conversationIndex]);
-              selectedSenderRef.current = updated[conversationIndex];
-              setMessages(updated[conversationIndex].messages);
-              setIsNewMessage(true); // Flag that this is a new message, not conversation selection
-            }
-          } else {
-            // Add new conversation
-            const newConversation = {
-              conversation_id: senderKey,
-              sender_name: data.sender_name,
-              sender_number: data.sender_number || '',
-              message_count: 1,
-              last_message: data.message,
-              last_timestamp: data.created_at || data.time_stamp,
-              messages: [newMessage]
-            };
-            updated.push(newConversation);
-            
-            // If this is the first message from this sender and no conversation is selected, select it
-            if (!selectedSenderRef.current) {
-              setSelectedSender(newConversation);
-              selectedSenderRef.current = newConversation;
-              setMessages(newConversation.messages);
-              setIsNewMessage(true);
-            }
-          }
-          
-          // Sort conversations by latest message timestamp (most recent first)
-          return updated.sort((a, b) => new Date(b.last_timestamp) - new Date(a.last_timestamp));
+    websocketService.socket?.on('new_message', handleNewMessage);
+    return () => websocketService.socket?.off('new_message', handleNewMessage);
+  }, [user, userData, selectedSenderNumber]);
+
+  // 3. Sidebar List
+  const conversations = useMemo(() => {
+    const groups = new Map();
+    [...allMessages].reverse().forEach(msg => {
+      const contactNum = msg.sender_number; 
+      
+      if (contactNum && !groups.has(contactNum)) {
+        groups.set(contactNum, {
+          sender_number: contactNum,
+          sender_name: msg.sender_name || contactNum,
+          last_message: msg.message || msg.content || '[Media]',
+          time_stamp: msg.time_stamp || msg.created_at
         });
       }
-    };
+    });
 
-    const handleConnectionStatus = (data) => {
-      console.log('WebSocket connection status:', data);
-    };
-
-    // Register message handlers
-    websocketService.onMessage('database_messages', handleDatabaseMessages);
-    websocketService.onMessage('new_message', handleNewMessage);
-    websocketService.onMessage('connection_status', handleConnectionStatus);
-
-    // Cleanup on unmount
-    return () => {
-      websocketService.offConnection(connectionId);
-      websocketService.offMessage('database_messages', handleDatabaseMessages);
-      websocketService.offMessage('new_message', handleNewMessage);
-      websocketService.offMessage('connection_status', handleConnectionStatus);
-    };
-  }, [user?.db_id, userData?.db_id]);
-
-  // Track if we're adding a new message vs selecting a conversation
-  const [isNewMessage, setIsNewMessage] = useState(false);
-
-  // Auto-scroll to bottom only when new messages arrive, not when selecting conversation
-  useEffect(() => {
-    if (isNewMessage) {
-      setTimeout(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-        }
-        setIsNewMessage(false);
-      }, 50);
+    let params = Array.from(groups.values());
+    if (searchQuery) {
+      params = params.filter(c => 
+        c.sender_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.sender_number?.includes(searchQuery)
+      );
     }
-  }, [messages, isNewMessage]);
+    return params;
+  }, [allMessages, searchQuery]);
 
-  // Scroll to bottom when messages change (for conversation selection)
-  useEffect(() => {
-    if (messages.length > 0 && !isNewMessage) {
-      setTimeout(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-        }
-      }, 100);
-    }
-  }, [messages, isNewMessage]);
-
-  // Handle conversation selection
-  const handleSelectConversation = (conversation) => {
-    setSelectedSender(conversation);
-    selectedSenderRef.current = conversation;
-    setMessages(conversation.messages);
-    // Don't set isNewMessage flag when selecting conversation
-  };
-
-  // Format timestamp
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return '';
-    try {
-      const date = new Date(timestamp);
-      return date.toLocaleString();
-    } catch (error) {
-      return timestamp;
-    }
-  };
-
-  // Filter conversations based on search query
-  const filteredConversations = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return conversations;
-    }
-    const query = searchQuery.toLowerCase();
-    return conversations.filter(conv => 
-      conv.sender_name?.toLowerCase().includes(query) ||
-      conv.sender_number?.toLowerCase().includes(query) ||
-      conv.last_message?.toLowerCase().includes(query)
+  // 4. Chat History
+  const activeMessages = useMemo(() => {
+    if (!selectedSenderNumber) return [];
+    return allMessages.filter(m => 
+      m.sender_number === selectedSenderNumber || 
+      m.to_number === selectedSenderNumber
     );
-  }, [conversations, searchQuery]);
+  }, [allMessages, selectedSenderNumber]);
 
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+  
+  useEffect(() => scrollToBottom(), [activeMessages]);
 
+  // --- HANDLERS ---
+  const handleSendText = async (e) => {
+    e.preventDefault();
+    if (!inputText.trim() || !selectedSenderNumber) return;
+
+    const tempId = Date.now();
+    const tempMsg = {
+      id: tempId,
+      message: inputText,
+      direction: 'outbound',
+      time_stamp: new Date().toISOString(),
+      status: 'sending'
+    };
+
+    setAllMessages(prev => [...prev, tempMsg]);
+    setInputText('');
+    scrollToBottom();
+
+    try {
+      await chatService.sendText(selectedSenderNumber, tempMsg.message);
+      setAllMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'sent' } : m));
+    } catch (error) {
+      console.error('Send failed', error);
+      setAllMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
+    }
+  };
+
+  const handleOpenBuilder = (type) => {
+    setShowAttachments(false);
+    setActiveBuilder(type);
+  };
+
+  const handleActionDirectly = async (type) => {
+    setShowAttachments(false);
+    if (!selectedSenderNumber) return;
+
+    try {
+      if (type === 'request-location') {
+        // Placeholder for direct API call
+        console.log("Requesting Location from:", selectedSenderNumber);
+        // await chatService.sendLocationRequest(selectedSenderNumber, "Please share your location to proceed.");
+      }
+    } catch (error) {
+      console.error(`Failed to execute ${type}:`, error);
+    }
+  };
+
+const handleSendComplexMessage = async ({ type, payload }) => {
+    if (!selectedSenderNumber) return;
+    
+    // 1. Close modal immediately
+    setActiveBuilder(null);
+    
+    // 2. Create a temporary local message
+    const tempId = Date.now();
+    let displayMessage = '[Interactive Message]';
+    
+    if (type === 'reply-buttons') displayMessage = payload.body;
+    if (type === 'media') displayMessage = payload.caption || `[${payload.mediaType.toUpperCase()}] ${payload.file.name}`;
+    
+    const tempMsg = {
+      id: tempId,
+      message: displayMessage,
+      message_type: type === 'media' ? payload.mediaType : type,
+      direction: 'outbound',
+      time_stamp: new Date().toISOString(),
+      status: 'sending',
+      localPreview: payload.localPreview // Temporary image preview for the UI
+    };
+    
+    setAllMessages(prev => [...prev, tempMsg]);
+    scrollToBottom();
+
+    // 3. Send via chatService
+    try {
+      if (type === 'reply-buttons') {
+        await chatService.sendReplyButtons(selectedSenderNumber, payload);
+      } 
+      else if (type === 'media') {
+        // STEP A: Upload to Meta to get the Media ID
+        const uploadRes = await chatService.uploadMedia(payload.file);
+        
+        // Extract the ID depending on how your backend wraps the response
+        const mediaId = uploadRes.id || uploadRes.data?.id || uploadRes.media_id; 
+        
+        if (!mediaId) throw new Error("Upload succeeded but no Media ID was returned.");
+
+        // STEP B: Send the actual message using the Media ID
+        await chatService.sendMedia(
+          selectedSenderNumber, 
+          mediaId, 
+          payload.mediaType, 
+          payload.caption
+        );
+      }
+      
+      // Update UI status to 'sent' (✓)
+      setAllMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'sent' } : m));
+    } catch (error) {
+      console.error(`Failed to send ${type}`, error);
+      // Update UI status to 'failed' (❌)
+      setAllMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
+    }
+  };
+// --- HELPER: Extract Media URL ---
+  const getMediaUrl = (msg) => {
+    if (!msg.metadata) return null;
+    
+    let mediaId = null;
+    
+    // 1. If Outbound (Agent sent it), grab ID from our saved request
+    if (msg.direction === 'outbound' && msg.metadata.request?.id) {
+      mediaId = msg.metadata.request.id;
+    } 
+    // 2. If Inbound (Customer sent it), grab ID from Meta's webhook payload
+    else if (msg.direction === 'inbound') {
+      if (msg.message_type === 'image') mediaId = msg.metadata.image?.id;
+      if (msg.message_type === 'video') mediaId = msg.metadata.video?.id;
+    }
+
+    // Point this to your WA_Server that will serve the media
+    const WA_SERVER_URL = 'https://api.nimbleai.in/api/wa-server'; 
+    
+    return mediaId ? `${WA_SERVER_URL}/media/download/${mediaId}` : null;
+  };
+  // 👆 END OF HELPER 👆
+  const selectedName = conversations.find(c => c.sender_number === selectedSenderNumber)?.sender_name || selectedSenderNumber;
 
   return (
-    <div className={`w-full ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`} style={{ height: 'calc(100vh - 64px)' }}>
-      <div className="pl-0 pr-4 w-full" style={{ height: 'calc(100vh - 64px)' }}>
-        <div className="grid grid-cols-1 lg:grid-cols-9 gap-0 w-full" style={{ height: 'calc(100vh - 64px)' }}>
-          {/* Conversations List */}
-          <div className={`lg:col-span-2 rounded-lg shadow-lg flex flex-col ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`} style={{ height: 'calc(100vh - 64px)' }}>
-            <div className={`pr-0 pl-0 pt-0 pb-0 border-b flex-shrink-0 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-              <div className="flex items-center gap-0">
-                <div className="relative flex-1">
-                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search conversations..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
-                      isDarkMode 
-                        ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400' 
-                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                    } focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  />
-                </div>
-                <button
-                  className={`w-10 h-10 flex items-center justify-center font-medium text-sm transition-colors flex-shrink-0 rounded-lg ${
-                    isDarkMode
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-                  title="New Chat"
-                >
-                  <span className="text-lg">+</span>
-                </button>
-              </div>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto">
-              {loading ? (
-                <div className="p-4 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                </div>
-              ) : filteredConversations.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
-                  {searchQuery ? 'No conversations match your search' : 'No conversations found'}
-                </div>
-              ) : (
-                filteredConversations.map((conversation, index) => (
-                  <div
-                    key={conversation.conversation_id || index}
-                    onClick={() => handleSelectConversation(conversation)}
-                    className={`p-4 border-b cursor-pointer transition-colors ${
-                      isDarkMode ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'
-                    } ${selectedSender?.sender_number === conversation.sender_number ? 
-                      (isDarkMode ? 'bg-gray-700' : 'bg-blue-50') : ''}`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="font-medium">{conversation.sender_name}</h3>
-                        {conversation.sender_number && (
-                          <p className="text-sm text-gray-500">{conversation.sender_number}</p>
-                        )}
-                        <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                          {conversation.message_count} messages • {conversation.messages.length > 0 ? 
-                            (conversation.messages[conversation.messages.length - 1].message.length > 30 
-                              ? conversation.messages[conversation.messages.length - 1].message.substring(0, 30) + '...' 
-                              : conversation.messages[conversation.messages.length - 1].message) : 'No messages'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs text-gray-500">
-                          {formatTimestamp(conversation.last_timestamp)}
-                        </span>
-                        <div className="mt-1">
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            isDarkMode ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'
-                          }`}>
-                            {conversation.message_count} messages
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Messages Panel */}
-          <div className={`lg:col-span-7 rounded-lg shadow-lg flex flex-col ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`} style={{ height: 'calc(100vh - 64px)' }}>
-            {selectedSender ? (
-              <>
-                <div className={`p-4 border-b flex-shrink-0 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <h2 className="text-xl font-semibold">{selectedSender.sender_name}</h2>
-                  {selectedSender.sender_number && (
-                    <p className="text-sm text-gray-500">{selectedSender.sender_number}</p>
-                  )}
-                  <p className="text-sm text-gray-500 mt-1">
-                    {selectedSender.message_count} messages • Conversation started {formatTimestamp(selectedSender.messages[0]?.created_at || selectedSender.messages[0]?.time_stamp)}
-                  </p>
-                </div>
-                
-                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4">
-                  {messages.map((msg, index) => {
-                    const isUserMessage = msg.message_type === 'user';
-                    const isAIMessage = msg.message_type === 'ai';
-                    
-                    return (
-                      <div key={msg.id || index} className={`mb-2 flex ${isUserMessage ? 'justify-start' : 'justify-end'}`}>
-                        <div className={`p-3 rounded-lg max-w-[80%] ${
-                          isUserMessage 
-                            ? (isDarkMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white')
-                            : (isDarkMode ? 'bg-gray-700' : 'bg-gray-100')
-                        }`}>
-                          <p className="text-sm">{msg.message}</p>
-                          <div className={`text-xs mt-1 ${
-                            isUserMessage 
-                              ? 'text-blue-100' 
-                              : 'text-gray-500'
-                          }`}>
-                            {formatTimestamp(msg.created_at || msg.time_stamp)}
-                            {isAIMessage && <span className="ml-2">🤖 AI</span>}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div ref={messagesEndRef} />
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <p className="text-lg">Select a conversation to view messages</p>
-                </div>
-              </div>
-            )}
+    <div className={`h-[calc(100vh-64px)] flex relative ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      
+      {/* SIDEBAR */}
+      <div className={`w-1/4 min-w-[300px] border-r flex flex-col z-10 ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className={`text-lg font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Messages</h2>
+          <div className="relative">
+            <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-2.5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={`w-full pl-10 pr-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'
+              }`}
+            />
           </div>
         </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+             <div className="p-4 text-center text-gray-500">Loading chats...</div>
+          ) : conversations.map((chat) => (
+            <div
+              key={chat.sender_number}
+              onClick={() => setSelectedSenderNumber(chat.sender_number)}
+              className={`p-4 border-b cursor-pointer transition-colors hover:bg-opacity-50 ${
+                isDarkMode ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-100 hover:bg-gray-50'
+              } ${selectedSenderNumber === chat.sender_number ? (isDarkMode ? 'bg-gray-700' : 'bg-blue-50') : ''}`}
+            >
+              <div className="flex justify-between items-start mb-1">
+                <h3 className={`font-semibold truncate ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                  {chat.sender_name}
+                </h3>
+                <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
+                  {formatRelativeTime(chat.time_stamp)}
+                </span>
+              </div>
+              <p className={`text-sm truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                {chat.last_message}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* CHAT AREA */}
+      <div className="flex-1 flex flex-col bg-white/50 relative z-0">
+        {selectedSenderNumber ? (
+          <>
+            <div className={`p-4 border-b flex justify-between items-center ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <div>
+                <h3 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedName}</h3>
+                <p className="text-sm text-gray-500">{selectedSenderNumber}</p>
+              </div>
+            </div>
+
+            <div className={`flex-1 overflow-y-auto p-4 space-y-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+{activeMessages.map((msg, idx) => {
+                 // Using the new 'direction' schema we built!
+                 const isOutbound = msg.direction === 'outbound' || msg.sender === 'agent';
+
+                 return (
+                   <div key={idx} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+                     <div className={`max-w-[70%] p-3 rounded-lg text-sm shadow-sm ${
+                       isOutbound 
+                         ? 'bg-blue-600 text-white rounded-br-none' 
+                         : (isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-white text-gray-800') + ' rounded-bl-none'
+                     }`}>
+                       
+                      {/* --- RICH MEDIA RENDERER --- */}
+                       {msg.message_type === 'image' || msg.message_type === 'video' ? (
+                         <div className="flex flex-col gap-2">
+                           
+                           {/* 1. Show local preview instantly while sending */}
+                           {msg.localPreview ? (
+                             msg.message_type === 'image' 
+                               ? <img src={msg.localPreview} alt="uploading" className="rounded-md max-h-64 object-cover" />
+                               : <video src={msg.localPreview} className="rounded-md max-h-64" controls />
+                           ) : 
+                           /* 2. Show permanent image from Database */
+                           getMediaUrl(msg) ? (
+                             msg.message_type === 'image' 
+                               ? <img src={getMediaUrl(msg)} alt="attachment" className="rounded-md max-h-64 object-cover" />
+                               : <video src={getMediaUrl(msg)} className="rounded-md max-h-64" controls />
+                           ) : (
+                             /* 3. Fallback if URL extraction fails */
+                             <div className="flex items-center gap-2 p-2 bg-black/20 rounded-md">
+                               <PhotoIcon className="w-5 h-5" /> 
+                               <span className="italic font-medium">
+                                 {msg.message_type === 'image' ? 'Image' : 'Video'} Attachment
+                               </span>
+                             </div>
+                           )}
+                           
+                           {/* Show the caption if they typed one */}
+                           {msg.content && !msg.content.startsWith('[') && (
+                             <p className="mt-1">{msg.content}</p>
+                           )}
+                         </div>
+                         
+                       ) : msg.message_type === 'document' || msg.message_type === 'audio' ? (
+                         <div className="flex flex-col gap-1">
+                           <div className="flex items-center gap-2 bg-black/20 p-2 rounded-md">
+                             {msg.message_type === 'audio' ? <MusicalNoteIcon className="w-5 h-5" /> : <DocumentIcon className="w-5 h-5" />}
+                             <span className="italic font-medium capitalize">{msg.message_type} Attachment</span>
+                           </div>
+                           {msg.content && !msg.content.startsWith('[') && <p>{msg.content}</p>}
+                         </div>
+                         
+                       ) : msg.message_type === 'interactive' || msg.message_type === 'reply-buttons' ? (
+                          <div className="flex flex-col gap-1">
+                             <span className="text-xs uppercase opacity-75 font-bold mb-1 flex items-center gap-1">
+                               <CheckCircleIcon className="w-3 h-3"/> Interactive Message
+                             </span>
+                             <p>{msg.message || msg.content}</p>
+                          </div>
+                       ) : (
+                         // Fallback for regular text messages
+                         <p>{msg.message || msg.content}</p>
+                       )}
+                       {/* --------------------------- */}
+
+                       <div className={`text-[10px] mt-1 text-right flex justify-end items-center gap-1 ${isOutbound ? 'text-blue-100' : 'text-gray-400'}`}>
+                         <span>{formatRelativeTime(msg.time_stamp || msg.created_at)}</span>
+                         {msg.status === 'sending' && <span>⏳</span>}
+                         {msg.status === 'sent' && <span>✓</span>}
+                         {msg.status === 'delivered' && <span>✓✓</span>}
+                         {msg.status === 'read' && <span className="text-blue-300 font-bold">✓✓</span>}
+                         {msg.status === 'failed' && <span className="text-red-300">❌</span>}
+                       </div>
+                     </div>
+                   </div>
+                 );
+               })}
+               <div ref={messagesEndRef} />
+            </div>
+
+            {/* INPUT AREA */}
+            <div className={`p-4 border-t relative ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              
+              {/* UNIVERSAL ACTION MENU */}
+              {showAttachments && (
+                <div className={`absolute bottom-20 left-6 shadow-2xl border rounded-xl p-4 z-50 w-80 grid grid-cols-2 gap-2 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                  
+                  <div className={`col-span-2 text-[10px] font-bold mb-1 uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Media & Docs</div>
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<PhotoIcon className="text-blue-500" />} label="Image/Video" onClick={() => handleOpenBuilder('media')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<DocumentIcon className="text-purple-500" />} label="Document" onClick={() => handleOpenBuilder('document')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<MusicalNoteIcon className="text-yellow-500" />} label="Audio" onClick={() => handleOpenBuilder('audio')} />
+                  
+                  <div className={`col-span-2 text-[10px] font-bold mt-2 mb-1 uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Interactive</div>
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<CheckCircleIcon className="text-green-500" />} label="Reply Buttons" onClick={() => handleOpenBuilder('reply-buttons')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<ListBulletIcon className="text-indigo-500" />} label="List Menu" onClick={() => handleOpenBuilder('list')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<ViewColumnsIcon className="text-pink-500" />} label="Carousel" onClick={() => handleOpenBuilder('carousel')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<LinkIcon className="text-cyan-500" />} label="CTA Link" onClick={() => handleOpenBuilder('cta-url')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<ShoppingBagIcon className="text-orange-500" />} label="Products" onClick={() => handleOpenBuilder('product-carousel')} />
+                  
+                  <div className={`col-span-2 text-[10px] font-bold mt-2 mb-1 uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Utilities</div>
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<MapPinIcon className="text-red-500" />} label="Send Location" onClick={() => handleOpenBuilder('send-location')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<MapPinIcon className="text-red-400 border-dashed" />} label="Request Location" onClick={() => handleActionDirectly('request-location')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<UserIcon className="text-teal-500" />} label="Send Contact" onClick={() => handleOpenBuilder('contact')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<DocumentIcon className="text-gray-500" />} label="Request Address" onClick={() => handleOpenBuilder('request-address')} />
+                </div>
+              )}
+
+              <form onSubmit={handleSendText} className="flex items-center gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setShowAttachments(!showAttachments)}
+                  className={`p-2 rounded-full transition-colors ${isDarkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                >
+                  {showAttachments ? <XMarkIcon className="w-6 h-6" /> : <PaperClipIcon className="w-6 h-6" />}
+                </button>
+
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="Type a message..."
+                  className={`flex-1 border rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                />
+
+                <button 
+                  type="submit" 
+                  disabled={!inputText.trim()}
+                  className={`p-2 rounded-full ${
+                    !inputText.trim() 
+                      ? (isDarkMode ? 'bg-gray-700 text-gray-500' : 'bg-gray-200 text-gray-400') 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  <PaperAirplaneIcon className="w-5 h-5" />
+                </button>
+              </form>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+             <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+               <span className="text-2xl">💬</span>
+             </div>
+             <p className="text-lg">Select a conversation</p>
+          </div>
+        )}
+      </div>
+
+{/* MODAL MANAGER OVERLAY */}
+      {activeBuilder && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-[100] backdrop-blur-sm">
+          <div className={`w-full max-w-lg rounded-xl shadow-2xl flex flex-col max-h-[90vh] ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-bold capitalize">{activeBuilder.replace('-', ' ')} Builder</h3>
+              <button onClick={() => setActiveBuilder(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body (Scrollable) - ONLY ONE OF THESE! */}
+            <div className="p-4 overflow-y-auto flex-1">
+              {activeBuilder === 'reply-buttons' ? (
+                <ReplyButtonsBuilder 
+                  isDarkMode={isDarkMode} 
+                  onSubmit={handleSendComplexMessage} 
+                  onClose={() => setActiveBuilder(null)} 
+                />
+              ) : activeBuilder === 'media' || activeBuilder === 'document' || activeBuilder === 'audio' ? (
+                <MediaBuilder 
+                  isDarkMode={isDarkMode} 
+                  onSubmit={handleSendComplexMessage} 
+                  onClose={() => setActiveBuilder(null)} 
+                />
+              ) : (
+                <DummyBuilder 
+                  name={activeBuilder.replace('-', ' ')} 
+                  onClose={() => setActiveBuilder(null)} 
+                />
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+// --- HELPER COMPONENTS ---
+
+const ActionMenuButton = ({ icon, label, onClick, isDarkMode }) => (
+  <button 
+    onClick={onClick} 
+    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+      isDarkMode 
+        ? 'text-gray-200 hover:bg-gray-700' 
+        : 'text-gray-700 hover:bg-gray-100'
+    }`}
+  >
+    <span className="w-5 h-5 flex-shrink-0">{icon}</span>
+    <span className="truncate">{label}</span>
+  </button>
+);
+
 
 export default LiveChat;
