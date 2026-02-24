@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { PhotoIcon, DocumentIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PhotoIcon, DocumentIcon, XMarkIcon, MapPinIcon, UserIcon } from '@heroicons/react/24/outline';
+import { apiConfig } from '../config/api';
 import { useRef } from 'react';
 
 // --- SHARED UI HELPERS ---
@@ -258,6 +259,351 @@ export const MediaBuilder = ({ isDarkMode, onSubmit, onClose }) => {
     </form>
   );
 };
+
+// ------------------------------------------------------------------
+// 3. LOCATION BUILDER
+// ------------------------------------------------------------------
+export const LocationBuilder = ({ isDarkMode, onSubmit, onClose }) => {
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!latitude || !longitude) {
+      alert("Latitude and Longitude are required.");
+      return;
+    }
+
+    onSubmit({
+      type: 'send-location',
+      payload: { 
+        latitude: parseFloat(latitude), 
+        longitude: parseFloat(longitude), 
+        name: name.trim(), 
+        address: address.trim() 
+      }
+    });
+  };
+
+  const inputClass = getSharedInputClass(isDarkMode);
+  const labelClass = getSharedLabelClass(isDarkMode);
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full text-red-500">
+          <MapPinIcon className="w-6 h-6" />
+        </div>
+        <div>
+          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Send Location</h4>
+          <p className="text-xs text-gray-500">Share a pinned location with the customer.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Latitude <span className="text-red-500">*</span></label>
+          <input type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} placeholder="e.g. 28.7041" className={inputClass} required />
+        </div>
+        <div>
+          <label className={labelClass}>Longitude <span className="text-red-500">*</span></label>
+          <input type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} placeholder="e.g. 77.1025" className={inputClass} required />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Location Name (Optional)</label>
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. NimbleAI HQ" className={inputClass} />
+      </div>
+
+      <div>
+        <label className={labelClass}>Address Details (Optional)</label>
+        <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 123 Tech Park, Block A" className={inputClass} />
+      </div>
+
+      <div className={`pt-4 border-t flex justify-end gap-2 mt-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <button type="button" onClick={onClose} className={`px-4 py-2 rounded-lg text-sm font-medium ${isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+          Cancel
+        </button>
+        <button type="submit" className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600">
+          Send Location
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// ------------------------------------------------------------------
+// 4. REQUEST LOCATION BUILDER
+// ------------------------------------------------------------------
+export const RequestLocationBuilder = ({ isDarkMode, onSubmit, onClose }) => {
+  const [bodyText, setBodyText] = useState('Please share your location to proceed 📍');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!bodyText.trim()) return;
+
+    onSubmit({
+      type: 'request-location',
+      payload: { body: bodyText }
+    });
+  };
+
+  const inputClass = getSharedInputClass(isDarkMode);
+  const labelClass = getSharedLabelClass(isDarkMode);
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-full border border-red-200 border-dashed text-red-400">
+          <MapPinIcon className="w-6 h-6" />
+        </div>
+        <div>
+          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Request Location</h4>
+          <p className="text-xs text-gray-500">Sends a native "Share Location" button to the user.</p>
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Message Body <span className="text-red-500">*</span></label>
+        <textarea
+          value={bodyText}
+          onChange={(e) => setBodyText(e.target.value)}
+          rows="3"
+          className={inputClass}
+          required
+        />
+      </div>
+
+      <div className={`pt-4 border-t flex justify-end gap-2 mt-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <button type="button" onClick={onClose} className={`px-4 py-2 rounded-lg text-sm font-medium ${isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+          Cancel
+        </button>
+        <button type="submit" className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600">
+          Send Request
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// ------------------------------------------------------------------
+// 5. CONTACT BUILDER
+// ------------------------------------------------------------------
+export const ContactBuilder = ({ isDarkMode, onSubmit, onClose }) => {
+  const [contacts, setContacts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedContact, setSelectedContact] = useState(null);
+
+  // Reusing your exact fetch logic from Contacts.js
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        // Get user data from local storage
+        const userString = localStorage.getItem('user') || localStorage.getItem('userData');
+        if (!userString) throw new Error("User not found");
+        
+        const user = JSON.parse(userString);
+        const dbId = user.db_id || user.uid;
+        
+        // IMPORTANT: Adjust this path to match how you import apiConfig in this file!
+        // If apiConfig isn't imported, replace this with your direct backend URL string.
+        // const apiUrl = apiConfig.endpoints.contacts.getUserContacts(dbId);
+        const DB_BASE_URL = process.env.REACT_APP_DB_SERVER_URL || 'http://localhost:3000';
+        const apiUrl = `${DB_BASE_URL}/api/contacts/user/${dbId}`; // Fallback URL
+
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(apiUrl, {
+          headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+        });
+
+        const result = await response.json();
+        if (result.success && result.data) {
+          setContacts(result.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch contacts for modal:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContacts();
+  }, []);
+
+  const filteredContacts = contacts.filter(c => {
+    const name = c.contact_data?.name?.formatted_name || c.contact_data?.name?.first_name || '';
+    const phone = c.contact_data?.phones?.[0]?.phone || '';
+    const search = searchQuery.toLowerCase();
+    return name.toLowerCase().includes(search) || phone.includes(search);
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!selectedContact) return;
+
+    // Format for Meta's Contact API
+    const contactData = selectedContact.contact_data || {};
+    const formattedPayload = {
+      name: {
+        formatted_name: contactData.name?.formatted_name || `${contactData.name?.first_name || ''} ${contactData.name?.last_name || ''}`.trim() || 'Unknown',
+        first_name: contactData.name?.first_name || 'Unknown'
+      },
+      phones: [{
+        phone: contactData.phones?.[0]?.phone || '',
+        type: "WORK"
+      }]
+    };
+
+    onSubmit({
+      type: 'send-contact',
+      payload: formattedPayload
+    });
+  };
+
+  const inputClass = getSharedInputClass(isDarkMode);
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 h-[60vh]">
+      <div className="flex items-center gap-2 mb-2 shrink-0">
+        <div className="p-3 bg-teal-50 dark:bg-teal-900/20 rounded-full text-teal-500">
+          <UserIcon className="w-6 h-6" />
+        </div>
+        <div>
+          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Send Contact</h4>
+          <p className="text-xs text-gray-500">Select a saved contact to share.</p>
+        </div>
+      </div>
+
+      <input
+        type="text"
+        placeholder="Search contacts..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className={`${inputClass} shrink-0`}
+      />
+
+      <div className={`flex-1 overflow-y-auto border rounded-lg ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
+        {loading ? (
+          <div className="p-4 text-center text-sm text-gray-500">Loading contacts...</div>
+        ) : filteredContacts.length === 0 ? (
+          <div className="p-4 text-center text-sm text-gray-500">No contacts found.</div>
+        ) : (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {filteredContacts.map(c => {
+              const name = c.contact_data?.name?.formatted_name || `${c.contact_data?.name?.first_name || ''} ${c.contact_data?.name?.last_name || ''}`.trim() || 'No Name';
+              const phone = c.contact_data?.phones?.[0]?.phone || 'No phone';
+              const isSelected = selectedContact?.contact_id === c.contact_id;
+              
+              return (
+                <div 
+                  key={c.contact_id}
+                  onClick={() => setSelectedContact(c)}
+                  className={`p-3 cursor-pointer flex items-center justify-between transition-colors ${
+                    isSelected 
+                      ? (isDarkMode ? 'bg-teal-900/40' : 'bg-teal-50') 
+                      : (isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-white')
+                  }`}
+                >
+                  <div>
+                    <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{name}</p>
+                    <p className="text-xs text-gray-500">{phone}</p>
+                  </div>
+                  {isSelected && <div className="w-4 h-4 rounded-full bg-teal-500 border-2 border-white dark:border-gray-800"></div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className={`pt-4 border-t flex justify-end gap-2 mt-2 shrink-0 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <button type="button" onClick={onClose} className={`px-4 py-2 rounded-lg text-sm font-medium ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+          Cancel
+        </button>
+        <button type="submit" disabled={!selectedContact} className="px-4 py-2 bg-teal-500 text-white rounded-lg text-sm font-medium hover:bg-teal-600 disabled:opacity-50">
+          Send Contact
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// ------------------------------------------------------------------
+// 6. REQUEST ADDRESS BUILDER
+// ------------------------------------------------------------------
+export const RequestAddressBuilder = ({ isDarkMode, onSubmit, onClose }) => {
+  const [bodyText, setBodyText] = useState('Hi there, please confirm your delivery address below 👇');
+  const [country, setCountry] = useState('IN'); // Default to India based on your payload
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!bodyText.trim() || !country.trim()) return;
+
+    onSubmit({
+      type: 'request-address',
+      payload: { 
+        body: bodyText,
+        country: country.toUpperCase() 
+      }
+    });
+  };
+
+  const inputClass = getSharedInputClass(isDarkMode);
+  const labelClass = getSharedLabelClass(isDarkMode);
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
+          <DocumentIcon className="w-6 h-6" />
+        </div>
+        <div>
+          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Request Address</h4>
+          <p className="text-xs text-gray-500">Sends a native Meta address form to the user.</p>
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Message Body <span className="text-red-500">*</span></label>
+        <textarea
+          value={bodyText}
+          onChange={(e) => setBodyText(e.target.value)}
+          rows="3"
+          className={inputClass}
+          required
+        />
+      </div>
+
+      <div>
+        <label className={labelClass}>Country Code (ISO 3166-1 alpha-2) <span className="text-red-500">*</span></label>
+        <input
+          type="text"
+          maxLength={2}
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          placeholder="e.g. IN, US, GB"
+          className={`${inputClass} uppercase`}
+          required
+        />
+        <p className="text-[10px] text-gray-500 mt-1">Meta requires a valid 2-letter country code.</p>
+      </div>
+
+      <div className={`pt-4 border-t flex justify-end gap-2 mt-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <button type="button" onClick={onClose} className={`px-4 py-2 rounded-lg text-sm font-medium ${isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+          Cancel
+        </button>
+        <button type="submit" className="px-4 py-2 bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900 rounded-lg text-sm font-medium hover:opacity-90">
+          Send Request
+        </button>
+      </div>
+    </form>
+  );
+};
+
 // ------------------------------------------------------------------
 // DUMMY BUILDER (Fallback for unimplemented modals)
 // ------------------------------------------------------------------

@@ -109,7 +109,7 @@ export const chatService = {
 
   // SEND LOCATION
   sendLocation: async (recipientPhone, latitude, longitude, name = '', address = '') => {
-    const url = `${WA_API}/send/location`;
+    const url = `${WA_API}/api/messages/send/location`;
     return axios.post(url, {
       user_id: getUserId(),
       to: recipientPhone,
@@ -118,8 +118,45 @@ export const chatService = {
       name,
       address
     });
-  }
+  },
+
+  // REQUEST LOCATION (Interactive Meta Button)
+  sendLocationRequest: async (recipientPhone, bodyText) => {
+    // Note: Adjust the path if your WA_API base URL already includes /api/messages
+    const url = `${WA_API}/api/messages/send/interactive-location-request`; 
+    
+    return axios.post(url, {
+      user_id: getUserId(),
+      to: recipientPhone,
+      body: bodyText
+    });
+  },
+  
+  //Send Contact(s)
+  sendContact: async (recipientPhone, contactPayload) => {
+    // Assuming you will create this route on your Node backend
+    const url = `${WA_API}/api/messages/send/contacts`; 
+    return axios.post(url, {
+      user_id: getUserId(),
+      to: recipientPhone,
+      contacts: [contactPayload] // Meta requires contacts to be an array
+    });
+  },
+
+// REQUEST ADDRESS (Native Meta Form)
+  sendAddressRequest: async (recipientPhone, payload) => {
+    // Adjust path if needed, matching your curl command
+    const url = `${WA_API}/api/messages/send/address-message`; 
+    return axios.post(url, {
+      user_id: getUserId(),
+      to: recipientPhone,
+      country: payload.country,
+      body: payload.body
+    });
+  },
+
 };
+
 
 // --- HELPERS ---
 export const formatRelativeTime = (timestamp) => {

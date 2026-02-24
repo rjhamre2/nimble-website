@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import websocketService from '../services/websocketService';
 import { fetchRecentChats, chatService, formatRelativeTime } from '../services/chatService';
-import { ReplyButtonsBuilder, MediaBuilder, DummyBuilder } from './LiveChatModals';
+import { ReplyButtonsBuilder, MediaBuilder, LocationBuilder, RequestLocationBuilder, ContactBuilder, RequestAddressBuilder, DummyBuilder } from './LiveChatModals';
+
 import { 
   MagnifyingGlassIcon, 
   PaperAirplaneIcon, 
@@ -176,13 +177,16 @@ const handleSendComplexMessage = async ({ type, payload }) => {
     // 1. Close modal immediately
     setActiveBuilder(null);
     
-    // 2. Create a temporary local message
-    const tempId = Date.now();
+    // 2. Set the display message based on the type
     let displayMessage = '[Interactive Message]';
-    
     if (type === 'reply-buttons') displayMessage = payload.body;
-    if (type === 'media') displayMessage = payload.caption || `[${payload.mediaType.toUpperCase()}] ${payload.file.name}`;
-    
+    if (type === 'media') displayMessage = payload.caption || `[${payload.mediaType.toUpperCase()}] ${payload.file?.name || 'Attachment'}`;
+    if (type === 'send-location') displayMessage = payload.name || `Location: ${payload.latitude}, ${payload.longitude}`;
+    if (type === 'request-location') displayMessage = payload.body;
+    if (type === 'send-contact') displayMessage = `Contact: ${payload.name.formatted_name}`; // <--- ADD THIS
+    if (type === 'request-address') displayMessage = payload.body; // <--- ADD THIS
+
+    const tempId = Date.now();
     const tempMsg = {
       id: tempId,
       message: displayMessage,
@@ -190,7 +194,8 @@ const handleSendComplexMessage = async ({ type, payload }) => {
       direction: 'outbound',
       time_stamp: new Date().toISOString(),
       status: 'sending',
-      localPreview: payload.localPreview // Temporary image preview for the UI
+      localPreview: payload.localPreview,
+      content: payload 
     };
     
     setAllMessages(prev => [...prev, tempMsg]);
@@ -202,28 +207,30 @@ const handleSendComplexMessage = async ({ type, payload }) => {
         await chatService.sendReplyButtons(selectedSenderNumber, payload);
       } 
       else if (type === 'media') {
-        // STEP A: Upload to Meta to get the Media ID
         const uploadRes = await chatService.uploadMedia(payload.file);
-        
-        // Extract the ID depending on how your backend wraps the response
         const mediaId = uploadRes.id || uploadRes.data?.id || uploadRes.media_id; 
-        
         if (!mediaId) throw new Error("Upload succeeded but no Media ID was returned.");
-
-        // STEP B: Send the actual message using the Media ID
-        await chatService.sendMedia(
-          selectedSenderNumber, 
-          mediaId, 
-          payload.mediaType, 
-          payload.caption
-        );
+        await chatService.sendMedia(selectedSenderNumber, mediaId, payload.mediaType, payload.caption);
+      } 
+      else if (type === 'send-location') {
+        await chatService.sendLocation(selectedSenderNumber, payload.latitude, payload.longitude, payload.name, payload.address);
+      } 
+      else if (type === 'request-location') {
+        // 👇 This is the API call that needs to fire! 👇
+        await chatService.sendLocationRequest(selectedSenderNumber, payload.body);
       }
-      
-      // Update UI status to 'sent' (✓)
+      else if (type === 'send-contact') {
+        // <--- ADD THIS BLOCK --->
+        await chatService.sendContact(selectedSenderNumber, payload);
+      }
+      else if (type === 'request-address') {
+        // <--- ADD THIS BLOCK --->
+        await chatService.sendAddressRequest(selectedSenderNumber, payload);
+      }
+
       setAllMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'sent' } : m));
     } catch (error) {
       console.error(`Failed to send ${type}`, error);
-      // Update UI status to 'failed' (❌)
       setAllMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
     }
   };
@@ -362,7 +369,32 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                            </div>
                            {msg.content && !msg.content.startsWith('[') && <p>{msg.content}</p>}
                          </div>
-                         
+                       
+                       ) : msg.message_type === 'send-location' || msg.message_type === 'location' ? (
+                         <div className="flex flex-col gap-1">
+                           <div className="flex items-center gap-2 bg-red-500/10 p-2 rounded-md border border-red-500/20">
+                             <div className="p-2 bg-red-500 rounded-full text-white">
+                               <MapPinIcon className="w-5 h-5" />
+                             </div>
+                             <div>
+                               <p className="font-bold text-sm">
+                                 {/* Handle both temporary payload object and DB saved string */}
+                                 {msg.content?.name || msg.message || 'Pinned Location'}
+                               </p>
+                               {msg.content?.address && (
+                                 <p className="text-xs opacity-75">{msg.content.address}</p>
+                               )}
+                             </div>
+                           </div>
+                           <a 
+                             href={`https://maps.google.com/?q=${msg.content?.latitude || ''},${msg.content?.longitude || ''}`} 
+                             target="_blank" 
+                             rel="noreferrer"
+                             className="text-xs text-blue-500 hover:underline mt-1"
+                           >
+                             View on Map
+                           </a>
+                         </div>
                        ) : msg.message_type === 'interactive' || msg.message_type === 'reply-buttons' ? (
                           <div className="flex flex-col gap-1">
                              <span className="text-xs uppercase opacity-75 font-bold mb-1 flex items-center gap-1">
@@ -370,6 +402,74 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                              </span>
                              <p>{msg.message || msg.content}</p>
                           </div>
+                       ) : msg.message_type === 'request-location' ? (
+                          <div className="flex flex-col gap-1">
+                             <span className="text-xs uppercase opacity-75 font-bold mb-1 flex items-center gap-1">
+                               <MapPinIcon className="w-3 h-3"/> Location Request
+                             </span>
+                             <p>{msg.message || msg.content}</p>
+                          </div>
+                       ) : msg.message_type === 'send-contact' || msg.message_type === 'contacts' ? (
+                          <div className="flex flex-col min-w-[200px] max-w-[280px]">
+                            {(() => {
+                              // Safely extract the contacts array from DB or Optimistic UI
+                              const rawContacts = msg.metadata?.request?.contacts || 
+                                                  msg.metadata?.contacts || 
+                                                  (Array.isArray(msg.content) ? msg.content : [msg.content]);
+                              
+                              const contactsList = Array.isArray(rawContacts) ? rawContacts.filter(Boolean) : [];
+                              const count = contactsList.length;
+
+                              // Fallback if data is missing
+                              if (count === 0) {
+                                return ( 
+                                  <div className="bg-black/5 dark:bg-white/10 p-3 rounded-md text-sm">
+                                    <UserIcon className="w-5 h-5 inline mr-2 text-teal-500" />
+                                    {msg.message || 'Contact Card'}
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div className="bg-black/5 dark:bg-white/10 rounded-md overflow-hidden">
+                                  {/* Draw up to 3 contacts in the bubble to save space */}
+                                  {contactsList.slice(0, 3).map((c, i) => (
+                                    <div key={i} className={`flex items-center gap-3 p-3 ${i > 0 ? 'border-t border-black/10 dark:border-white/10' : ''}`}>
+                                      <div className="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center text-white shrink-0">
+                                        <UserIcon className="w-6 h-6" />
+                                      </div>
+                                      <div className="flex flex-col overflow-hidden">
+                                        <span className="font-bold text-sm truncate">{c.name?.formatted_name || 'Unknown Contact'}</span>
+                                        {c.phones?.[0]?.phone && <span className="text-xs opacity-75 truncate">{c.phones[0].phone}</span>}
+                                      </div>
+                                    </div>
+                                  ))}
+                                  
+                                  {/* If there are more than 3, show a summary footer */}
+                                  {count > 3 && (
+                                    <div className="text-center text-xs font-bold text-gray-500 dark:text-gray-400 py-2 border-t border-black/10 dark:border-white/10">
+                                      + {count - 3} more contacts
+                                    </div>
+                                  )}
+                                  
+                                  {/* Standard bottom action */}
+                                  <div className="text-center text-xs font-bold text-teal-600 dark:text-teal-400 py-2 border-t border-black/10 dark:border-white/10 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                    View Contact{count > 1 ? 's' : ''}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                       ) : msg.message_type === 'request-address' || msg.message_type === 'address_message' ? (
+                          <div className="flex flex-col gap-1">
+                             <span className="text-xs uppercase opacity-75 font-bold mb-1 flex items-center gap-1">
+                               <DocumentIcon className="w-3 h-3"/> Address Request
+                             </span>
+                             <p>{msg.message || msg.content?.body}</p>
+                             <div className="mt-2 text-xs opacity-75 italic border-t border-black/10 dark:border-white/10 pt-1">
+                               Requested for Country: {msg.content?.country || msg.metadata?.country || 'IN'}
+                             </div>
+                          </div>   
                        ) : (
                          // Fallback for regular text messages
                          <p>{msg.message || msg.content}</p>
@@ -412,7 +512,7 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                   
                   <div className={`col-span-2 text-[10px] font-bold mt-2 mb-1 uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Utilities</div>
                   <ActionMenuButton isDarkMode={isDarkMode} icon={<MapPinIcon className="text-red-500" />} label="Send Location" onClick={() => handleOpenBuilder('send-location')} />
-                  <ActionMenuButton isDarkMode={isDarkMode} icon={<MapPinIcon className="text-red-400 border-dashed" />} label="Request Location" onClick={() => handleActionDirectly('request-location')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<MapPinIcon className="text-red-400 border-dashed" />} label="Request Location" onClick={() => handleOpenBuilder('request-location')} />
                   <ActionMenuButton isDarkMode={isDarkMode} icon={<UserIcon className="text-teal-500" />} label="Send Contact" onClick={() => handleOpenBuilder('contact')} />
                   <ActionMenuButton isDarkMode={isDarkMode} icon={<DocumentIcon className="text-gray-500" />} label="Request Address" onClick={() => handleOpenBuilder('request-address')} />
                 </div>
@@ -476,25 +576,22 @@ const handleSendComplexMessage = async ({ type, payload }) => {
               </button>
             </div>
 
-            {/* Modal Body (Scrollable) - ONLY ONE OF THESE! */}
+            {/* Modal Body (Scrollable) */}
             <div className="p-4 overflow-y-auto flex-1">
               {activeBuilder === 'reply-buttons' ? (
-                <ReplyButtonsBuilder 
-                  isDarkMode={isDarkMode} 
-                  onSubmit={handleSendComplexMessage} 
-                  onClose={() => setActiveBuilder(null)} 
-                />
+                <ReplyButtonsBuilder isDarkMode={isDarkMode} onSubmit={handleSendComplexMessage} onClose={() => setActiveBuilder(null)} />
               ) : activeBuilder === 'media' || activeBuilder === 'document' || activeBuilder === 'audio' ? (
-                <MediaBuilder 
-                  isDarkMode={isDarkMode} 
-                  onSubmit={handleSendComplexMessage} 
-                  onClose={() => setActiveBuilder(null)} 
-                />
+                <MediaBuilder isDarkMode={isDarkMode} onSubmit={handleSendComplexMessage} onClose={() => setActiveBuilder(null)} />
+              ) : activeBuilder === 'send-location' ? (
+                <LocationBuilder isDarkMode={isDarkMode} onSubmit={handleSendComplexMessage} onClose={() => setActiveBuilder(null)} />
+              ) : activeBuilder === 'request-location' ? (
+                <RequestLocationBuilder isDarkMode={isDarkMode} onSubmit={handleSendComplexMessage} onClose={() => setActiveBuilder(null)} />
+              ) : activeBuilder === 'contact' ? (
+                <ContactBuilder isDarkMode={isDarkMode} onSubmit={handleSendComplexMessage} onClose={() => setActiveBuilder(null)} />
+              ) : activeBuilder === 'request-address' ? (
+                <RequestAddressBuilder isDarkMode={isDarkMode} onSubmit={handleSendComplexMessage} onClose={() => setActiveBuilder(null)} />
               ) : (
-                <DummyBuilder 
-                  name={activeBuilder.replace('-', ' ')} 
-                  onClose={() => setActiveBuilder(null)} 
-                />
+                <DummyBuilder name={activeBuilder.replace('-', ' ')} onClose={() => setActiveBuilder(null)} />
               )}
             </div>
 
