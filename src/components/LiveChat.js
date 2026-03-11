@@ -2,7 +2,19 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import websocketService from '../services/websocketService';
 import { fetchRecentChats, chatService, formatRelativeTime } from '../services/chatService';
-import { ReplyButtonsBuilder, MediaBuilder, LocationBuilder, RequestLocationBuilder, ContactBuilder, RequestAddressBuilder, DummyBuilder } from './LiveChatModals';
+import { 
+  ReplyButtonsBuilder, 
+  MediaBuilder, 
+  LocationBuilder, 
+  RequestLocationBuilder, 
+  ContactBuilder, 
+  RequestAddressBuilder,
+  InteractiveListBuilder, // <--- Add this
+  InteractiveCarouselBuilder,
+  CtaUrlBuilder,
+  ProductCarouselBuilder, // <--- Add this
+  DummyBuilder 
+} from './LiveChatModals';
 
 import { 
   MagnifyingGlassIcon, 
@@ -185,6 +197,10 @@ const handleSendComplexMessage = async ({ type, payload }) => {
     if (type === 'request-location') displayMessage = payload.body;
     if (type === 'send-contact') displayMessage = `Contact: ${payload.name.formatted_name}`; // <--- ADD THIS
     if (type === 'request-address') displayMessage = payload.body; // <--- ADD THIS
+    if (type === 'interactive-list') displayMessage = `[Menu] ${payload.button_text}`; // <--- ADD THIS
+    if (type === 'interactive-carousel') displayMessage = `[Carousel] ${payload.cards.length} cards`; // <--- ADD THIS
+    if (type === 'cta-url') displayMessage = `[Link] ${payload.display_text}`; // <--- ADD THIS
+    if (type === 'product-carousel') displayMessage = `[Catalog] ${payload.product_ids.length} items`; // <--- ADD THIS
 
     const tempId = Date.now();
     const tempMsg = {
@@ -226,6 +242,22 @@ const handleSendComplexMessage = async ({ type, payload }) => {
       else if (type === 'request-address') {
         // <--- ADD THIS BLOCK --->
         await chatService.sendAddressRequest(selectedSenderNumber, payload);
+      }
+      else if (type === 'interactive-list') {
+        // <--- ADD THIS BLOCK --->
+        await chatService.sendInteractiveList(selectedSenderNumber, payload);
+      }
+      else if (type === 'interactive-carousel') {
+        // <--- ADD THIS BLOCK --->
+        await chatService.sendInteractiveCarousel(selectedSenderNumber, payload);
+      }
+      else if (type === 'cta-url') {
+        // <--- ADD THIS BLOCK --->
+        await chatService.sendCtaUrl(selectedSenderNumber, payload);
+      }
+      else if (type === 'product-carousel') {
+        // <--- ADD THIS BLOCK --->
+        await chatService.sendProductCarousel(selectedSenderNumber, payload);
       }
 
       setAllMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'sent' } : m));
@@ -402,7 +434,95 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                              </span>
                              <p>{msg.message || msg.content}</p>
                           </div>
-                       ) : msg.message_type === 'request-location' ? (
+                      ) : msg.message_type === 'list' || msg.message_type === 'interactive-list' ? (
+                          <div className="flex flex-col gap-2 min-w-[200px]">
+                            {/* Header */}
+                            {msg.content?.header && <p className="font-bold text-sm">{msg.content.header}</p>}
+                            
+                            {/* Body */}
+                            <p>{msg.content?.body || msg.message.replace('[Menu] ', '')}</p>
+                            
+                            {/* Footer */}
+                            {msg.content?.footer && <p className="text-xs opacity-70">{msg.content.footer}</p>}
+                            
+                            {/* Fake Menu Button */}
+                            <div className="mt-2 py-2 flex items-center justify-center gap-2 border-t border-black/10 dark:border-white/10 text-purple-600 dark:text-purple-400 font-bold text-sm bg-black/5 dark:bg-white/5 rounded-b-md">
+                              <ListBulletIcon className="w-4 h-4" />
+                              {msg.content?.button_text || 'Menu'}
+                            </div>
+                          </div>
+                      ) : msg.message_type === 'carousel' || msg.message_type === 'interactive-carousel' ? (
+                          <div className="flex flex-col gap-2 max-w-[320px] overflow-hidden">
+                            {/* Main Carousel Body */}
+                            <p className="text-sm px-1">
+                              {msg.content?.body || msg.message.replace(/\[Carousel\].*/, '') || 'Carousel Message'}
+                            </p>
+                            
+                            {/* Horizontal Scrolling Cards */}
+                            <div className="flex overflow-x-auto gap-3 pb-2 hide-scrollbar snap-x">
+                              {/* Safely extract the cards array from payload or DB metadata */}
+                              {(msg.content?.cards || msg.metadata?.request?.cards || []).map((card, idx) => (
+                                <div key={idx} className="min-w-[200px] flex-shrink-0 border dark:border-gray-700 rounded-lg overflow-hidden bg-black/5 dark:bg-white/5 snap-center flex flex-col">
+                                  {/* Header Image */}
+                                  {card.header?.image?.link && (
+                                    <img src={card.header.image.link} alt={`Card ${idx}`} className="w-full h-28 object-cover border-b dark:border-gray-700" />
+                                  )}
+                                  
+                                  {/* Card Body & Button */}
+                                  <div className="p-2 flex flex-col flex-1">
+                                    <p className="text-sm font-medium flex-1 line-clamp-2">{card.body?.text}</p>
+                                    <div className="mt-2 text-center text-xs font-bold text-blue-600 dark:text-blue-400 py-1.5 border-t border-black/10 dark:border-white/10">
+                                      {card.action?.parameters?.display_text || 'Link'}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                      ) : msg.message_type === 'cta-url' || msg.message_type === 'cta_url' ? (
+                          <div className="flex flex-col gap-2 min-w-[200px]">
+                            {/* Render Header if it's an image (can expand to text/video later if needed) */}
+                            {msg.content?.header_type === 'image' && msg.content?.header_link && (
+                              <img src={msg.content.header_link} alt="Header" className="w-full h-32 object-cover rounded-md mb-1" />
+                            )}
+                            {msg.content?.header_type === 'text' && msg.content?.header_text && (
+                              <p className="font-bold text-sm">{msg.content.header_text}</p>
+                            )}
+                            
+                            {/* Body */}
+                            <p className="whitespace-pre-wrap">{msg.content?.body || msg.message.replace('[Link] ', '')}</p>
+                            
+                            {/* Footer */}
+                            {msg.content?.footer && <p className="text-xs opacity-70">{msg.content.footer}</p>}
+                            
+                            {/* Fake CTA Button */}
+                            <div className="mt-2 py-2 flex items-center justify-center gap-2 border-t border-black/10 dark:border-white/10 text-indigo-600 dark:text-indigo-400 font-bold text-sm bg-black/5 dark:bg-white/5 rounded-b-md">
+                              <LinkIcon className="w-4 h-4" />
+                              {msg.content?.display_text || 'Open Link'}
+                            </div>
+                          </div>
+                      ): msg.message_type === 'product-carousel' || msg.message_type === 'catalog_message' ? (
+                          <div className="flex flex-col gap-2 min-w-[200px] max-w-[280px]">
+                            <p className="text-sm px-1">
+                              {msg.content?.body || msg.message.replace(/\[Product Catalog\].*/, '') || 'Product Catalog'}
+                            </p>
+                            
+                            <div className="bg-black/5 dark:bg-white/5 p-3 rounded-md border border-black/10 dark:border-white/10">
+                              <p className="text-xs font-bold mb-2 flex items-center gap-1 text-pink-600 dark:text-pink-400">
+                                <ShoppingBagIcon className="w-4 h-4"/> 
+                                Catalog: {msg.content?.catalog_id || msg.metadata?.request?.catalog_id || 'Attached'}
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {/* Extract the array of IDs sent to Meta */}
+                                {(msg.content?.product_ids || msg.metadata?.request?.product_ids || []).map((id, i) => (
+                                  <span key={i} className="text-[10px] font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded shadow-sm border dark:border-gray-700 truncate max-w-[100px]">
+                                    {id}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                       ): msg.message_type === 'request-location' ? (
                           <div className="flex flex-col gap-1">
                              <span className="text-xs uppercase opacity-75 font-bold mb-1 flex items-center gap-1">
                                <MapPinIcon className="w-3 h-3"/> Location Request
@@ -590,6 +710,14 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                 <ContactBuilder isDarkMode={isDarkMode} onSubmit={handleSendComplexMessage} onClose={() => setActiveBuilder(null)} />
               ) : activeBuilder === 'request-address' ? (
                 <RequestAddressBuilder isDarkMode={isDarkMode} onSubmit={handleSendComplexMessage} onClose={() => setActiveBuilder(null)} />
+              ) : activeBuilder === 'list' ? (
+                <InteractiveListBuilder isDarkMode={isDarkMode} onSubmit={handleSendComplexMessage} onClose={() => setActiveBuilder(null)} />
+              ) : activeBuilder === 'carousel' ? (
+                <InteractiveCarouselBuilder isDarkMode={isDarkMode} onSubmit={handleSendComplexMessage} onClose={() => setActiveBuilder(null)} />
+              ) : activeBuilder === 'cta-url' ? (
+                <CtaUrlBuilder isDarkMode={isDarkMode} onSubmit={handleSendComplexMessage} onClose={() => setActiveBuilder(null)} />
+              ): activeBuilder === 'product-carousel' ? (
+                <ProductCarouselBuilder isDarkMode={isDarkMode} onSubmit={handleSendComplexMessage} onClose={() => setActiveBuilder(null)} />
               ) : (
                 <DummyBuilder name={activeBuilder.replace('-', ' ')} onClose={() => setActiveBuilder(null)} />
               )}

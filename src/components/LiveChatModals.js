@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { PhotoIcon, DocumentIcon, XMarkIcon, MapPinIcon, UserIcon } from '@heroicons/react/24/outline';
+import { ViewColumnsIcon, PlusIcon, TrashIcon, ListBulletIcon, LinkIcon, ShoppingBagIcon } from '@heroicons/react/24/outline';
 import { apiConfig } from '../config/api';
 import { useRef } from 'react';
 
@@ -599,6 +599,514 @@ export const RequestAddressBuilder = ({ isDarkMode, onSubmit, onClose }) => {
         <button type="submit" className="px-4 py-2 bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900 rounded-lg text-sm font-medium hover:opacity-90">
           Send Request
         </button>
+      </div>
+    </form>
+  );
+};
+
+// ------------------------------------------------------------------
+// 7. INTERACTIVE LIST BUILDER
+// ------------------------------------------------------------------
+export const InteractiveListBuilder = ({ isDarkMode, onSubmit, onClose }) => {
+  const [header, setHeader] = useState('');
+  const [body, setBody] = useState('Please select an option from the menu below:');
+  const [footer, setFooter] = useState('');
+  const [buttonText, setButtonText] = useState('View Options');
+  
+  // We will default to 1 section with 2 empty rows
+  const [rows, setRows] = useState([
+    { title: '', description: '' },
+    { title: '', description: '' }
+  ]);
+
+  const handleAddRow = () => {
+    if (rows.length >= 10) return alert("Meta limits lists to 10 options maximum.");
+    setRows([...rows, { title: '', description: '' }]);
+  };
+
+  const handleRemoveRow = (index) => {
+    if (rows.length <= 1) return; // Must have at least 1
+    const newRows = [...rows];
+    newRows.splice(index, 1);
+    setRows(newRows);
+  };
+
+  const handleRowChange = (index, field, value) => {
+    const newRows = [...rows];
+    newRows[index][field] = value;
+    setRows(newRows);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!body.trim() || !buttonText.trim()) return;
+    
+    // Filter out completely empty rows and format for Meta
+    const validRows = rows.filter(r => r.title.trim() !== '').map((r, i) => ({
+      id: `row_${i}_${Date.now().toString().slice(-5)}`, // Auto-generate ID
+      title: r.title.substring(0, 24), // Meta limit is 24 chars
+      description: r.description.substring(0, 72) // Meta limit is 72 chars
+    }));
+
+    if (validRows.length === 0) return alert("You must provide at least one valid list option.");
+
+    onSubmit({
+      type: 'interactive-list',
+      payload: {
+        header: header.trim(),
+        body: body.trim(),
+        footer: footer.trim(),
+        button_text: buttonText.trim(),
+        // Wrapping rows in a single default section to match your cURL structure
+        sections: [{
+          title: "Available Options",
+          rows: validRows
+        }]
+      }
+    });
+  };
+
+  const inputClass = getSharedInputClass(isDarkMode);
+  const labelClass = getSharedLabelClass(isDarkMode);
+
+  return (
+
+    
+
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Header (Optional)</label>
+          <input type="text" value={header} maxLength={60} onChange={(e) => setHeader(e.target.value)} placeholder="Max 60 chars" className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Menu Button Text <span className="text-red-500">*</span></label>
+          <input type="text" value={buttonText} maxLength={20} onChange={(e) => setButtonText(e.target.value)} placeholder="Max 20 chars" className={inputClass} required />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Main Message Body <span className="text-red-500">*</span></label>
+        <textarea value={body} maxLength={1024} onChange={(e) => setBody(e.target.value)} rows="2" className={inputClass} required />
+      </div>
+      
+      {/* ... the rows section remains the same since we already added maxLength={24} and {72} to them ... */}
+
+      <div>
+        <label className={labelClass}>Footer Text (Optional)</label>
+        <input type="text" value={footer} maxLength={60} onChange={(e) => setFooter(e.target.value)} placeholder="Max 60 chars" className={inputClass} />
+      </div>
+      <div className="flex items-center gap-2 mb-2">
+        <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-500">
+          <ListBulletIcon className="w-6 h-6" />
+        </div>
+        <div>
+          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>List Menu</h4>
+          <p className="text-xs text-gray-500">Send a menu with up to 10 selectable options.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Header (Optional)</label>
+          <input type="text" value={header} onChange={(e) => setHeader(e.target.value)} placeholder="e.g. Choose Shipping" className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Menu Button Text <span className="text-red-500">*</span></label>
+          <input type="text" value={buttonText} onChange={(e) => setButtonText(e.target.value)} placeholder="e.g. Shipping Options" className={inputClass} required />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Main Message Body <span className="text-red-500">*</span></label>
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows="2" className={inputClass} required />
+      </div>
+
+      <div className="border-t border-b py-4 my-2 dark:border-gray-700">
+        <div className="flex justify-between items-center mb-3">
+          <label className={labelClass}>List Options ({rows.length}/10)</label>
+          {rows.length < 10 && (
+            <button type="button" onClick={handleAddRow} className="text-xs text-purple-500 font-bold flex items-center gap-1 hover:underline">
+              <PlusIcon className="w-3 h-3" /> Add Option
+            </button>
+          )}
+        </div>
+        
+        <div className="flex flex-col gap-3">
+          {rows.map((row, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <div className="flex-1 grid grid-cols-3 gap-2">
+                <input type="text" value={row.title} onChange={(e) => handleRowChange(index, 'title', e.target.value)} placeholder="Title (Max 24 chars)" maxLength={24} className={`${inputClass} col-span-1`} required={index === 0} />
+                <input type="text" value={row.description} onChange={(e) => handleRowChange(index, 'description', e.target.value)} placeholder="Description (Optional)" maxLength={72} className={`${inputClass} col-span-2`} />
+              </div>
+              {rows.length > 1 && (
+                <button type="button" onClick={() => handleRemoveRow(index)} className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md">
+                  <TrashIcon className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Footer Text (Optional)</label>
+        <input type="text" value={footer} onChange={(e) => setFooter(e.target.value)} placeholder="e.g. Tap below to select" className={inputClass} />
+      </div>
+
+      <div className={`pt-2 flex justify-end gap-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <button type="button" onClick={onClose} className={`px-4 py-2 rounded-lg text-sm font-medium ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>Cancel</button>
+        <button type="submit" className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600">Send Menu</button>
+      </div>
+    </form>
+  );
+};
+
+// ------------------------------------------------------------------
+// 8. INTERACTIVE CAROUSEL BUILDER
+// ------------------------------------------------------------------
+export const InteractiveCarouselBuilder = ({ isDarkMode, onSubmit, onClose }) => {
+  const [mainBody, setMainBody] = useState('Check out our latest products! 👇');
+  
+  // Start with one empty card
+  const [cards, setCards] = useState([
+    { imageUrl: '', bodyText: '', buttonText: 'Buy Now', buttonUrl: '' }
+  ]);
+
+  const handleAddCard = () => {
+    if (cards.length >= 10) return alert("Meta allows a maximum of 10 cards per carousel.");
+    setCards([...cards, { imageUrl: '', bodyText: '', buttonText: 'Buy Now', buttonUrl: '' }]);
+  };
+
+  const handleRemoveCard = (index) => {
+    if (cards.length <= 1) return;
+    const newCards = [...cards];
+    newCards.splice(index, 1);
+    setCards(newCards);
+  };
+
+  const handleCardChange = (index, field, value) => {
+    const newCards = [...cards];
+    newCards[index][field] = value;
+    setCards(newCards);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!mainBody.trim()) return;
+
+    // Filter valid cards and format them exactly how the backend expects
+    const formattedCards = cards
+      .filter(c => c.imageUrl.trim() && c.bodyText.trim() && c.buttonText.trim() && c.buttonUrl.trim())
+      .map((c, index) => ({
+        card_index: index,
+        type: "cta_url",
+        header: { type: "image", image: { link: c.imageUrl.trim() } },
+        body: { text: c.bodyText.trim().substring(0, 160) }, // Meta limit is 160 chars
+        action: { 
+          name: "cta_url", 
+          parameters: { 
+            display_text: c.buttonText.trim().substring(0, 20), // Meta limit is 20 chars
+            url: c.buttonUrl.trim() 
+          } 
+        }
+      }));
+
+    if (formattedCards.length === 0) {
+      return alert("Please completely fill out at least one card (Image URL, Body, Button Text, and Link).");
+    }
+
+    onSubmit({
+      type: 'interactive-carousel',
+      payload: {
+        body: mainBody.trim(),
+        cards: formattedCards
+      }
+    });
+  };
+
+  const inputClass = getSharedInputClass(isDarkMode);
+  const labelClass = getSharedLabelClass(isDarkMode);
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-500">
+          <ViewColumnsIcon className="w-6 h-6" />
+        </div>
+        <div>
+          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Media Carousel</h4>
+          <p className="text-xs text-gray-500">Send a swipeable carousel of products with links.</p>
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Main Message Body <span className="text-red-500">*</span></label>
+        <textarea value={mainBody} onChange={(e) => setMainBody(e.target.value)} rows="2" className={inputClass} required />
+      </div>
+
+      <div className="border-t border-b py-4 my-2 dark:border-gray-700 max-h-[40vh] overflow-y-auto pr-2">
+        <div className="flex justify-between items-center mb-3">
+          <label className={labelClass}>Carousel Cards ({cards.length}/10)</label>
+          {cards.length < 10 && (
+            <button type="button" onClick={handleAddCard} className="text-xs text-blue-500 font-bold flex items-center gap-1 hover:underline">
+              <PlusIcon className="w-3 h-3" /> Add Card
+            </button>
+          )}
+        </div>
+        
+        <div className="flex flex-col gap-4">
+          {cards.map((card, index) => (
+            <div key={index} className={`p-3 border rounded-lg relative ${isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50'}`}>
+              {cards.length > 1 && (
+                <button type="button" onClick={() => handleRemoveCard(index)} className="absolute top-2 right-2 text-red-400 hover:text-red-600">
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              )}
+              <div className="text-xs font-bold text-gray-400 mb-2">Card {index + 1}</div>
+              
+              <div className="flex flex-col gap-2">
+                <input type="url" value={card.imageUrl} onChange={(e) => handleCardChange(index, 'imageUrl', e.target.value)} placeholder="Image URL (e.g. https://.../img.png)" className={inputClass} required={index === 0} />
+                <input type="text" value={card.bodyText} onChange={(e) => handleCardChange(index, 'bodyText', e.target.value)} placeholder="Card Description (Max 160 chars)" maxLength={160} className={inputClass} required={index === 0} />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" value={card.buttonText} onChange={(e) => handleCardChange(index, 'buttonText', e.target.value)} placeholder="Button Text (Max 20 chars)" maxLength={20} className={inputClass} required={index === 0} />
+                  <input type="url" value={card.buttonUrl} onChange={(e) => handleCardChange(index, 'buttonUrl', e.target.value)} placeholder="Button URL (e.g. https://...)" className={inputClass} required={index === 0} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={`pt-2 flex justify-end gap-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <button type="button" onClick={onClose} className={`px-4 py-2 rounded-lg text-sm font-medium ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>Cancel</button>
+        <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600">Send Carousel</button>
+      </div>
+    </form>
+  );
+};
+
+// ------------------------------------------------------------------
+// 9. CTA URL BUILDER
+// ------------------------------------------------------------------
+export const CtaUrlBuilder = ({ isDarkMode, onSubmit, onClose }) => {
+  const [body, setBody] = useState('Tap the button below to view our latest collection.');
+  const [displayText, setDisplayText] = useState('Shop Now');
+  const [url, setUrl] = useState('');
+  const [footer, setFooter] = useState('');
+  
+  const [headerType, setHeaderType] = useState('none');
+  const [headerContent, setHeaderContent] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!body.trim() || !displayText.trim() || !url.trim()) return;
+
+    // Validate Meta URL requirement (must have http/https)
+    let finalUrl = url.trim();
+    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+      finalUrl = `https://${finalUrl}`;
+    }
+
+    const payload = {
+      body: body.trim(),
+      display_text: displayText.trim().substring(0, 20), // Strict 20 char limit
+      url: finalUrl,
+      footer: footer.trim() || undefined,
+    };
+
+    if (headerType !== 'none' && headerContent.trim()) {
+      payload.header_type = headerType;
+      if (headerType === 'text') {
+        payload.header_text = headerContent.trim().substring(0, 60); // Strict 60 char limit
+      } else {
+        payload.header_link = headerContent.trim();
+      }
+    }
+
+    onSubmit({
+      type: 'cta-url',
+      payload: payload
+    });
+  };
+
+  const inputClass = getSharedInputClass(isDarkMode);
+  const labelClass = getSharedLabelClass(isDarkMode);
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-full text-indigo-500">
+          <LinkIcon className="w-6 h-6" />
+        </div>
+        <div>
+          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>CTA Link Button</h4>
+          <p className="text-xs text-gray-500">Send a prominent button that opens a web link.</p>
+        </div>
+      </div>
+
+      <div className="border p-3 rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <label className={labelClass}>Header (Optional)</label>
+        <div className="flex gap-2 mb-2">
+          <select value={headerType} onChange={(e) => { setHeaderType(e.target.value); setHeaderContent(''); }} className={inputClass}>
+            <option value="none">None</option>
+            <option value="text">Text</option>
+            <option value="image">Image (URL)</option>
+            <option value="video">Video (URL)</option>
+            <option value="document">Document (URL)</option>
+          </select>
+        </div>
+        {headerType !== 'none' && (
+          <input 
+            type="text" 
+            value={headerContent} 
+            onChange={(e) => setHeaderContent(e.target.value)} 
+            placeholder={headerType === 'text' ? "Header Text (Max 60 chars)" : "Media URL (https://...)"}
+            maxLength={headerType === 'text' ? 60 : undefined}
+            className={inputClass} 
+            required
+          />
+        )}
+      </div>
+
+      <div>
+        <label className={labelClass}>Main Message Body <span className="text-red-500">*</span></label>
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows="2" maxLength={1024} className={inputClass} required />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Button Text <span className="text-red-500">*</span></label>
+          <input type="text" value={displayText} onChange={(e) => setDisplayText(e.target.value)} placeholder="Max 20 chars" maxLength={20} className={inputClass} required />
+        </div>
+        <div>
+          <label className={labelClass}>Destination URL <span className="text-red-500">*</span></label>
+          <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="e.g. caratandchrome.com/shop" className={inputClass} required />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Footer Text (Optional)</label>
+        <input type="text" value={footer} onChange={(e) => setFooter(e.target.value)} placeholder="Max 60 chars" maxLength={60} className={inputClass} />
+      </div>
+
+      <div className={`pt-2 flex justify-end gap-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <button type="button" onClick={onClose} className={`px-4 py-2 rounded-lg text-sm font-medium ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>Cancel</button>
+        <button type="submit" className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600">Send Link</button>
+      </div>
+    </form>
+  );
+};
+
+// ------------------------------------------------------------------
+// 10. PRODUCT CAROUSEL BUILDER
+// ------------------------------------------------------------------
+export const ProductCarouselBuilder = ({ isDarkMode, onSubmit, onClose }) => {
+  const [body, setBody] = useState('Check out our featured products! 👇');
+  const [catalogId, setCatalogId] = useState('');
+  
+  // Meta strictly requires a minimum of 2 products for a carousel
+  const [productIds, setProductIds] = useState(['', '']);
+
+  const handleAddProduct = () => {
+    if (productIds.length >= 10) return alert("Meta allows a maximum of 10 products per carousel.");
+    setProductIds([...productIds, '']);
+  };
+
+  const handleRemoveProduct = (index) => {
+    if (productIds.length <= 2) return alert("Meta requires at least 2 products for a product carousel.");
+    const newIds = [...productIds];
+    newIds.splice(index, 1);
+    setProductIds(newIds);
+  };
+
+  const handleProductChange = (index, value) => {
+    const newIds = [...productIds];
+    newIds[index] = value;
+    setProductIds(newIds);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!body.trim() || !catalogId.trim()) return;
+
+    const validProductIds = productIds.filter(id => id.trim() !== '');
+    
+    // Final enforcement check
+    if (validProductIds.length < 2) {
+      return alert("Meta strictly requires at least 2 valid Product IDs.");
+    }
+
+    onSubmit({
+      type: 'product-carousel',
+      payload: {
+        body: body.trim(),
+        catalog_id: catalogId.trim(),
+        product_ids: validProductIds.map(id => id.trim())
+      }
+    });
+  };
+
+  const inputClass = getSharedInputClass(isDarkMode);
+  const labelClass = getSharedLabelClass(isDarkMode);
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="p-3 bg-pink-100 dark:bg-pink-900/30 rounded-full text-pink-500">
+          <ShoppingBagIcon className="w-6 h-6" />
+        </div>
+        <div>
+          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Product Carousel</h4>
+          <p className="text-xs text-gray-500">Send a swipeable list of products straight from your Meta Catalog.</p>
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Main Message Body <span className="text-red-500">*</span></label>
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows="2" maxLength={1024} className={inputClass} required />
+      </div>
+
+      <div>
+        <label className={labelClass}>Meta Catalog ID <span className="text-red-500">*</span></label>
+        <input type="text" value={catalogId} onChange={(e) => setCatalogId(e.target.value)} placeholder="e.g. 123456789" className={inputClass} required />
+        <p className="text-[10px] text-gray-500 mt-1">Found in your Meta Commerce Manager.</p>
+      </div>
+
+      <div className="border-t border-b py-4 my-2 dark:border-gray-700 max-h-[40vh] overflow-y-auto pr-2">
+        <div className="flex justify-between items-center mb-3">
+          <label className={labelClass}>Product Retailer IDs ({productIds.length}/10)</label>
+          {productIds.length < 10 && (
+            <button type="button" onClick={handleAddProduct} className="text-xs text-pink-500 font-bold flex items-center gap-1 hover:underline">
+              <PlusIcon className="w-3 h-3" /> Add Product
+            </button>
+          )}
+        </div>
+        
+        <div className="flex flex-col gap-3">
+          {productIds.map((id, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <input 
+                type="text" 
+                value={id} 
+                onChange={(e) => handleProductChange(index, e.target.value)} 
+                placeholder={`Product ID ${index + 1} (e.g. SKU-123)`} 
+                className={`${inputClass} flex-1`} 
+                required 
+              />
+              {productIds.length > 2 && (
+                <button type="button" onClick={() => handleRemoveProduct(index)} className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md">
+                  <TrashIcon className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={`pt-2 flex justify-end gap-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <button type="button" onClick={onClose} className={`px-4 py-2 rounded-lg text-sm font-medium ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>Cancel</button>
+        <button type="submit" className="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-medium hover:bg-pink-600">Send Catalog</button>
       </div>
     </form>
   );

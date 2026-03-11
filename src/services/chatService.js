@@ -64,19 +64,21 @@ export const chatService = {
   },
 
   // 2. SEND REPLY BUTTONS (From our new Modal)
-  sendReplyButtons: async (recipientPhone, payload) => {
-    const url = `${WA_API}/send/interactive-reply-buttons`;
+sendReplyButtons: async (recipientPhone, payload) => {
+    // Note: Make sure this URL exactly matches your backend route path
+    const url = `${WA_API}/api/messages/send/interactive-reply-buttons`; 
+    
     return axios.post(url, {
-      user_id: getUserId(), // Will throw error if no user is found
+      user_id: getUserId(),
       to: recipientPhone,
       body: payload.body,
-      buttons: payload.buttons.map((btn, index) => ({
-        type: "reply",
-        reply: { 
-          id: `btn_${index}_${Date.now().toString().slice(-5)}`, 
-          title: btn 
-        }
+      
+      // 👇 Simply map the string array into the { id, title } format your backend expects
+      buttons: payload.buttons.map((btnTitle, index) => ({
+        id: `btn_${index}_${Date.now().toString().slice(-5)}`, 
+        title: btnTitle 
       })),
+      
       footer: payload.footer
     });
   },
@@ -152,6 +154,62 @@ export const chatService = {
       to: recipientPhone,
       country: payload.country,
       body: payload.body
+    });
+  },
+
+  // SEND INTERACTIVE LIST (Menu)
+  sendInteractiveList: async (recipientPhone, payload) => {
+    // Note: Make sure this URL path matches your Express router (we set it to /interactive-list earlier)
+    const url = `${WA_API}/api/messages/send/interactive-list`; 
+    return axios.post(url, {
+      user_id: getUserId(),
+      to: recipientPhone,
+      header: payload.header,
+      body: payload.body,
+      footer: payload.footer,
+      button_text: payload.button_text,
+      sections: payload.sections
+    });
+  },
+
+  // SEND INTERACTIVE CAROUSEL
+  sendInteractiveCarousel: async (recipientPhone, payload) => {
+    // Note: Verify this path matches your Express router (should be /interactive-carousel)
+    const url = `${WA_API}/api/messages/send/interactive-carousel`; 
+    return axios.post(url, {
+      user_id: getUserId(),
+      to: recipientPhone,
+      body: payload.body,
+      cards: payload.cards
+    });
+  },
+
+  // SEND CTA URL (Link Button)
+  sendCtaUrl: async (recipientPhone, payload) => {
+    // Note: Verify this path matches your Express router
+    const url = `${WA_API}/api/messages/send/cta-url`; 
+    return axios.post(url, {
+      user_id: getUserId(),
+      to: recipientPhone,
+      body: payload.body,
+      display_text: payload.display_text,
+      url: payload.url,
+      footer: payload.footer,
+      header_type: payload.header_type,
+      header_link: payload.header_link,
+      header_text: payload.header_text
+    });
+  },
+
+  // SEND PRODUCT CAROUSEL (Catalog integration)
+  sendProductCarousel: async (recipientPhone, payload) => {
+    const url = `${WA_API}/api/messages/send/product-carousel`; 
+    return axios.post(url, {
+      user_id: getUserId(),
+      to: recipientPhone,
+      body: payload.body,
+      catalog_id: payload.catalog_id,
+      product_ids: payload.product_ids
     });
   },
 
