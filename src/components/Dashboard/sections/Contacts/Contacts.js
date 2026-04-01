@@ -23,7 +23,7 @@ const Contacts = () => {
   const [contactsLoading, setContactsLoading] = useState(false);
   const [contactsError, setContactsError] = useState(null);
   const [contactsPagination, setContactsPagination] = useState({ page: 1, limit: 20, total: 0, offset: 0 });
-  const [contactsSort, setContactsSort] = useState('name');
+  const [contactsSort, setContactsSort] = useState('lastUpdated');
   const [updatingLeadStage, setUpdatingLeadStage] = useState(null);
   
   // Modal states
@@ -32,25 +32,21 @@ const Contacts = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   
-  // Utility functions
+  // Utility functions mapped to the new structured schema
   const getContactDisplayName = (contact) => {
-    const contactData = contact.contact_data || {};
-    const name = contactData.name || {};
-    if (name.first_name || name.last_name) {
-      return `${name.first_name || ''} ${name.last_name || ''}`.trim() || name.formatted_name || 'No Name';
-    }
-    if (name.formatted_name) {
-      return name.formatted_name;
-    }
-    if (contactData.phones && contactData.phones.length > 0) {
-      return contactData.phones[0].phone || 'Unknown';
-    }
-    return 'Unknown Contact';
+    const fullName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim();
+    if (fullName) return fullName;
+    return contact.phone_number || 'Unknown Contact';
   };
 
   const getCountryCodeFromPhone = (phone) => {
-    if (phone && phone.length > 0) {
-      return phone.substring(0, 2);
+    // Basic extraction assuming phone includes country code like +1 or +91
+    if (phone && phone.includes('+')) {
+      // Very basic lookup - in a real app you'd use libphonenumber-js
+      if (phone.startsWith('+1')) return 'US';
+      if (phone.startsWith('+91')) return 'IN';
+      if (phone.startsWith('+44')) return 'GB';
+      if (phone.startsWith('+61')) return 'AU';
     }
     return '';
   };
@@ -68,14 +64,15 @@ const Contacts = () => {
 
   const formatPhoneNumber = (phone) => {
     if (!phone) return '';
-    return phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
+    // A simple formatter, but usually it's best to display raw E.164 for WhatsApp
+    return phone.length >= 10 ? phone.replace(/(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3') : phone;
   };
 
   // Fetch contacts
   const fetchContacts = async () => {
-    const dbId = userData?.db_id || user?.db_id;
+    const dbId = userData?.db_id || user?.db_id || user?.uid; // Fallback to uid if db_id isn't explicitly set
     if (!dbId) {
-      console.log('⚠️ No db_id found, cannot fetch contacts');
+      console.log('⚠️ No user ID found, cannot fetch contacts');
       return;
     }
 
@@ -84,8 +81,6 @@ const Contacts = () => {
     try {
       const apiUrl = apiConfig.endpoints.contacts.getUserContacts(dbId);
       
-      console.log('🌐 [Fetch Contacts] Calling API:', apiUrl);
-
       const token = localStorage.getItem('authToken');
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -97,24 +92,20 @@ const Contacts = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to fetch contacts: ${response.status} ${response.statusText}`);
+        throw new Error(errorData.error || `Failed to fetch contacts: ${response.status}`);
       }
 
       const result = await response.json();
-      console.log('✅ [Fetch Contacts] Contacts fetched successfully:', result);
 
       if (result.success && result.data) {
         setContacts(result.data);
         setContactsPagination(prev => ({
           ...prev,
-          total: result.data.length
+          total: result.data.length // Update with real pagination total if backend provides it
         }));
       } else {
         setContacts([]);
-        setContactsPagination(prev => ({
-          ...prev,
-          total: 0
-        }));
+        setContactsPagination(prev => ({ ...prev, total: 0 }));
       }
     } catch (error) {
       console.error('❌ [Fetch Contacts] Error:', error);
@@ -125,58 +116,36 @@ const Contacts = () => {
     }
   };
 
-  // Fetch contacts on mount
   useEffect(() => {
     fetchContacts();
   }, [userData, user]);
 
-  // Handle quick lead stage update
+  // Handle quick lead stage update (Mapped to the new 'type' column)
   const handleQuickUpdateLeadStage = async (contactId, newStage) => {
     setUpdatingLeadStage({ [contactId]: true });
     try {
-      const contact = contacts.find(c => c.contact_id === contactId);
-      if (!contact) {
-        throw new Error('Contact not found');
-      }
-
-      const contactData = contact.contact_data || {};
-      const updatedContactData = {
-        ...contactData,
-        lead_stage: newStage
-      };
-
-      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
-      if (!dbServerUrl) {
-        throw new Error('Server configuration error.');
-      }
-
       const apiUrl = apiConfig.endpoints.contacts.updateContact(contactId);
-      
-      console.log('🌐 [Update Lead Stage] Calling API:', apiUrl);
-
       const token = localStorage.getItem('authToken');
+      
       const response = await fetch(apiUrl, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': token ? `Bearer ${token}` : '',
         },
-        body: JSON.stringify({
-          contact_data: updatedContactData
-        }),
+        // We map lead stage to the 'type' column in the new schema
+        body: JSON.stringify({ type: newStage }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to update lead stage: ${response.status} ${response.statusText}`);
+        throw new Error('Failed to update lead stage');
       }
 
-      console.log('✅ [Update Lead Stage] Lead stage updated successfully');
-
+      // Optimistic UI update
       setContacts(prevContacts => 
         prevContacts.map(c => 
           c.contact_id === contactId 
-            ? { ...c, contact_data: updatedContactData }
+            ? { ...c, type: newStage }
             : c
         )
       );
@@ -197,16 +166,9 @@ const Contacts = () => {
     if (!window.confirm('Are you sure you want to delete this contact?')) return;
     
     try {
-      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
-      if (!dbServerUrl) {
-        throw new Error('Server configuration error.');
-      }
-
       const apiUrl = apiConfig.endpoints.contacts.deleteContact(contactId);
-      
-      console.log('🌐 [Delete Contact] Calling API:', apiUrl);
-
       const token = localStorage.getItem('authToken');
+      
       const response = await fetch(apiUrl, {
         method: 'DELETE',
         headers: {
@@ -215,27 +177,21 @@ const Contacts = () => {
         },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to delete contact: ${response.status} ${response.statusText}`);
-      }
-
-      console.log('✅ [Delete Contact] Contact deleted successfully');
-
-      await fetchContacts();
+      if (!response.ok) throw new Error('Failed to delete contact');
+      
+      setContacts(prev => prev.filter(c => c.contact_id !== contactId));
     } catch (error) {
       console.error('❌ [Delete Contact] Error:', error);
       alert(`Failed to delete contact: ${error.message}`);
     }
   };
 
-  // Handle edit contact
   const handleEditContact = (contact) => {
     setEditingContact(contact);
     setIsEditContactModalOpen(true);
   };
 
-  // Handle export CSV
+  // Handle export CSV (Updated for new schema)
   const handleExportCsv = () => {
     try {
       if (contacts.length === 0) {
@@ -246,25 +202,19 @@ const Contacts = () => {
       const headers = ['Name', 'First Name', 'Last Name', 'Phone', 'Email', 'Company', 'Title', 'Lead Stage', 'Source'];
       
       const rows = contacts.map(contact => {
-        const contactData = contact.contact_data || {};
-        const name = contactData.name || {};
-        const phones = contactData.phones || [];
-        const emails = contactData.emails || [];
-        const org = contactData.org || {};
-        const primaryPhone = phones[0]?.phone || '';
-        const primaryEmail = emails[0]?.email || '';
-        const displayName = name.formatted_name || `${name.first_name || ''} ${name.last_name || ''}`.trim() || 'No Name';
+        const displayName = getContactDisplayName(contact);
+        const customAttrs = contact.custom_attributes || {};
         
         return [
           displayName,
-          name.first_name || '',
-          name.last_name || '',
-          primaryPhone,
-          primaryEmail,
-          org.company || '',
-          org.title || '',
-          contactData.lead_stage || '',
-          'NimbleAI'
+          contact.first_name || '',
+          contact.last_name || '',
+          contact.phone_number || '',
+          contact.email || '',
+          customAttrs.company || '',
+          customAttrs.title || '',
+          contact.type || 'NEW',
+          contact.source || 'Manual'
         ];
       });
 
@@ -283,7 +233,6 @@ const Contacts = () => {
       link.click();
       document.body.removeChild(link);
       
-      console.log('✅ [Export CSV] Contacts exported successfully');
     } catch (error) {
       console.error('❌ [Export CSV] Error:', error);
       alert('Failed to export contacts. Please try again.');
@@ -297,7 +246,7 @@ const Contacts = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Contacts</h2>
             <p className="text-sm text-gray-600">
-              Contact list stores the list of numbers that you've interacted with. You can even manually export or import contacts.
+              Manage your audience and lead segments. You can manually export or import contacts.
             </p>
           </div>
           <button className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
@@ -312,7 +261,7 @@ const Contacts = () => {
           >
             <span>+</span>
             <span>Add Contact</span>
-            <span className="text-xs bg-blue-700 px-2 py-1 rounded">{contactsPagination.total || contacts.length} in total</span>
+            <span className="text-xs bg-blue-700 px-2 py-1 rounded">{contactsPagination.total || contacts.length}</span>
           </button>
         </div>
 
@@ -351,7 +300,7 @@ const Contacts = () => {
               <div>Phone number</div>
               <div>Source</div>
               <div>Lead Stage</div>
-              <div>Edit/Delete</div>
+              <div>Actions</div>
             </div>
           </div>
 
@@ -372,32 +321,34 @@ const Contacts = () => {
             ) : (
               (contactsSort === 'alpha'
                 ? [...contacts].sort((a, b) => getContactDisplayName(a).localeCompare(getContactDisplayName(b)))
-                : [...contacts].sort((a, b) => (new Date(b.updated_at || b.created_at || 0)) - (new Date(a.updated_at || a.created_at || 0)))
+                : [...contacts].sort((a, b) => (new Date(b.updated_at || 0)) - (new Date(a.updated_at || 0)))
               ).map((contact) => {
-                const contactData = contact.contact_data || {};
-                const name = contactData.name || {};
-                const displayName = name.formatted_name || `${name.first_name || ''} ${name.last_name || ''}`.trim() || 'No Name';
-                const phones = contactData.phones || [];
-                const primaryPhone = phones[0];
-                const phoneNumber = primaryPhone?.phone || '';
+                const displayName = getContactDisplayName(contact);
+                const phoneNumber = contact.phone_number || '';
                 const countryCode = phoneNumber ? getCountryCodeFromPhone(phoneNumber) : '';
                 const countryFlag = countryCode ? getCountryFlag(countryCode) : '';
                 const formattedPhone = phoneNumber ? formatPhoneNumber(phoneNumber) : 'No phone';
-                const leadStage = contactData.lead_stage;
+                
+                // We use 'type' to track the lead stage now
+                const leadStage = contact.type || 'NEW';
                 
                 return (
-                  <div key={contact.contact_id} className="p-4 hover:bg-gray-50">
+                  <div key={contact.contact_id} className="p-4 hover:bg-gray-50 transition-colors">
                     <div className="grid grid-cols-5 gap-4 items-center">
-                      <div className="text-sm font-medium text-gray-900">{displayName}</div>
-                      <div className="flex items-center gap-2 text-sm text-gray-700">
-                        {countryFlag && <span>{countryFlag}</span>}
-                        <span>{formattedPhone}</span>
+                      <div className="text-sm font-medium text-gray-900 truncate pr-2" title={displayName}>
+                        {displayName}
                       </div>
-                      <div className="text-sm text-gray-700">NimbleAI</div>
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        {countryFlag && <span title={countryCode}>{countryFlag}</span>}
+                        <span className="truncate">{formattedPhone}</span>
+                      </div>
+                      <div className="text-sm text-gray-700 capitalize">
+                        {contact.source ? contact.source.replace('_', ' ') : 'Manual'}
+                      </div>
                       <div className="text-sm text-gray-700">
                         <select
                           className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          value={leadStage || 'New Lead'}
+                          value={leadStage}
                           onChange={(e) => handleQuickUpdateLeadStage(contact.contact_id, e.target.value)}
                           disabled={updatingLeadStage && !!updatingLeadStage[contact.contact_id]}
                         >
@@ -406,16 +357,16 @@ const Contacts = () => {
                           ))}
                         </select>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         <button 
                           onClick={() => handleEditContact(contact)}
-                          className="px-2 py-1 text-xs text-blue-600 hover:underline"
+                          className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
                         >
                           Edit
                         </button>
                         <button 
                           onClick={() => handleDeleteContact(contact.contact_id)}
-                          className="px-2 py-1 text-xs text-red-600 hover:underline"
+                          className="text-xs font-medium text-red-600 hover:text-red-800 transition-colors"
                         >
                           Delete
                         </button>
@@ -429,7 +380,7 @@ const Contacts = () => {
 
           <div className="p-4 border-t border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between text-xs text-gray-600">
-              <span>Rows per page:</span>
+              <span>Rows per page: {contactsPagination.limit}</span>
               <span>
                 {contacts.length > 0 
                   ? `${contactsPagination.offset + 1}–${Math.min(contactsPagination.offset + contacts.length, contactsPagination.total)} of ${contactsPagination.total}`
@@ -446,7 +397,10 @@ const Contacts = () => {
         <AddContactModal
           isOpen={isAddContactModalOpen}
           onClose={() => setIsAddContactModalOpen(false)}
-          onSuccess={fetchContacts}
+          onSuccess={() => {
+            setIsAddContactModalOpen(false);
+            fetchContacts();
+          }}
         />
       )}
 
@@ -458,7 +412,10 @@ const Contacts = () => {
             setIsEditContactModalOpen(false);
             setEditingContact(null);
           }}
-          onSuccess={fetchContacts}
+          onSuccess={() => {
+            setIsEditContactModalOpen(false);
+            fetchContacts();
+          }}
         />
       )}
 
@@ -466,7 +423,10 @@ const Contacts = () => {
         <ImportContactsModal
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
-          onSuccess={fetchContacts}
+          onSuccess={() => {
+            setIsImportModalOpen(false);
+            fetchContacts();
+          }}
         />
       )}
     </div>
@@ -474,4 +434,3 @@ const Contacts = () => {
 };
 
 export default Contacts;
-

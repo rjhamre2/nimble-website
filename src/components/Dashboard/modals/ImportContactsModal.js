@@ -5,7 +5,6 @@ import { apiConfig } from '../../../config/api';
 const ImportContactsModal = ({ isOpen, onClose, onSuccess }) => {
   const { user, userData } = useAuth();
   
-  // CSV Import state
   const [csvHeaders, setCsvHeaders] = useState([]);
   const [csvRows, setCsvRows] = useState([]);
   const [mapping, setMapping] = useState({});
@@ -14,319 +13,190 @@ const ImportContactsModal = ({ isOpen, onClose, onSuccess }) => {
   const [importResults, setImportResults] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
 
-  // Known fields for mapping
+  // Updated Known Fields to match new DB schema
   const knownFields = [
-    { value: 'first_name', label: 'First Name' },
-    { value: 'last_name', label: 'Last Name' },
-    { value: 'phone', label: 'Phone' },
-    { value: 'email', label: 'Email' },
-    { value: 'company', label: 'Company' },
-    { value: 'title', label: 'Title' }
+    { value: 'first_name', label: 'First Name (Core)' },
+    { value: 'last_name', label: 'Last Name (Core)' },
+    { value: 'phone_number', label: 'Phone Number (Core)' },
+    { value: 'email', label: 'Email (Core)' },
+    { value: 'type', label: 'Lead Stage (Core)' },
+    { value: 'tags', label: 'Tags (Comma Separated)' },
+    { value: 'company', label: 'Company (Custom)' },
+    { value: 'title', label: 'Title (Custom)' },
+    { value: 'custom_attribute', label: 'Save as Custom Attribute' }, // Catch-all
   ];
 
-  // Helper function to get field name variations for auto-mapping
   const getFieldVariations = (field) => {
     const variations = {
       'first_name': ['first name', 'firstname', 'fname', 'given name', 'first'],
-      'last_name': ['last name', 'lastname', 'lname', 'surname', 'family name', 'last'],
-      'phone': ['phone', 'mobile', 'cell', 'telephone', 'tel', 'number'],
+      'last_name': ['last name', 'lastname', 'lname', 'surname', 'last'],
+      'phone_number': ['phone', 'mobile', 'cell', 'telephone', 'tel', 'number', 'whatsapp'],
       'email': ['email', 'e-mail', 'mail'],
       'company': ['company', 'organization', 'org', 'business'],
       'title': ['title', 'job title', 'position', 'role'],
-      'address': ['address', 'street', 'location'],
-      'city': ['city'],
-      'state': ['state', 'province'],
-      'zip': ['zip', 'postal code', 'postcode', 'zip code'],
-      'country': ['country'],
-      'birthday': ['birthday', 'birth date', 'dob', 'date of birth'],
-      'lead_stage': ['lead stage', 'stage', 'status', 'lead status']
+      'type': ['lead stage', 'stage', 'status', 'type'],
+      'tags': ['tags', 'labels']
     };
     return variations[field] || [field];
   };
 
-  // CSV file handler
   const handleCsvFile = (file) => {
     return new Promise((resolve, reject) => {
-      if (!file) {
-        reject(new Error('No file provided'));
-        return;
-      }
+      if (!file) { reject(new Error('No file provided')); return; }
 
       const reader = new FileReader();
-      
       reader.onload = (e) => {
         try {
           const text = e.target.result;
           
-          // Simple CSV parser - handles quoted fields and commas
-          const parseCSV = (csvText) => {
-            const lines = csvText.split('\n').filter(line => line.trim());
-            if (lines.length === 0) {
-              return { headers: [], rows: [] };
-            }
-
-            // Parse first line as headers
-            const headers = parseCSVLine(lines[0]);
-            
-            // Parse remaining lines as data rows
-            const rows = lines.slice(1)
-              .map(line => parseCSVLine(line))
-              .filter(row => row.some(cell => cell.trim())); // Filter out empty rows
-
-            return { headers, rows };
-          };
-
-          // Helper function to parse a CSV line, handling quoted fields
           const parseCSVLine = (line) => {
             const result = [];
-            let current = '';
-            let inQuotes = false;
-
+            let current = '', inQuotes = false;
             for (let i = 0; i < line.length; i++) {
-              const char = line[i];
-              const nextChar = line[i + 1];
-
-              if (char === '"') {
-                if (inQuotes && nextChar === '"') {
-                  // Escaped quote
-                  current += '"';
-                  i++; // Skip next quote
-                } else {
-                  // Toggle quote state
-                  inQuotes = !inQuotes;
-                }
-              } else if (char === ',' && !inQuotes) {
-                // End of field
-                result.push(current.trim());
-                current = '';
-              } else {
-                current += char;
-              }
+              if (line[i] === '"') {
+                if (inQuotes && line[i + 1] === '"') { current += '"'; i++; } 
+                else { inQuotes = !inQuotes; }
+              } else if (line[i] === ',' && !inQuotes) {
+                result.push(current.trim()); current = '';
+              } else { current += line[i]; }
             }
-            
-            // Add last field
             result.push(current.trim());
-            
             return result;
           };
 
-          const { headers, rows } = parseCSV(text);
-          
-          if (headers.length === 0) {
-            throw new Error('CSV file appears to be empty or invalid');
-          }
+          const lines = text.split('\n').filter(line => line.trim());
+          if (lines.length === 0) throw new Error('Empty CSV');
 
-          // Update state
+          const headers = parseCSVLine(lines[0]).map(h => h.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase());
+          const rows = lines.slice(1).map(parseCSVLine).filter(row => row.some(cell => cell.trim()));
+
           setCsvHeaders(headers);
           setCsvRows(rows);
           setCsvParseError('');
           
-          // Auto-map known fields if headers match
+          // Auto-map logic
           const autoMapping = {};
-          headers.forEach((header, index) => {
-            const lowerHeader = header.toLowerCase().trim();
+          headers.forEach(header => {
+            let mapped = false;
             knownFields.forEach(field => {
-              const fieldVariations = getFieldVariations(field.value);
-              if (fieldVariations.some(variation => lowerHeader.includes(variation) || variation.includes(lowerHeader))) {
+              if (mapped || field.value === 'custom_attribute') return;
+              if (getFieldVariations(field.value).some(v => header.includes(v))) {
                 autoMapping[header] = field.value;
+                mapped = true;
               }
             });
+            // If we couldn't auto-map to a core field, default to saving it as a custom attribute
+            if (!mapped) autoMapping[header] = 'custom_attribute';
           });
+          
           setMapping(autoMapping);
-
-          console.log('✅ [CSV Import] File parsed successfully:', { headers, rowCount: rows.length });
           resolve({ headers, rows });
         } catch (error) {
-          console.error('❌ [CSV Import] Parse error:', error);
-          setCsvParseError(error.message || 'Failed to parse CSV file');
-          setCsvHeaders([]);
-          setCsvRows([]);
+          setCsvParseError(error.message);
           reject(error);
         }
       };
-
-      reader.onerror = () => {
-        const error = new Error('Failed to read file');
-        setCsvParseError(error.message);
-        reject(error);
-      };
-
       reader.readAsText(file);
     });
   };
 
-
   const handleChangeMapping = (csvHeader, fieldValue) => {
-    const newMapping = { ...mapping };
-    if (fieldValue) {
-      newMapping[csvHeader] = fieldValue;
-    } else {
-      delete newMapping[csvHeader];
-    }
-    setMapping(newMapping);
+    setMapping(prev => ({ ...prev, [csvHeader]: fieldValue }));
   };
 
   const handleStartImport = async () => {
-    if (csvRows.length === 0) {
-      alert('No contacts to import');
-      return;
-    }
-
+    if (csvRows.length === 0) return;
     setIsImporting(true);
     setImportProgress({ success: 0, failed: 0, total: csvRows.length });
-    setImportResults(null);
     
     try {
-      const dbId = userData?.db_id || user?.db_id;
-      if (!dbId) {
-        throw new Error('User ID not found');
-      }
-
+      const dbId = userData?.db_id || user?.db_id || user?.uid;
       const token = localStorage.getItem('authToken');
-      let successCount = 0;
-      let failedCount = 0;
+      let successCount = 0, failedCount = 0;
 
-      // Import contacts one by one
       for (let i = 0; i < csvRows.length; i++) {
         const row = csvRows[i];
         
         try {
-          // Build contact data from mapped row
+          // Initialize flat payload structure
           const contactData = {
-            name: {
-              first_name: '',
-              last_name: '',
-              formatted_name: ''
-            },
-            phones: [],
-            emails: [],
-            org: {},
-            lead_stage: 'NEW'
+            user_id: dbId,
+            source: 'csv_import',
+            first_name: null,
+            last_name: null,
+            phone_number: null,
+            email: null,
+            type: 'NEW', // Default lead stage
+            tags: [],
+            custom_attributes: {}
           };
 
-          // Map fields from CSV row
-          Object.keys(mapping).forEach(csvHeader => {
-            const fieldValue = mapping[csvHeader];
-            const csvColumnIndex = csvHeaders.indexOf(csvHeader);
-            const cellValue = csvColumnIndex >= 0 ? (row[csvColumnIndex] || '').trim() : '';
+          // Map CSV data
+          csvHeaders.forEach((header, index) => {
+            const mappedType = mapping[header];
+            const cellValue = row[index]?.trim();
+            
+            if (!mappedType || !cellValue || mappedType === 'ignore') return;
 
-            if (!cellValue) return;
-
-            switch (fieldValue) {
-              case 'first_name':
-                contactData.name.first_name = cellValue;
-                break;
-              case 'last_name':
-                contactData.name.last_name = cellValue;
-                break;
-              case 'phone':
-                contactData.phones.push({
-                  phone: cellValue,
-                  type: 'MOBILE'
-                });
-                break;
-              case 'email':
-                contactData.emails.push({
-                  email: cellValue,
-                  type: 'WORK'
-                });
-                break;
-              case 'company':
-                contactData.org.company = cellValue;
-                break;
-              case 'title':
-                contactData.org.title = cellValue;
-                break;
+            if (['first_name', 'last_name', 'phone_number', 'email', 'type'].includes(mappedType)) {
+              // Map directly to core fields
+              if (mappedType === 'phone_number') {
+                // Ensure no spaces in DB phone number
+                contactData.phone_number = cellValue.replace(/\s+/g, '');
+              } else {
+                contactData[mappedType] = cellValue;
+              }
+            } else if (mappedType === 'tags') {
+              // Split tag string into array
+              contactData.tags = cellValue.split(',').map(t => t.trim()).filter(Boolean);
+            } else if (mappedType === 'company' || mappedType === 'title') {
+              // Known custom attributes
+              contactData.custom_attributes[mappedType] = cellValue;
+            } else if (mappedType === 'custom_attribute') {
+              // Dump any unrecognized but requested column into JSONB
+              contactData.custom_attributes[header] = cellValue;
             }
           });
 
-          // Set formatted name
-          const firstName = contactData.name.first_name;
-          const lastName = contactData.name.last_name;
-          contactData.name.formatted_name = `${firstName} ${lastName}`.trim() || 'No Name';
-
-          // Validate required fields
-          if (!contactData.name.first_name || contactData.phones.length === 0) {
-            throw new Error('Missing required fields: first name and phone');
+          if (!contactData.first_name || !contactData.phone_number) {
+            throw new Error('Missing required fields: first_name or phone_number');
           }
 
-          // Make API call to create contact
-          const apiUrl = apiConfig.endpoints.contacts.createContact();
-          const response = await fetch(apiUrl, {
+          const response = await fetch(apiConfig.endpoints.contacts.createContact(), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': token ? `Bearer ${token}` : '',
             },
-            body: JSON.stringify({
-              user_id: dbId,
-              contact_data: contactData
-            }),
+            body: JSON.stringify(contactData), // Sending flat payload!
           });
 
           if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `Failed to import contact: ${response.status}`);
+            // Ignore duplicates silently during bulk import, or count them as failed
+            if (response.status === 409) throw new Error('Duplicate phone number');
+            throw new Error(`Status ${response.status}`);
           }
-
           successCount++;
         } catch (error) {
-          console.error(`❌ [CSV Import] Failed to import row ${i + 1}:`, error);
           failedCount++;
         }
 
-        // Update progress
-        setImportProgress({
-          success: successCount,
-          failed: failedCount,
-          total: csvRows.length
-        });
+        setImportProgress({ success: successCount, failed: failedCount, total: csvRows.length });
       }
 
-      setImportResults({
-        success: true,
-        imported: successCount,
-        failed: failedCount,
-        total: csvRows.length
-      });
+      setImportResults({ success: true, imported: successCount, failed: failedCount, total: csvRows.length });
+      if (onSuccess) await onSuccess();
 
-      // Refresh contacts list
-      if (onSuccess) {
-        await onSuccess();
-      }
-
-      console.log(`✅ [CSV Import] Import completed: ${successCount} successful, ${failedCount} failed`);
-
-      // Show confirmation and close modal after a short delay
       setTimeout(() => {
-        resetForm();
+        setCsvHeaders([]); setCsvRows([]); setMapping({}); setImportResults(null);
         onClose();
-      }, 2000); // 2 second delay to show confirmation message
+      }, 3000);
+
     } catch (error) {
-      console.error('❌ [CSV Import] Import error:', error);
-      setImportResults({
-        success: false,
-        error: error.message,
-        imported: importProgress.success,
-        failed: importProgress.failed
-      });
+      setImportResults({ success: false, error: error.message, imported: importProgress.success, failed: importProgress.failed });
     } finally {
       setIsImporting(false);
     }
-  };
-
-  const resetForm = () => {
-    setCsvHeaders([]);
-    setCsvRows([]);
-    setMapping({});
-    setCsvParseError('');
-    setImportProgress({ success: 0, failed: 0, total: 0 });
-    setImportResults(null);
-  };
-
-  const handleClose = () => {
-    resetForm();
-    onClose();
   };
 
   if (!isOpen) return null;
@@ -336,58 +206,37 @@ const ImportContactsModal = ({ isOpen, onClose, onSuccess }) => {
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Import Contacts (CSV)</h2>
-          <button
-            className="text-gray-500 hover:text-gray-700"
-            onClick={handleClose}
-            aria-label="Close"
-            disabled={isImporting}
-          >
-            ✕
-          </button>
+          <button className="text-gray-500 hover:text-gray-700" onClick={onClose} disabled={isImporting}>✕</button>
         </div>
 
-        {/* Step 1: Upload */}
         <div className="space-y-4">
           <div className="border border-dashed border-gray-300 rounded-lg p-4">
-            <p className="text-sm text-gray-700 mb-3">Upload a CSV file. The first row should be headers.</p>
+            <p className="text-sm text-gray-700 mb-3">Upload a CSV file. Unknown columns will be safely saved as Custom Attributes.</p>
             <input
               type="file"
               accept=".csv,text/csv"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  handleCsvFile(file)
-                    .catch((error) => {
-                      console.error('Failed to parse CSV file:', error);
-                    });
-                }
-              }}
-              className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              onChange={(e) => handleCsvFile(e.target.files?.[0])}
+              className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:font-semibold file:bg-blue-50 file:text-blue-700"
               disabled={isImporting}
             />
-            {csvParseError && (
-              <div className="mt-2 text-sm text-red-600">{csvParseError}</div>
-            )}
-            {csvHeaders.length > 0 && (
-              <div className="mt-2 text-xs text-gray-600">Detected {csvRows.length} rows. {csvHeaders.length} columns.</div>
-            )}
+            {csvParseError && <div className="mt-2 text-sm text-red-600">{csvParseError}</div>}
+            {csvHeaders.length > 0 && <div className="mt-2 text-xs text-gray-600">Detected {csvRows.length} rows.</div>}
           </div>
 
-          {/* Step 2: Mapping */}
           {csvHeaders.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-gray-900">Map Columns</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto p-2 bg-gray-50 rounded border">
                 {csvHeaders.map((header) => (
                   <div key={header} className="flex items-center gap-2">
-                    <div className="w-1/2 text-xs text-gray-700 truncate" title={header}>{header || '(unnamed column)'}</div>
+                    <div className="w-1/2 text-xs font-medium text-gray-700 truncate" title={header}>{header}</div>
                     <select
                       className="w-1/2 border rounded px-2 py-1 text-xs"
-                      value={mapping[header] || ''}
+                      value={mapping[header] || 'ignore'}
                       onChange={(e) => handleChangeMapping(header, e.target.value)}
                       disabled={isImporting}
                     >
-                      <option value="">Ignore</option>
+                      <option value="ignore">Ignore Column</option>
                       {knownFields.map(f => (
                         <option key={f.value} value={f.value}>{f.label}</option>
                       ))}
@@ -398,78 +247,31 @@ const ImportContactsModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
           )}
 
-          {/* Import Results/Confirmation */}
           {importResults && (
-            <div className={`p-4 rounded-lg border ${
-              importResults.success 
-                ? 'bg-green-50 border-green-200' 
-                : 'bg-red-50 border-red-200'
-            }`}>
-              {importResults.success ? (
-                <div className="flex items-start space-x-3">
-                  <span className="text-green-600 text-xl">✅</span>
-                  <div className="flex-1">
-                    <p className="font-semibold text-green-800 mb-1">
-                      Import Completed Successfully!
-                    </p>
-                    <p className="text-sm text-green-700">
-                      {importResults.imported} contact{importResults.imported !== 1 ? 's' : ''} imported successfully.
-                      {importResults.failed > 0 && (
-                        <span className="block mt-1">
-                          {importResults.failed} contact{importResults.failed !== 1 ? 's' : ''} failed to import.
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-green-600 mt-2">
-                      The modal will close automatically...
-                    </p>
-                  </div>
+            <div className={`p-4 rounded-lg border ${importResults.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+              <div className="flex items-start space-x-3">
+                <span className="text-xl">{importResults.success ? '✅' : '❌'}</span>
+                <div>
+                  <p className="font-semibold">{importResults.success ? 'Import Completed' : 'Import Failed'}</p>
+                  <p className="text-sm">{importResults.success ? `${importResults.imported} imported, ${importResults.failed} failed or duplicates.` : importResults.error}</p>
                 </div>
-              ) : (
-                <div className="flex items-start space-x-3">
-                  <span className="text-red-600 text-xl">❌</span>
-                  <div className="flex-1">
-                    <p className="font-semibold text-red-800 mb-1">
-                      Import Failed
-                    </p>
-                    <p className="text-sm text-red-700">
-                      {importResults.error || 'An error occurred during import'}
-                    </p>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           )}
 
-          {/* Step 4: Import */}
-          <div className="flex items-center justify-between pt-2 border-t">
+          <div className="flex items-center justify-between pt-4 border-t">
             <div className="text-xs text-gray-600">
-              {importProgress.total > 0 && !importResults && (
-                <span>Imported {importProgress.success}/{importProgress.total} successful, {importProgress.failed} failed.</span>
-              )}
+              {isImporting && `Processing: ${importProgress.success + importProgress.failed} / ${importProgress.total}`}
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-                onClick={handleClose}
-                disabled={isImporting}
-              >
-                {importResults ? 'Close' : 'Cancel'}
-              </button>
+              <button type="button" className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded" onClick={onClose} disabled={isImporting}>Cancel</button>
               {!importResults && (
                 <button
                   type="button"
-                  className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2"
+                  className="px-4 py-2 text-sm text-white bg-blue-600 rounded disabled:opacity-60 flex items-center gap-2"
                   disabled={isImporting || csvRows.length === 0}
                   onClick={handleStartImport}
                 >
-                  {isImporting && (
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
                   {isImporting ? 'Importing...' : 'Start Import'}
                 </button>
               )}
