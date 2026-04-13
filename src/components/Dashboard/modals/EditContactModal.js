@@ -12,6 +12,7 @@ const EditContactModal = ({ isOpen, contact, onClose, onSuccess }) => {
   const [contactEmail, setContactEmail] = useState('');
   const [contactLeadStage, setContactLeadStage] = useState('NEW');
   const [whatsappOptIn, setWhatsappOptIn] = useState(false);
+  const [contactTags, setContactTags] = useState(''); // <-- NEW TAGS STATE
   
   // Form state - Custom Attributes
   const [contactEmailType, setContactEmailType] = useState('WORK');
@@ -89,6 +90,13 @@ const EditContactModal = ({ isOpen, contact, onClose, onSuccess }) => {
       setContactLeadStage(contact.type || 'NEW');
       setWhatsappOptIn(contact.whatsapp_mkt_opt_in || false);
       
+      // Load and format tags array into a comma-separated string
+      if (contact.tags && Array.isArray(contact.tags)) {
+        setContactTags(contact.tags.join(', '));
+      } else {
+        setContactTags('');
+      }
+      
       setContactEmailType(customAttrs.email_type || 'WORK');
       setContactAddresses(customAttrs.addresses || []);
       setContactCompany(customAttrs.company || '');
@@ -103,7 +111,27 @@ const EditContactModal = ({ isOpen, contact, onClose, onSuccess }) => {
     }
   }, [isOpen, contact]);
 
-  const resetContactForm = () => { /* Logic matches AddContactModal */ onClose(); };
+  const resetContactForm = () => { 
+    setContactFirstName('');
+    setContactLastName('');
+    setContactPhones([{ phone: '', type: 'MOBILE', countryCode: 'IN', dialCode: '+91' }]);
+    setContactEmail('');
+    setContactEmailType('WORK');
+    setContactAddresses([]);
+    setContactCompany('');
+    setContactDepartment('');
+    setContactTitle('');
+    setContactUrl('');
+    setContactUrlType('WORK');
+    setContactBirthday('');
+    setContactLeadStage('NEW');
+    setWhatsappOptIn(false);
+    setContactTags('');
+    setContactError('');
+    setContactSuccess('');
+    onClose(); 
+  };
+  
   const addPhone = () => setContactPhones([...contactPhones, { phone: '', type: 'MOBILE', countryCode: 'IN', dialCode: '+91' }]);
   const removePhone = (index) => setContactPhones(contactPhones.filter((_, i) => i !== index));
   const updatePhone = (index, field, value) => {
@@ -159,6 +187,7 @@ const EditContactModal = ({ isOpen, contact, onClose, onSuccess }) => {
         email: contactEmail || null,
         type: contactLeadStage,
         whatsapp_mkt_opt_in: whatsappOptIn,
+        tags: contactTags ? contactTags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
         // Only update opt-in date if it transitioned to true and didn't have one
         ...(whatsappOptIn && !contact.mkt_opt_in_date ? { mkt_opt_in_date: new Date().toISOString() } : {}),
         custom_attributes
@@ -215,11 +244,11 @@ const EditContactModal = ({ isOpen, contact, onClose, onSuccess }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">First Name <span className="text-red-500">*</span></label>
-                <input type="text" className="w-full border rounded px-3 py-2" value={contactFirstName} onChange={(e) => setContactFirstName(e.target.value)} disabled={isSubmittingContact} required />
+                <input type="text" className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100" value={contactFirstName} onChange={(e) => setContactFirstName(e.target.value)} disabled={isSubmittingContact} required />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                <input type="text" className="w-full border rounded px-3 py-2" value={contactLastName} onChange={(e) => setContactLastName(e.target.value)} disabled={isSubmittingContact} />
+                <input type="text" className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100" value={contactLastName} onChange={(e) => setContactLastName(e.target.value)} disabled={isSubmittingContact} />
               </div>
             </div>
           </div>
@@ -236,8 +265,8 @@ const EditContactModal = ({ isOpen, contact, onClose, onSuccess }) => {
                   )}
                 </div>
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2 flex border rounded overflow-hidden bg-white">
-                    <select className="border-r px-2 py-2 text-sm bg-transparent" value={phoneObj.countryCode} onChange={(e) => updatePhone(index, 'countryCode', e.target.value)} disabled={isSubmittingContact}>
+                  <div className="col-span-2 flex border rounded overflow-hidden focus-within:ring-2 focus-within:ring-blue-400 bg-white">
+                    <select className="border-r px-2 py-2 text-sm bg-transparent outline-none disabled:bg-gray-100" value={phoneObj.countryCode} onChange={(e) => updatePhone(index, 'countryCode', e.target.value)} disabled={isSubmittingContact}>
                       <option value="IN">🇮🇳 IN</option>
                       <option value="US">🇺🇸 US</option>
                       <option value="GB">🇬🇧 GB</option>
@@ -245,10 +274,10 @@ const EditContactModal = ({ isOpen, contact, onClose, onSuccess }) => {
                       <option value="AU">🇦🇺 AU</option>
                     </select>
                     <div className="flex items-center px-2 bg-gray-50 border-r text-sm">{phoneObj.dialCode}</div>
-                    <input type="tel" className="flex-1 px-3 py-2 focus:outline-none" value={phoneObj.phone} onChange={(e) => updatePhone(index, 'phone', e.target.value)} required={index === 0} disabled={isSubmittingContact} />
+                    <input type="tel" className="flex-1 px-3 py-2 focus:outline-none disabled:bg-gray-100" value={phoneObj.phone} onChange={(e) => updatePhone(index, 'phone', e.target.value)} required={index === 0} disabled={isSubmittingContact} />
                   </div>
                   {index !== 0 && (
-                    <select className="border rounded px-3 py-2" value={phoneObj.type} onChange={(e) => updatePhone(index, 'type', e.target.value)} disabled={isSubmittingContact}>
+                    <select className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100" value={phoneObj.type} onChange={(e) => updatePhone(index, 'type', e.target.value)} disabled={isSubmittingContact}>
                       <option value="MOBILE">Mobile</option>
                       <option value="HOME">Home</option>
                       <option value="WORK">Work</option>
@@ -258,40 +287,82 @@ const EditContactModal = ({ isOpen, contact, onClose, onSuccess }) => {
                 {index === 0 && (
                   <div className="mt-3 flex items-center space-x-2 bg-green-50 p-2 rounded border border-green-100">
                     <input type="checkbox" id="whatsappOptInEdit" checked={whatsappOptIn} onChange={(e) => setWhatsappOptIn(e.target.checked)} className="w-4 h-4 text-green-600 rounded" disabled={isSubmittingContact} />
-                    <label htmlFor="whatsappOptInEdit" className="text-sm font-medium text-green-900 cursor-pointer">WhatsApp Marketing Opt-In</label>
+                    <label htmlFor="whatsappOptInEdit" className="text-sm font-medium text-green-900 cursor-pointer">Customer has opted-in to receive WhatsApp marketing messages</label>
                   </div>
                 )}
               </div>
             ))}
-            <button type="button" onClick={addPhone} className="w-full px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50" disabled={isSubmittingContact}>+ Add Alternate Phone</button>
+            <button type="button" onClick={addPhone} className="w-full px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50" disabled={isSubmittingContact}>+ Add Alternate Phone</button>
           </div>
 
-          {/* Email & Details */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input type="email" className="w-full border rounded px-3 py-2" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} disabled={isSubmittingContact} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Lead Stage</label>
-              <select className="w-full border rounded px-3 py-2" value={contactLeadStage} onChange={(e) => setContactLeadStage(e.target.value)} disabled={isSubmittingContact}>
-                <option value="NEW">New Lead</option>
-                <option value="CONTACTED">Contacted</option>
-                <option value="QUALIFIED">Qualified</option>
-                <option value="WON">Deal Won</option>
-                <option value="LOST">Deal Lost</option>
-              </select>
+          {/* Email Information */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Email Information (Optional)</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  disabled={isSubmittingContact}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select
+                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100"
+                  value={contactEmailType}
+                  onChange={(e) => setContactEmailType(e.target.value)}
+                  disabled={isSubmittingContact}
+                >
+                  <option value="WORK">Work</option>
+                  <option value="HOME">Home</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
-              <input type="text" className="w-full border rounded px-3 py-2" value={contactCompany} onChange={(e) => setContactCompany(e.target.value)} disabled={isSubmittingContact} />
+          {/* Organization, Pipeline & Tags */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Organization, Pipeline & Tags</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                <input type="text" className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100" value={contactCompany} onChange={(e) => setContactCompany(e.target.value)} disabled={isSubmittingContact} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input type="text" className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100" value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} disabled={isSubmittingContact} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Lead Stage</label>
+                <select className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100" value={contactLeadStage} onChange={(e) => setContactLeadStage(e.target.value)} disabled={isSubmittingContact}>
+                  <option value="NEW">New Lead</option>
+                  <option value="CONTACTED">Contacted</option>
+                  <option value="QUALIFIED">Qualified</option>
+                  <option value="PROPOSAL">Proposal Sent</option>
+                  <option value="NEGOTIATION">Negotiation</option>
+                  <option value="WON">Deal Won</option>
+                  <option value="LOST">Deal Lost</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-              <input type="text" className="w-full border rounded px-3 py-2" value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} disabled={isSubmittingContact} />
+            
+            {/* TAGS INPUT */}
+            <div className="col-span-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+              <input
+                type="text"
+                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100"
+                value={contactTags}
+                onChange={(e) => setContactTags(e.target.value)}
+                placeholder="e.g., VIP, summer_sale, cart_abandoner (comma separated)"
+                disabled={isSubmittingContact}
+              />
+              <p className="text-xs text-gray-500 mt-1">Use tags to easily group contacts in the Audience Builder.</p>
             </div>
           </div>
 
@@ -299,8 +370,8 @@ const EditContactModal = ({ isOpen, contact, onClose, onSuccess }) => {
           {contactSuccess && <div className="text-sm text-green-700 bg-green-50 p-3 rounded">✅ {contactSuccess}</div>}
 
           <div className="flex justify-end space-x-3 pt-4 border-t">
-            <button type="button" className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded" onClick={onClose} disabled={isSubmittingContact}>Cancel</button>
-            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded" disabled={isSubmittingContact}>{isSubmittingContact ? 'Saving...' : 'Save Changes'}</button>
+            <button type="button" className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200" onClick={onClose} disabled={isSubmittingContact}>Cancel</button>
+            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-60 flex items-center space-x-2" disabled={isSubmittingContact}>{isSubmittingContact ? 'Saving...' : 'Save Changes'}</button>
           </div>
         </form>
       </div>

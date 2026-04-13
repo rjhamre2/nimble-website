@@ -2,8 +2,33 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiConfig } from '../../../../config/api'; // Adjust path as needed
 import { MagnifyingGlassIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { broadcastTemplates, getTemplatesByTag, getAllTags } from '../../../../data/broadcastTemplates'; // Adjust path
+import AudienceBuilder from './AudienceBuilder';
 
-
+// Helper to extract all variables from a Meta template object
+const extractVariablesFromTemplate = (template) => {
+  if (!template) return [];
+  const templateData = template.object || template;
+  const vars = new Set();
+  const components = templateData.components || [];
+  
+  components.forEach(comp => {
+    // Check Header, Body, Footer text
+    if (comp.text) {
+      const matches = comp.text.match(/\{\{[\w_]+\}\}/g);
+      if (matches) matches.forEach(m => vars.add(m.replace(/[{}]/g, '')));
+    }
+    // Check Button URLs
+    if (comp.buttons) {
+      comp.buttons.forEach(btn => {
+        if (btn.url && btn.url.includes('{{')) {
+          const matches = btn.url.match(/\{\{[\w_]+\}\}/g);
+          if (matches) matches.forEach(m => vars.add(m.replace(/[{}]/g, '')));
+        }
+      });
+    }
+  });
+  return Array.from(vars);
+};
 
 const Broadcast = ({ user, userData, loading }) => {
   // ==========================================
@@ -17,6 +42,19 @@ const Broadcast = ({ user, userData, loading }) => {
   const [showTemplatesDropdown, setShowTemplatesDropdown] = useState(false);
   const [userTemplates, setUserTemplates] = useState([]);
   const [isLoadingUserTemplates, setIsLoadingUserTemplates] = useState(false);
+  
+  //Audience builder state
+  const [selectedAudienceId, setSelectedAudienceId] = useState(null);
+  const [selectedAudienceName, setSelectedAudienceName] = useState('');
+  const [showAudienceBuilder, setShowAudienceBuilder] = useState(false);
+  const [savedAudiences, setSavedAudiences] = useState([]);
+  const [isLoadingAudiences, setIsLoadingAudiences] = useState(false);
+  const [showAudienceSelector, setShowAudienceSelector] = useState(false);
+
+  //Selecting template to send in the broadcast
+  const [broadcastSelectedTemplate, setBroadcastSelectedTemplate] = useState(null);
+  const [broadcastTemplateVariables, setBroadcastTemplateVariables] = useState([]);
+  const [broadcastVariableMapping, setBroadcastVariableMapping] = useState({});
   
   // Template form state
   const [templateName, setTemplateName] = useState('');
@@ -412,6 +450,39 @@ const isBuilderDisabled = !templateName.trim() || !templateCategory || !template
     }
   }, [user, userData]);
 
+ // Function to fetch saved audience segments
+  const fetchSavedAudiences = useCallback(async () => {
+    setIsLoadingAudiences(true);
+    setShowAudienceSelector(true); // Open the UI area immediately 
+    
+    try {
+      const dbId = userData?.db_id || user?.db_id || user?.uid;
+      const token = localStorage.getItem('authToken');
+      
+      // Fallback if it's not in apiConfig yet
+      const apiUrl = apiConfig?.endpoints?.audience?.getUserAudiences?.(dbId) 
+        || `/api/audience/user/${dbId}`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setSavedAudiences(data.data || []);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('Failed to fetch audiences:', error);
+      alert('Failed to load saved segments. Make sure the server is running.');
+    } finally {
+      setIsLoadingAudiences(false);
+    }
+  }, [user, userData]); 
+
   // Function to save template as draft
   const saveTemplateAsDraft = useCallback(async (templateJSON, templateId = null) => {
     try {
@@ -756,12 +827,12 @@ const isBuilderDisabled = !templateName.trim() || !templateCategory || !template
     }
   }, [selectedTemplate, populateFormFromAPITemplate]);
 
-  // Fetch templates when "Your Templates" tab is viewed
+  // Fetch templates when "Your Templates" OR "New Broadcast" tab is viewed
   useEffect(() => {
-    if (templateSubView === 'your-templates' && user && userData && !loading) {
+    if ((templateSubView === 'your-templates' || broadcastView === 'new-broadcast') && user && userData && !loading) {
       fetchUserTemplates();
     }
-  }, [templateSubView, user, userData, loading, fetchUserTemplates]);
+  }, [templateSubView, broadcastView, user, userData, loading, fetchUserTemplates]);
 
 // 1. Auto-sync Active Variables List for HEADER
   useEffect(() => {
@@ -794,6 +865,31 @@ const isBuilderDisabled = !templateName.trim() || !templateCategory || !template
       return prev;
     });
   }, [broadcastTitleText]);
+
+// Auto-extract variables when a template is selected for a broadcast
+  useEffect(() => {
+    if (broadcastSelectedTemplate) {
+      const extractedVars = extractVariablesFromTemplate(broadcastSelectedTemplate);
+      setBroadcastTemplateVariables(extractedVars);
+      
+      // Initialize default mappings
+      const initialMapping = {};
+      extractedVars.forEach(vName => {
+        let defaultField = 'first_name';
+        if (vName.includes('company')) defaultField = 'custom_attributes.company';
+        
+        initialMapping[vName] = { 
+          type: 'dynamic', 
+          value: defaultField, 
+          fallback: '' 
+        };
+      });
+      setBroadcastVariableMapping(initialMapping);
+    } else {
+      setBroadcastTemplateVariables([]);
+      setBroadcastVariableMapping({});
+    }
+  }, [broadcastSelectedTemplate]);
 
 // 2. Helper function to render the blue background text for HEADER
 const renderHeaderHighlightedText = () => {
@@ -3101,105 +3197,298 @@ const renderHighlightedText = () => {
                       placeholder="Enter broadcast name"
                     />
                   </div>
-
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select template message</label>
-                    <button className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left text-gray-700 hover:bg-gray-50 flex items-center justify-between">
-                      <span>Select a template</span>
-                      <span className="text-blue-600">+Add New Template</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="border-t pt-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Who is your audience?</h2>
-                  <p className="text-sm text-gray-600 mb-4">Choose from pre-built segments, imported contacts, or manual selection</p>
                   
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Contact Segments</label>
-                    <div className="space-y-2">
-                      <button className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left hover:bg-gray-50 flex items-center gap-2">
-                        <span>New</span>
-                        <span className="text-gray-400 ml-auto">Share feedback</span>
-                      </button>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button className="px-3 py-2 border border-gray-300 rounded-lg text-left hover:bg-gray-50">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span>🤑</span>
-                            <span className="font-medium">Highly engaged</span>
+                  {/* Select Template Message Dropdown */}
+                  {(() => {
+                    // Filter out only approved templates
+                    const approvedTemplates = userTemplates.filter(t => 
+                      t.template_status === 'APPROVED' || 
+                      t.template_status === 'approved' ||
+                      t.status === 'APPROVED' ||
+                      t.status === 'approved'
+                    );
+                    
+                    return (
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-medium text-gray-700">Select template message</label>
+                          <button 
+                            onClick={() => {
+                              setBroadcastView('templates');
+                              setTemplateSubView('template-library');
+                            }}
+                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors"
+                          >
+                            <span>+</span> Add New Template
+                          </button>
+                        </div>
+                        
+                        {isLoadingUserTemplates ? (
+                          <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm animate-pulse">
+                            Loading approved templates...
                           </div>
-                          <span className="text-xs text-gray-500">(0)</span>
-                        </button>
-                        <button className="px-3 py-2 border border-gray-300 rounded-lg text-left hover:bg-gray-50">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span>🚨</span>
-                            <span className="font-medium">Winback</span>
+                        ) : approvedTemplates.length > 0 ? (
+                          <div className="space-y-3">
+                            <select 
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              value={broadcastSelectedTemplate ? (broadcastSelectedTemplate.template_id || broadcastSelectedTemplate.id || broadcastSelectedTemplate._id || '') : ''}
+                              onChange={(e) => {
+                                const selectedId = e.target.value;
+                                const template = approvedTemplates.find(t => (t.template_id || t.id || t._id) === selectedId);
+                                setBroadcastSelectedTemplate(template);
+                              }}
+                            >
+                              <option value="" disabled>-- Select an approved template --</option>
+                              {approvedTemplates.map(template => {
+                                const tId = template.template_id || template.id || template._id;
+                                const templateData = template.object || template;
+                                const tName = templateData.name || template.name || "Unnamed Template";
+                                return (
+                                  <option key={tId} value={tId}>{tName}</option>
+                                );
+                              })}
+                            </select>
+                
+{/* ---> NEW VARIABLE MAPPING UI <--- */}
+                  {broadcastTemplateVariables.length > 0 && (
+                    <div className="mb-6 border border-blue-200 rounded-lg bg-white overflow-hidden shadow-sm">
+                      <div className="px-4 py-3 bg-blue-50 border-b border-blue-200 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-semibold text-blue-900">Map Template Variables</h3>
+                          <p className="text-xs text-blue-700 mt-0.5">Connect variables to contact data or use static text.</p>
+                        </div>
+                        <span className="bg-blue-200 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">
+                          {broadcastTemplateVariables.length} Required
+                        </span>
+                      </div>
+                      
+                      <div className="p-4 space-y-4">
+                        {broadcastTemplateVariables.map(varName => {
+                          const mapping = broadcastVariableMapping[varName] || { type: 'static', value: '', fallback: '' };
+                          
+                          return (
+                            <div key={varName} className="flex flex-col lg:flex-row gap-3 items-start lg:items-center p-3 border border-gray-100 rounded-lg bg-gray-50 hover:bg-white transition-colors">
+                              <div className="w-full lg:w-1/5">
+                                <span className="font-mono text-xs font-bold text-gray-700 bg-gray-200 px-2 py-1 rounded border border-gray-300">
+                                  {`{{${varName}}}`}
+                                </span>
+                              </div>
+                              
+                              <div className="w-full lg:w-1/4">
+                                <select
+                                  className="w-full text-sm border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                  value={mapping.type}
+                                  onChange={(e) => setBroadcastVariableMapping(prev => ({
+                                    ...prev,
+                                    [varName]: { ...prev[varName], type: e.target.value, value: e.target.value === 'dynamic' ? 'first_name' : '' }
+                                  }))}
+                                >
+                                  <option value="dynamic">Dynamic Contact Field</option>
+                                  <option value="static">Static Text</option>
+                                </select>
+                              </div>
+                              
+                              <div className="w-full lg:flex-1">
+                                {mapping.type === 'dynamic' ? (
+                                  <div className="flex gap-2">
+                                    <select
+                                      className="flex-1 text-sm border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                      value={mapping.value.startsWith('custom_attributes.') ? 'custom' : mapping.value}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val !== 'custom') {
+                                          setBroadcastVariableMapping(prev => ({
+                                            ...prev,
+                                            [varName]: { ...prev[varName], value: val }
+                                          }));
+                                        } else {
+                                          setBroadcastVariableMapping(prev => ({
+                                            ...prev,
+                                            [varName]: { ...prev[varName], value: 'custom_attributes.' }
+                                          }));
+                                        }
+                                      }}
+                                    >
+                                      <optgroup label="Core Fields">
+                                        <option value="first_name">First Name</option>
+                                        <option value="last_name">Last Name</option>
+                                        <option value="phone_number">Phone Number</option>
+                                        <option value="email">Email</option>
+                                        <option value="type">Lead Stage (Type)</option>
+                                      </optgroup>
+                                      <optgroup label="Advanced">
+                                        <option value="custom">Custom Attribute...</option>
+                                      </optgroup>
+                                    </select>
+                                    
+                                    {mapping.value.startsWith('custom_attributes.') && (
+                                       <input
+                                         type="text"
+                                         placeholder="Key (e.g. company)"
+                                         className="flex-1 text-sm border border-blue-300 bg-blue-50 rounded p-2 outline-none focus:ring-2 focus:ring-blue-500"
+                                         value={mapping.value.replace('custom_attributes.', '')}
+                                         onChange={(e) => setBroadcastVariableMapping(prev => ({
+                                           ...prev,
+                                           [varName]: { ...prev[varName], value: `custom_attributes.${e.target.value}` }
+                                         }))}
+                                       />
+                                    )}
+                                    
+                                    <input 
+                                      type="text"
+                                      placeholder="Fallback (e.g. 'friend')"
+                                      className="w-1/3 text-sm border border-gray-300 rounded p-2 text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                                      value={mapping.fallback || ''}
+                                      onChange={(e) => setBroadcastVariableMapping(prev => ({
+                                        ...prev,
+                                        [varName]: { ...prev[varName], fallback: e.target.value }
+                                      }))}
+                                      title="Value to use if the contact doesn't have data for this field"
+                                    />
+                                  </div>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    className="w-full text-sm border border-gray-300 rounded p-2 outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter static text for all users..."
+                                    value={mapping.value}
+                                    onChange={(e) => setBroadcastVariableMapping(prev => ({
+                                      ...prev,
+                                      [varName]: { ...prev[varName], value: e.target.value }
+                                    }))}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                
                           </div>
-                          <span className="text-xs text-gray-500">(0)</span>
-                        </button>
-                        <button className="px-3 py-2 border border-gray-300 rounded-lg text-left hover:bg-gray-50">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span>😴</span>
-                            <span className="font-medium">At Risk</span>
+                        ) : (
+                          <div className="w-full px-3 py-6 border border-dashed border-gray-300 rounded-lg bg-gray-50 text-center">
+                            <p className="text-sm text-gray-600 mb-3">You don't have any approved templates yet.</p>
+                            <button 
+                              onClick={() => {
+                                setBroadcastView('templates');
+                                setTemplateSubView('template-library');
+                              }}
+                              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg shadow-sm text-sm font-medium hover:bg-gray-100 transition-colors"
+                            >
+                              Create your first template
+                            </button>
                           </div>
-                          <span className="text-xs text-gray-500">(0)</span>
-                        </button>
-                        <button className="px-3 py-2 border border-gray-300 rounded-lg text-left hover:bg-gray-50">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span>✅</span>
-                            <span className="font-medium">All valid</span>
-                          </div>
-                          <span className="text-xs text-gray-500">(0)</span>
-                        </button>
+                        )}
                       </div>
-                      <button className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-lg text-center text-gray-600 hover:bg-gray-50">
-                        Add another filter +
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-700 mb-2">
-                      Selected: <span className="font-medium">0 / 250</span> Contacts remaining
-                    </p>
-                    <p className="text-sm text-gray-700">
-                      Daily limit: <span className="font-medium">250/Day</span>
-                    </p>
-                  </div>
-
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                      <div className="grid grid-cols-4 gap-4 text-xs font-medium text-gray-700">
-                        <div>Rupesh J</div>
-                        <div>918419922107</div>
-                        <div>TRUE</div>
-                        <div>success</div>
-                      </div>
-                    </div>
-                    <div className="bg-white px-4 py-3 border-b border-gray-200">
-                      <div className="grid grid-cols-4 gap-4 text-xs text-gray-600">
-                        <div>Rupesh J</div>
-                        <div>918419922107</div>
-                        <div>TRUE</div>
-                        <div>success</div>
-                      </div>
-                    </div>
-                    <div className="bg-white px-4 py-3 border-b border-gray-200">
-                      <div className="grid grid-cols-4 gap-4 text-xs text-gray-600">
-                        <div>NimbleAI Test</div>
-                        <div>85264318721</div>
-                        <div>TRUE</div>
-                        <div>success</div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 px-4 py-3">
-                      <div className="flex items-center justify-between text-xs text-gray-600">
-                        <span>Rows per page:</span>
-                        <span>1–2 of 2</span>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </div>
+
+<div className="border-t pt-6">
+  <div className="flex justify-between items-center mb-4">
+    <div>
+      <h2 className="text-xl font-semibold text-gray-900 mb-2">Who is your audience?</h2>
+      <p className="text-sm text-gray-600">Choose an existing segment or build a new one dynamically.</p>
+    </div>
+  </div>
+  
+  {showAudienceBuilder ? (
+    <AudienceBuilder 
+      onCancel={() => setShowAudienceBuilder(false)}
+      onSave={(listId, name) => {
+        setSelectedAudienceId(listId);
+        setSelectedAudienceName(name);
+        setShowAudienceBuilder(false);
+      }} 
+    />
+  ) : (
+    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+      {selectedAudienceId ? (
+        <div className="flex justify-between items-center bg-white p-4 border border-blue-200 rounded-lg shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-900">Selected Segment: {selectedAudienceName}</p>
+              <p className="text-xs text-gray-500">ID: {selectedAudienceId}</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setShowAudienceBuilder(true)} className="text-sm text-blue-600 font-medium hover:underline">Change</button>
+          </div>
+        </div>
+      ) : showAudienceSelector ? (
+        <div className="animate-fade-in">
+          <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
+            <h3 className="text-sm font-semibold text-gray-900">Select a Saved Segment</h3>
+            <button onClick={() => setShowAudienceSelector(false)} className="text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors">
+              ✕ Cancel
+            </button>
+          </div>
+          
+          {isLoadingAudiences ? (
+            <div className="py-8 text-center text-sm font-medium text-blue-600 animate-pulse">
+              Loading your segments...
+            </div>
+          ) : savedAudiences.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto p-1">
+              {savedAudiences.map(audience => (
+                <button 
+                  key={audience.id}
+                  onClick={() => {
+                    setSelectedAudienceId(audience.id);
+                    setSelectedAudienceName(audience.name);
+                    setShowAudienceSelector(false);
+                  }}
+                  className="flex flex-col items-start p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 hover:shadow-sm transition-all text-left bg-white"
+                >
+                  <span className="font-semibold text-sm text-gray-900 truncate w-full mb-1">{audience.name}</span>
+                  <span className="text-xs font-medium px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                    {audience.contact_count.toLocaleString()} Contacts
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center border border-dashed border-gray-300 rounded-lg bg-white">
+              <p className="text-sm text-gray-600 mb-3">You don't have any saved segments yet.</p>
+              <button 
+                onClick={() => {
+                  setShowAudienceSelector(false);
+                  setShowAudienceBuilder(true);
+                }}
+                className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
+              >
+                Build your first audience
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-center py-6">
+          <p className="text-sm text-gray-600 mb-4">No audience selected for this broadcast.</p>
+          <div className="flex justify-center gap-4">
+            <button 
+              onClick={fetchSavedAudiences}
+              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 text-sm font-medium shadow-sm transition-colors"
+            >
+              Select Saved Segment
+            </button>
+            <button 
+              onClick={() => setShowAudienceBuilder(true)}
+              className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 text-sm font-medium shadow-sm transition-colors"
+            >
+              Build New Audience
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )}
+</div>
 
                 <div className="border-t pt-6">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">When do you want to send it?</h2>

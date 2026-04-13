@@ -12,6 +12,7 @@ const AddContactModal = ({ isOpen, onClose, onSuccess }) => {
   const [contactEmail, setContactEmail] = useState('');
   const [contactLeadStage, setContactLeadStage] = useState('NEW');
   const [whatsappOptIn, setWhatsappOptIn] = useState(false);
+  const [contactTags, setContactTags] = useState(''); // <-- NEW TAGS STATE
   
   // Form state - Custom Attributes (JSONB)
   const [contactEmailType, setContactEmailType] = useState('WORK');
@@ -58,6 +59,7 @@ const AddContactModal = ({ isOpen, onClose, onSuccess }) => {
     setContactLeadStage('NEW');
     setContactTeamAssigned('marketing');
     setWhatsappOptIn(false);
+    setContactTags(''); // <-- RESET TAGS
     setContactError('');
     setContactSuccess('');
   };
@@ -116,15 +118,17 @@ const AddContactModal = ({ isOpen, onClose, onSuccess }) => {
 
       // Construct the new flat payload
       const payload = {
-        user_id: userData?.db_id || user?.db_id || user?.uid, // Fallbacks for safety
+        user_id: userData?.db_id || user?.db_id || user?.uid,
         phone_number: primaryPhone,
         first_name: contactFirstName,
         last_name: contactLastName || null,
         email: contactEmail || null,
-        type: contactLeadStage, // Mapping lead stage to the new 'type' column
+        type: contactLeadStage,
         source: 'manual_entry',
         whatsapp_mkt_opt_in: whatsappOptIn,
         mkt_opt_in_date: whatsappOptIn ? new Date().toISOString() : null,
+        // Format tags: split by comma, remove whitespace, filter out empty strings
+        tags: contactTags ? contactTags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
         custom_attributes
       };
 
@@ -143,7 +147,6 @@ const AddContactModal = ({ isOpen, onClose, onSuccess }) => {
       const result = await response.json();
 
       if (!response.ok) {
-        // Handle the specific 409 Conflict error we added in the backend for duplicates
         if (response.status === 409) {
             throw new Error('A contact with this phone number already exists.');
         }
@@ -255,7 +258,6 @@ const AddContactModal = ({ isOpen, onClose, onSuccess }) => {
                         <option value="GB">🇬🇧 GB</option>
                         <option value="CA">🇨🇦 CA</option>
                         <option value="AU">🇦🇺 AU</option>
-                        {/* Add other options as needed */}
                       </select>
                       <div className="flex items-center px-2 bg-gray-50 border-r border-gray-300 text-gray-700 text-sm font-medium min-w-[50px]">
                         {phoneObj.dialCode || '+91'}
@@ -346,9 +348,9 @@ const AddContactModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
           </div>
 
-          {/* Organization & Lead Info */}
+          {/* Organization, Pipeline & Tags */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Organization & Pipeline</h3>
+            <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Organization, Pipeline & Tags</h3>
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
@@ -387,6 +389,20 @@ const AddContactModal = ({ isOpen, onClose, onSuccess }) => {
                   <option value="LOST">Deal Lost</option>
                 </select>
               </div>
+            </div>
+            
+            {/* TAGS INPUT */}
+            <div className="col-span-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+              <input
+                type="text"
+                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100"
+                value={contactTags}
+                onChange={(e) => setContactTags(e.target.value)}
+                placeholder="e.g., VIP, summer_sale, cart_abandoner (comma separated)"
+                disabled={isSubmittingContact}
+              />
+              <p className="text-xs text-gray-500 mt-1">Use tags to easily group contacts in the Audience Builder.</p>
             </div>
           </div>
 
