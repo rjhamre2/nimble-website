@@ -4,30 +4,27 @@ import { MagnifyingGlassIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { broadcastTemplates, getTemplatesByTag, getAllTags } from '../../../../data/broadcastTemplates'; // Adjust path
 import AudienceBuilder from './AudienceBuilder';
 
-// Helper to extract all variables from a Meta template object
+// Helper to extract all variables from a Meta template object, grouped by component
 const extractVariablesFromTemplate = (template) => {
-  if (!template) return [];
+  if (!template) return { header: [], body: [] };
   const templateData = template.object || template;
-  const vars = new Set();
+  const vars = { header: new Set(), body: new Set() };
   const components = templateData.components || [];
   
   components.forEach(comp => {
-    // Check Header, Body, Footer text
-    if (comp.text) {
+    const type = comp.type?.toLowerCase();
+    if (comp.text && (type === 'header' || type === 'body')) {
       const matches = comp.text.match(/\{\{[\w_]+\}\}/g);
-      if (matches) matches.forEach(m => vars.add(m.replace(/[{}]/g, '')));
-    }
-    // Check Button URLs
-    if (comp.buttons) {
-      comp.buttons.forEach(btn => {
-        if (btn.url && btn.url.includes('{{')) {
-          const matches = btn.url.match(/\{\{[\w_]+\}\}/g);
-          if (matches) matches.forEach(m => vars.add(m.replace(/[{}]/g, '')));
-        }
-      });
+      if (matches) {
+        matches.forEach(m => vars[type].add(m.replace(/[{}]/g, '')));
+      }
     }
   });
-  return Array.from(vars);
+  
+  return {
+    header: Array.from(vars.header),
+    body: Array.from(vars.body)
+  };
 };
 
 const Broadcast = ({ user, userData, loading }) => {
@@ -55,7 +52,12 @@ const Broadcast = ({ user, userData, loading }) => {
   const [broadcastSelectedTemplate, setBroadcastSelectedTemplate] = useState(null);
   const [broadcastTemplateVariables, setBroadcastTemplateVariables] = useState([]);
   const [broadcastVariableMapping, setBroadcastVariableMapping] = useState({});
-  
+
+  // Broadcast Submission State
+  const [broadcastName, setBroadcastName] = useState('');
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+  const [broadcastStatus, setBroadcastStatus] = useState({ type: '', message: '' });
+
   // Template form state
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState('');
@@ -872,22 +874,27 @@ const isBuilderDisabled = !templateName.trim() || !templateCategory || !template
       const extractedVars = extractVariablesFromTemplate(broadcastSelectedTemplate);
       setBroadcastTemplateVariables(extractedVars);
       
-      // Initialize default mappings
-      const initialMapping = {};
-      extractedVars.forEach(vName => {
-        let defaultField = 'first_name';
-        if (vName.includes('company')) defaultField = 'custom_attributes.company';
-        
-        initialMapping[vName] = { 
-          type: 'dynamic', 
-          value: defaultField, 
-          fallback: '' 
-        };
+      // Initialize default mappings grouped by component type
+      const initialMapping = { header: {}, body: {} };
+      
+      ['header', 'body'].forEach(compType => {
+        extractedVars[compType].forEach(vName => {
+          let defaultField = 'first_name';
+          if (vName.includes('company')) defaultField = 'custom_attributes.company';
+          
+          // Match the exact schema expected by the backend worker and validator
+          initialMapping[compType][vName] = { 
+            type: 'dynamic', 
+            field: defaultField, 
+            fallback: '' 
+          };
+        });
       });
+      
       setBroadcastVariableMapping(initialMapping);
     } else {
-      setBroadcastTemplateVariables([]);
-      setBroadcastVariableMapping({});
+      setBroadcastTemplateVariables({ header: [], body: [] });
+      setBroadcastVariableMapping({ header: {}, body: {} });
     }
   }, [broadcastSelectedTemplate]);
 
@@ -963,6 +970,101 @@ const renderHighlightedText = () => {
     return <span key={i}>{part}</span>;
   });
 };
+
+// Helper Functions
+
+// Function to initiate the broadcast
+  const handleSendBroadcast = async () => {
+    // Basic validation
+    if (!broadcastName.trim() || !broadcastSelectedTemplate || !selectedAudienceId) {
+      setBroadcastStatus({ 
+        type: 'error', 
+        message: 'Please provide a broadcast name, select a template, and choose an audience.' 
+      });
+      return;
+    }
+
+    // --- LAYER 1 FRONTEND VALIDATION ---
+    let isMappingValid = true;
+    let mappingErrorMsg = '';
+
+    ['header', 'body'].forEach(compType => {
+      if (!broadcastTemplateVariables[compType]) return;
+
+      broadcastTemplateVariables[compType].forEach(varName => {
+        const config = broadcastVariableMapping[compType]?.[varName];
+        if (!config) {
+          isMappingValid = false; mappingErrorMsg = `Mapping configuration missing for {{${varName}}}.`; return;
+        }
+        if (config.type === 'dynamic' && !config.field) {
+          isMappingValid = false; mappingErrorMsg = `Please select a contact field for dynamic variable {{${varName}}}.`; return;
+        }
+        if (config.type === 'static' && (!config.text || config.text.trim() === '')) {
+          isMappingValid = false; mappingErrorMsg = `Please enter text for static variable {{${varName}}}.`; return;
+        }
+      });
+    });
+
+    if (!isMappingValid) {
+      setBroadcastStatus({ type: 'error', message: mappingErrorMsg });
+      return;
+    }
+
+    setIsSendingBroadcast(true);
+    setBroadcastStatus({ type: '', message: '' });
+
+    try {
+      const dbId = userData?.db_id || user?.db_id;
+      const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+      
+      const templateId = broadcastSelectedTemplate.template_id || broadcastSelectedTemplate.id || broadcastSelectedTemplate._id;
+
+      const response = await fetch(`${dbServerUrl}/api/broadcasts/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          userId: dbId,
+          name: broadcastName,
+          templateId: templateId,
+          audienceListId: selectedAudienceId,
+          variableMapping: broadcastVariableMapping // <-- Pass mapping to backend
+        })
+      });
+
+      const data = await response.json();
+      // ... (Rest of the try/catch logic remains exactly the same)
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initiate broadcast');
+      }
+
+      setBroadcastStatus({ 
+        type: 'success', 
+        message: `Success! ${data.queuedCount} messages have been queued for delivery.` 
+      });
+      
+      // Reset the form
+      setBroadcastName('');
+      setBroadcastSelectedTemplate(null);
+      setSelectedAudienceId(null);
+      
+      // Optional: Redirect to history or analytics after 2 seconds
+      setTimeout(() => {
+        setBroadcastView('analytics');
+        setBroadcastStatus({ type: '', message: '' });
+      }, 2000);
+
+    } catch (error) {
+      console.error('Broadcast Error:', error);
+      setBroadcastStatus({ type: 'error', message: error.message });
+    } finally {
+      setIsSendingBroadcast(false);
+    }
+  };
+
 // ==========================================
   // RENDER UI
   // ==========================================
@@ -3195,6 +3297,8 @@ const renderHighlightedText = () => {
                       type="text"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Enter broadcast name"
+                      value={broadcastName}
+                      onChange={(e) => setBroadcastName(e.target.value)}
                     />
                   </div>
                   
@@ -3249,8 +3353,8 @@ const renderHighlightedText = () => {
                               })}
                             </select>
                 
-{/* ---> NEW VARIABLE MAPPING UI <--- */}
-                  {broadcastTemplateVariables.length > 0 && (
+                  {/* ---> NEW VARIABLE MAPPING UI <--- */}
+                  {(broadcastTemplateVariables?.header?.length > 0 || broadcastTemplateVariables?.body?.length > 0) && (
                     <div className="mb-6 border border-blue-200 rounded-lg bg-white overflow-hidden shadow-sm">
                       <div className="px-4 py-3 bg-blue-50 border-b border-blue-200 flex items-center justify-between">
                         <div>
@@ -3258,17 +3362,22 @@ const renderHighlightedText = () => {
                           <p className="text-xs text-blue-700 mt-0.5">Connect variables to contact data or use static text.</p>
                         </div>
                         <span className="bg-blue-200 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">
-                          {broadcastTemplateVariables.length} Required
+                          {(broadcastTemplateVariables.header?.length || 0) + (broadcastTemplateVariables.body?.length || 0)} Required
                         </span>
                       </div>
                       
                       <div className="p-4 space-y-4">
-                        {broadcastTemplateVariables.map(varName => {
-                          const mapping = broadcastVariableMapping[varName] || { type: 'static', value: '', fallback: '' };
+                        {/* Flatten header and body vars for easy UI rendering */}
+                        {[
+                          ...(broadcastTemplateVariables.header || []).map(v => ({ name: v, compType: 'header' })),
+                          ...(broadcastTemplateVariables.body || []).map(v => ({ name: v, compType: 'body' }))
+                        ].map(({ name: varName, compType }) => {
+                          const mapping = broadcastVariableMapping[compType]?.[varName] || { type: 'static', text: '', fallback: '' };
                           
                           return (
-                            <div key={varName} className="flex flex-col lg:flex-row gap-3 items-start lg:items-center p-3 border border-gray-100 rounded-lg bg-gray-50 hover:bg-white transition-colors">
-                              <div className="w-full lg:w-1/5">
+                            <div key={`${compType}-${varName}`} className="flex flex-col lg:flex-row gap-3 items-start lg:items-center p-3 border border-gray-100 rounded-lg bg-gray-50 hover:bg-white transition-colors">
+                              <div className="w-full lg:w-1/5 flex items-center gap-2">
+                                <span className="text-[9px] uppercase font-bold text-gray-400">{compType}</span>
                                 <span className="font-mono text-xs font-bold text-gray-700 bg-gray-200 px-2 py-1 rounded border border-gray-300">
                                   {`{{${varName}}}`}
                                 </span>
@@ -3278,10 +3387,18 @@ const renderHighlightedText = () => {
                                 <select
                                   className="w-full text-sm border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                   value={mapping.type}
-                                  onChange={(e) => setBroadcastVariableMapping(prev => ({
-                                    ...prev,
-                                    [varName]: { ...prev[varName], type: e.target.value, value: e.target.value === 'dynamic' ? 'first_name' : '' }
-                                  }))}
+                                  onChange={(e) => {
+                                    const newType = e.target.value;
+                                    setBroadcastVariableMapping(prev => ({
+                                      ...prev,
+                                      [compType]: { 
+                                        ...prev[compType], 
+                                        [varName]: newType === 'dynamic' 
+                                          ? { type: 'dynamic', field: 'first_name', fallback: '' } 
+                                          : { type: 'static', text: '' } 
+                                      }
+                                    }));
+                                  }}
                                 >
                                   <option value="dynamic">Dynamic Contact Field</option>
                                   <option value="static">Static Text</option>
@@ -3293,20 +3410,16 @@ const renderHighlightedText = () => {
                                   <div className="flex gap-2">
                                     <select
                                       className="flex-1 text-sm border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                      value={mapping.value.startsWith('custom_attributes.') ? 'custom' : mapping.value}
+                                      value={mapping.field?.startsWith('custom_attributes.') ? 'custom' : mapping.field}
                                       onChange={(e) => {
                                         const val = e.target.value;
-                                        if (val !== 'custom') {
-                                          setBroadcastVariableMapping(prev => ({
-                                            ...prev,
-                                            [varName]: { ...prev[varName], value: val }
-                                          }));
-                                        } else {
-                                          setBroadcastVariableMapping(prev => ({
-                                            ...prev,
-                                            [varName]: { ...prev[varName], value: 'custom_attributes.' }
-                                          }));
-                                        }
+                                        setBroadcastVariableMapping(prev => ({
+                                          ...prev,
+                                          [compType]: {
+                                            ...prev[compType],
+                                            [varName]: { ...mapping, field: val === 'custom' ? 'custom_attributes.' : val }
+                                          }
+                                        }));
                                       }}
                                     >
                                       <optgroup label="Core Fields">
@@ -3321,15 +3434,15 @@ const renderHighlightedText = () => {
                                       </optgroup>
                                     </select>
                                     
-                                    {mapping.value.startsWith('custom_attributes.') && (
+                                    {mapping.field?.startsWith('custom_attributes.') && (
                                        <input
                                          type="text"
                                          placeholder="Key (e.g. company)"
                                          className="flex-1 text-sm border border-blue-300 bg-blue-50 rounded p-2 outline-none focus:ring-2 focus:ring-blue-500"
-                                         value={mapping.value.replace('custom_attributes.', '')}
+                                         value={mapping.field.replace('custom_attributes.', '')}
                                          onChange={(e) => setBroadcastVariableMapping(prev => ({
                                            ...prev,
-                                           [varName]: { ...prev[varName], value: `custom_attributes.${e.target.value}` }
+                                           [compType]: { ...prev[compType], [varName]: { ...mapping, field: `custom_attributes.${e.target.value}` } }
                                          }))}
                                        />
                                     )}
@@ -3341,7 +3454,7 @@ const renderHighlightedText = () => {
                                       value={mapping.fallback || ''}
                                       onChange={(e) => setBroadcastVariableMapping(prev => ({
                                         ...prev,
-                                        [varName]: { ...prev[varName], fallback: e.target.value }
+                                        [compType]: { ...prev[compType], [varName]: { ...mapping, fallback: e.target.value } }
                                       }))}
                                       title="Value to use if the contact doesn't have data for this field"
                                     />
@@ -3351,10 +3464,10 @@ const renderHighlightedText = () => {
                                     type="text"
                                     className="w-full text-sm border border-gray-300 rounded p-2 outline-none focus:ring-2 focus:ring-blue-500"
                                     placeholder="Enter static text for all users..."
-                                    value={mapping.value}
+                                    value={mapping.text || ''}
                                     onChange={(e) => setBroadcastVariableMapping(prev => ({
                                       ...prev,
-                                      [varName]: { ...prev[varName], value: e.target.value }
+                                      [compType]: { ...prev[compType], [varName]: { ...mapping, text: e.target.value } }
                                     }))}
                                   />
                                 )}
@@ -3503,6 +3616,30 @@ const renderHighlightedText = () => {
                     </label>
                   </div>
                 </div>
+                {/* --- ADD THIS NEW BLOCK BELOW THE SCHEDULING SECTION --- */}
+                <div className="border-t pt-6 mt-6">
+                  {broadcastStatus.message && (
+                    <div className={`p-4 mb-4 rounded-lg ${broadcastStatus.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                      {broadcastStatus.message}
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleSendBroadcast}
+                      disabled={isSendingBroadcast}
+                      className={`px-6 py-3 font-medium text-white rounded-lg transition-colors shadow-sm ${
+                        isSendingBroadcast 
+                          ? 'bg-blue-400 cursor-not-allowed' 
+                          : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
+                    >
+                      {isSendingBroadcast ? 'Queuing Messages...' : 'Send Broadcast'}
+                    </button>
+                  </div>
+                </div>
+                {/* --- END NEW BLOCK --- */}
+                
               </div>
             )}
           </div>
