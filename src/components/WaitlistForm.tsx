@@ -156,7 +156,7 @@ const WaitlistForm = ({ variant = "light" }: { variant?: "light" | "dark" }) => 
             >
               <SelectValue placeholder="Select range" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent align="start" alignOffset={90} sideOffset={-43} className="bg-white opacity-100 fill-white">
               <SelectItem value="<500">Less than 500</SelectItem>
               <SelectItem value="500-2000">500 – 2,000</SelectItem>
               <SelectItem value="2000+">2,000+</SelectItem>
