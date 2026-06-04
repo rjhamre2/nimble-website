@@ -12,6 +12,9 @@ import WhatsAppAIAgentSection from '..//WhatsAppAIAgentSection';
 import StartNowPage from '../StartNowPage';
 import LoginPage from '../LoginPage';
 import AcceptInvite from '../AcceptInvite';
+import MainLanding from './MainLanding';
+import { MessageCircle } from 'lucide-react';
+import Navbar from '../Navbar';
 
 // Custom Hook for Intersection Observer to trigger animations on scroll
 const useIntersectionObserver = (options) => {
@@ -90,6 +93,8 @@ const PublicRoute = ({ children }) => {
 
 // Main App Component
 function LegacyLanding() {
+	const showNewTheme = true; // Toggle this to switch between the new theme and the legacy landing page
+
 	// State for managing dark mode, initialized from localStorage
 	const [isDarkMode, setIsDarkMode] = useState(() => {
 		const savedMode = localStorage.getItem('theme');
@@ -206,10 +211,14 @@ function LegacyLanding() {
 				</style>
 
 				{/* Navbar Component, passing toggle function and dark mode state */}
-				<Navbar toggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode} />
+				{ <Navbar toggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode} />}
 				<Routes>
 					<Route path="/" element={
 						<PublicRoute>
+{showNewTheme ? (
+                                /* IF TRUE: Show the new SaaS 2.0 Landing Page */
+                                <MainLanding />
+                            ) : (
 							<>
 								{/* Hero Section Component */}
 								<HeroSection isDarkMode={isDarkMode} />
@@ -229,6 +238,7 @@ function LegacyLanding() {
 								<AboutSection isDarkMode={isDarkMode} />
 								
 							</>
+							)}
 						</PublicRoute>
 					} />
 					<Route path="/dashboard" element={
@@ -251,6 +261,7 @@ function LegacyLanding() {
 					<Route path="/shipping-policy" element={<ShippingPolicy isDarkMode={isDarkMode} />} />
 					<Route path="/cancellation-refund-policy" element={<CancellationRefundPolicy isDarkMode={isDarkMode} />} />
 				</Routes>
+
 				{/* Footer Component */}
 				<Footer isDarkMode={isDarkMode} />
 
@@ -273,79 +284,6 @@ function LegacyLanding() {
 				{/* <ChatWidget isDarkMode={isDarkMode} /> */}
 			</div>
 		</Router>
-	);
-}
-
-// Navbar Component - Updated for Black & White theme with centered logo and new name
-function Navbar({ toggleDarkMode, isDarkMode }) {
-	const { user } = useAuth();
-	const navigate = useNavigate();
-	const location = useLocation();
-	
-	const handleStartNow = () => {
-		navigate('/start-now');
-	};
-
-	// Hide buttons on start-now and login pages
-	const hideButtons = location.pathname === '/start-now' || location.pathname === '/login';
-
-	return (
-		<nav className={`sticky top-0 z-50 border-b ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} animate-fadeIn`}>
-			<div className='container mx-auto px-4 py-4 flex items-center'>
-				{/* Empty div to push the center logo to the right and balance the button on the right */}
-				<div className='flex-grow basis-1/3'></div>
-
-				{/* Logo - Updated to Nimble AI and centered */}
-				<Link to="/" className='flex items-center space-x-2 flex-grow justify-center basis-1/3'>
-					<img src={require('../../logo.png')} alt='Nimble AI Logo' className={`h-12 w-auto object-contain ${isDarkMode ? 'logo-invert' : ''}`} />
-				</Link>
-				{/* Dark Mode Toggle Button */}
-				<div className='flex-grow flex justify-end items-center gap-4 basis-1/3'>
-					<button
-						onClick={toggleDarkMode}
-						className={`p-2 rounded-full transition-colors duration-300 ${
-							isDarkMode ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-						}`}
-						aria-label='Toggle Dark Mode'
-					>
-						{isDarkMode ? (
-							// Sun icon for light mode
-							<svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'>
-								<path
-									strokeLinecap='round'
-									strokeLinejoin='round'
-									strokeWidth='2'
-									d='M12 3v1m0 16v1m9-9h1M2 12h1m15.325-4.475l-.707-.707M6.382 17.618l-.707-.707M17.618 6.382l-.707-.707M6.382 6.382l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z'
-								></path>
-							</svg>
-						) : (
-							// Moon icon for dark mode
-							<svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'>
-								<path
-									strokeLinecap='round'
-									strokeLinejoin='round'
-									strokeWidth='2'
-									d='M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z'
-								></path>
-							</svg>
-						)}
-					</button>
-					{!hideButtons && !user && (
-						<button
-							onClick={handleStartNow}
-							className={`px-4 py-2 rounded font-medium transition-colors duration-200 ${
-								isDarkMode 
-									? 'bg-green-600 text-white hover:bg-green-700' 
-									: 'bg-green-600 text-white hover:bg-green-700'
-							}`}
-						>
-							Start now
-						</button>
-					)}
-					{!hideButtons && <SignInButton />}
-				</div>
-			</div>
-		</nav>
 	);
 }
 

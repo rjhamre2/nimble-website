@@ -16,6 +16,8 @@ import {
 import { Button } from "../ui/button"; 
 import WaitlistForm from "../WaitlistForm";
 import WhatsAppMockup from "../WhatsAppMockup";
+import SignInButton from "../SignInButton";
+import Navbar from '../Navbar';
 
 const core3 = [
   {
@@ -77,25 +79,6 @@ const stats = [
 const MainLanding = () => {
   return (
     <div className="min-h-screen bg-white">
-      {/* Nav */}
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-white/80 border-b border-gray-200">
-        <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <a href="#" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-green-500 flex items-center justify-center shadow-lg shadow-green-200">
-              <MessageCircle className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-gray-900 text-lg tracking-tight">NimbleAI</span>
-          </a>
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-500">
-            <a href="#solutions" className="hover:text-green-600 transition-colors">Solutions</a>
-            <a href="#features" className="hover:text-green-600 transition-colors">Features</a>
-            <a href="#waitlist" className="hover:text-green-600 transition-colors">Pricing</a>
-          </nav>
-          <Button asChild variant="hero" size="sm">
-            <a href="#waitlist">Get Early Access</a>
-          </Button>
-        </div>
-      </header>
 
       {/* Hero */}
       <section className="relative overflow-hidden py-16 lg:py-24 bg-slate-50">
@@ -176,19 +159,16 @@ const MainLanding = () => {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-100 py-12">
-        <div className="container mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="w-6 h-6 text-green-600" />
-            <span className="font-bold text-slate-900">NimbleAI</span>
-          </div>
-          <p className="text-sm text-slate-400">
-            © 2025 NimbleAI. WhatsApp is a trademark of Meta Platforms, Inc.
-          </p>
-        </div>
-      </footer>
+      {/*}
+        <section className="bg-[#F9FAFB] py-12 px-24 flex flex-col items-center justify-center border border-slate-200 rounded-2xl shadow-sm">
+          <h2 className="text-xs font-bold tracking-[0.2em] uppercase text-slate-500 mb-6">
+            Already have an account?
+          </h2>
+          <SignInButton 
+            className="bg-[#25D366] text-white font-bold py-3 px-8 rounded-lg transition-transform duration-200 hover:scale-[1.02] shadow-[0_0_20px_rgba(37,211,102,0.1)]" 
+          />
+        </section>
+        */}
     </div>
   );
 };

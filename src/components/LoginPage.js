@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { apiConfig } from '../config/api';
 import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { initializeApp, getApps } from 'firebase/app';
+import { MessageCircle } from 'lucide-react'; // <-- ADDED ICON IMPORT
 
 // Initialize Firebase if not already initialized
 let firebaseApp;
@@ -232,8 +233,8 @@ const LoginPage = ({ isDarkMode }) => {
   }, [user, navigate]);
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="container mx-auto px-4 py-12 max-w-7xl">
+    <div className={`min-h-screen flex flex-col ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      <div className="flex-grow container mx-auto px-4 py-12 max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
           {/* Left Side - Heading and Features */}
           <div className="flex flex-col">
@@ -515,4 +516,3 @@ const LoginPage = ({ isDarkMode }) => {
 };
 
 export default LoginPage;
-

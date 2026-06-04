@@ -2,49 +2,50 @@ import React from 'react';
 import { logoutLambda as logout } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { Button } from './ui/button'; // Import your consistent Button component
 
-function SignInButton() {
+function SignInButton({ className }) { 
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignInClick = () => {
-    navigate('/login');
-  };
-
   if (loading) {
     return (
-      <div className="px-4 py-2 bg-gray-300 text-gray-600 rounded">
+      <Button disabled variant="outline" size="sm">
         Loading...
-      </div>
+      </Button>
     );
   }
 
   if (user) {
     return (
-      <div className="flex items-center gap-2">
-        {user.photoURL && <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full" />}
-        <span>{user.displayName}</span>
-        <button 
+      <div className="flex items-center gap-3">
+        {user.photoURL && <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full border border-gray-200" />}
+        <span className="text-sm font-medium text-gray-700">{user.displayName}</span>
+        <Button 
+          variant="outline" 
+          size="sm"
           onClick={() => {
             logout();
             navigate('/');
           }} 
-          className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors"
         >
           Sign Out
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
-    <button 
-      onClick={handleSignInClick}
-      className="px-4 py-2 bg-blue-600 text-white rounded flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors"
+    <Button 
+      onClick={() => navigate('/login')}
+      // This applies the SaaS 2.0 theme you requested
+      variant="hero" 
+      size="sm"
+      className={className} 
     >
-      Sign in
-    </button>
+      Admin Login
+    </Button>
   );
 }
 
-export default SignInButton; 
+export default SignInButton;

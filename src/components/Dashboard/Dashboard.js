@@ -1677,7 +1677,7 @@ const Dashboard = () => {
           '+886': 'TW', '+64': 'NZ', '+971': 'AE', '+966': 'SA', '+27': 'ZA',
           '+7': 'RU', '+92': 'PK', '+880': 'BD', '+94': 'LK', '+977': 'NP', '+95': 'MM'
         };
-
+        
         // Check for longer dial codes first (like +852, +886, +880, +977)
         const sortedCodes = Object.keys(dialCodes).sort((a, b) => b.length - a.length);
         for (const code of sortedCodes) {
