@@ -94,7 +94,7 @@ const PublicRoute = ({ children }) => {
 // Main App Component
 function LegacyLanding() {
 	const showNewTheme = true; // Toggle this to switch between the new theme and the legacy landing page
-
+	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 	// State for managing dark mode, initialized from localStorage
 	const [isDarkMode, setIsDarkMode] = useState(() => {
 		const savedMode = localStorage.getItem('theme');
@@ -171,7 +171,7 @@ function LegacyLanding() {
 				setIsSubmitting(false);
 			});
 	};
-
+	
 	return (
 		<Router>
 			<div className={`min-h-screen font-sans ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'}`}>
@@ -211,7 +211,7 @@ function LegacyLanding() {
 				</style>
 
 				{/* Navbar Component, passing toggle function and dark mode state */}
-				{ <Navbar toggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode} />}
+				{ <Navbar toggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode} isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen}/>}
 				<Routes>
 					<Route path="/" element={
 						<PublicRoute>
@@ -243,7 +243,7 @@ function LegacyLanding() {
 					} />
 					<Route path="/dashboard" element={
 						<ProtectedRoute>
-							<Dashboard />
+							<Dashboard isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen}/>
 						</ProtectedRoute>
 					} />
 					<Route path="/livechat" element={
@@ -582,25 +582,28 @@ function Footer({ isDarkMode }) {
 			}`}
 		>
 			<div className='container mx-auto px-4 text-center'>
-				<div className='flex flex-col sm:flex-row gap-3 sm:gap-4 mb-3 sm:mb-4 justify-center items-center'>
-					{/* "Write to Us" button updated to mailto link */}
-					<a
-						href='mailto:enquire@nimble.ai'
-						className={`px-4 py-1.5 sm:px-6 sm:py-2 font-semibold rounded-full shadow-lg transition duration-300 flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base ${
-							isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-900 text-white hover:bg-gray-700'
-						}`}
-					>
-						<svg className='w-4 h-4 sm:w-5 sm:h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'>
-							<path
-								strokeLinecap='round'
-								strokeLinejoin='round'
-								strokeWidth='2'
-								d='M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
-							/>
-						</svg>
-						Write to Us
-					</a>
-				</div>
+		<div className='flex flex-col sm:flex-row gap-3 sm:gap-4 mb-3 sm:mb-4 justify-center items-center'>
+    <a
+        href='mailto:enquire@nimble.ai'
+        className={`
+            px-6 py-2.5 font-medium rounded-lg transition-all duration-200 
+            flex items-center gap-2 text-sm sm:text-base
+            hover:scale-[1.02] active:scale-[0.98]
+            shadow-[0_0_20px_rgba(37,211,102,0.15)]
+            bg-[#25D366] text-black hover:bg-[#20bd5a]
+        `}
+    >
+        <svg className='w-4 h-4 sm:w-5 sm:h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'>
+            <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth='2'
+                d='M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
+            />
+        </svg>
+        Write to Us
+    </a>
+</div>
 
 				{/* Follow Us */}
 				<div className='flex flex-col items-center space-y-1.5 sm:space-y-2 mb-3 sm:mb-4'>

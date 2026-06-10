@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   InboxIcon,
   MegaphoneIcon,
@@ -14,12 +14,17 @@ import {
   ChatBubbleLeftRightIcon,
   Bars3Icon,
   XMarkIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  ClipboardDocumentCheckIcon,
+  ChartPieIcon
 } from '@heroicons/react/24/outline';
+import { id } from 'zod/v4/locales';
 
-const Sidebar = ({ activeTab, setActiveTab, whatsappStatus, onboardingStatus, trainingStatus, pricingSubscriptionStatus, isWabaDetailsEmpty }) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+const Sidebar = ({ activeTab, setActiveTab, whatsappStatus, onboardingStatus, trainingStatus, pricingSubscriptionStatus, isWabaDetailsEmpty, isMobileMenuOpen, setIsMobileMenuOpen }) => {
+  //const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   // Calculate progress based on dashboard steps
+  console.log("Sidebar received isMobileMenuOpen:", typeof isMobileMenuOpen);
+  console.log("Sidebar received setIsMobileMenuOpen:", typeof setIsMobileMenuOpen);
   const calculateProgress = () => {
     let completedSteps = 0;
     const totalSteps = 4;
@@ -55,61 +60,54 @@ const Sidebar = ({ activeTab, setActiveTab, whatsappStatus, onboardingStatus, tr
   const progress = calculateProgress();
 
   const menuItems = [
-    { id: 'team-inbox', name: 'Team inbox', icon: InboxIcon },
+    { id: 'dashboard', name: 'Dashboard', icon: ChartPieIcon },
+    { id: 'setup', name: 'Setup', icon: ClipboardDocumentCheckIcon },
+    { id: 'team-inbox', name: 'Inbox', icon: InboxIcon },
     { id: 'broadcast', name: 'Broadcast', icon: MegaphoneIcon },
-    { id: 'contacts', name: 'Contacts', icon: UserGroupIcon },
-    { id: 'automations', name: 'Automations', icon: BoltIcon },
-    { id: 'ads', name: 'Ads', icon: SpeakerWaveIcon },
-    { id: 'analytics', name: 'Analytics', icon: ChartBarIcon },
-    { id: 'team-management', name: 'Team management', icon: UserCircleIcon },
-    { id: 'integrations', name: 'Integrations', icon: PuzzlePieceIcon },
-    { id: 'webhooks', name: 'Webhooks', icon: LinkIcon },
-    { id: 'commerce', name: 'Commerce', icon: ShoppingBagIcon },
+    { id: 'contacts', name: 'Customers', icon: UserGroupIcon },
+    //{ id: 'automations', name: 'Automations', icon: BoltIcon },
+    //{ id: 'ads', name: 'Ads', icon: SpeakerWaveIcon },
+    //{ id: 'analytics', name: 'Analytics', icon: ChartBarIcon },
+    //{ id: 'team-management', name: 'Team management', icon: UserCircleIcon },
+    //{ id: 'integrations', name: 'Integrations', icon: PuzzlePieceIcon },
+    //{ id: 'webhooks', name: 'Webhooks', icon: LinkIcon },
+    //{ id: 'commerce', name: 'Commerce', icon: ShoppingBagIcon },
     { id: 'account-details', name: 'Account Details', icon: IdentificationIcon },
-    { id: 'channels', name: 'Channels', icon: ChatBubbleLeftRightIcon }
+    //{ id: 'channels', name: 'Channels', icon: ChatBubbleLeftRightIcon }
   ];
+useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
 
+    // Cleanup: Ensure scrolling is re-enabled if the component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
   return (
     <>
-      {/* Mobile Menu Button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="bg-white p-2 rounded-lg shadow-lg border border-gray-200"
-        >
-          {isMobileMenuOpen ? (
-            <XMarkIcon className="h-6 w-6 text-gray-600" />
-          ) : (
-            <Bars3Icon className="h-6 w-6 text-gray-600" />
-          )}
-        </button>
-      </div>
-
-      {/* Mobile Overlay */}
+      {/* Mobile Overlay - Now with a subtle blur effect */}
       {isMobileMenuOpen && (
         <div 
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="lg:hidden fixed inset-0 bg-transparent z-20"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div className={`
-        fixed lg:static left-0 z-50 w-40 bg-white shadow-lg
-        transform transition-transform duration-300 ease-in-out
+        fixed lg:static left-0 z-30 w-64 lg:w-48 bg-white border-r border-gray-100 shadow-xl lg:shadow-none
+        transform transition-transform duration-300 ease-in-out flex flex-col
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `} style={{ height: 'calc(100vh - 64px)' }}>
-        {/* Logo/Brand */}
-        <div className="p-3 border-b border-gray-200">
-          <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xs">N</span>
-            </div>
-            <span className="text-sm font-bold text-gray-900">NimbleAI</span>
-          </div>
-        </div>
+       `} style={{ height: 'calc(100vh - 64px)' }}>
+
 
       {/* Progress Bar */}
+{/* Hiding the Progress Bar for the time being */}
+{/*
       <div className="px-3 py-3 border-b border-gray-200">
         {progress.percentage < 100 ? (
           <button
@@ -148,38 +146,38 @@ const Sidebar = ({ activeTab, setActiveTab, whatsappStatus, onboardingStatus, tr
           </div>
         )}
       </div>
-
+}
       {/* Navigation Menu */}
-      <nav className="p-2">
-        <ul className="space-y-1">
+      <nav className="p-3 flex-1 overflow-y-auto space-y-0.5">
+        {/* <ul className="space-y-1"> */}
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             const showWarning = item.id === 'channels' && isWabaDetailsEmpty;
             
             return (
-              <li key={item.id}>
                 <button
+                  key={item.id}
                   onClick={() => {
                     setActiveTab(item.id);
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`w-full flex items-center space-x-2 px-2 py-2 rounded-lg text-left transition-all ${
+                  className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left transition-all duration-200 ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-[#25D366]/10 text-[#1a9c4e] font-semibold'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
-                  <span className="text-sm font-medium truncate flex-1">{item.name}</span>
+                  <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-[#25D366]' : 'text-gray-400'}`} />
+                  <span className="text-[13px] font-medium truncate flex-1">{item.name}</span>
                   {showWarning && (
                     <ExclamationTriangleIcon className="h-4 w-4 text-yellow-500 flex-shrink-0" />
                   )}
                 </button>
-              </li>
+            
             );
           })}
-        </ul>
+        {/* </ul> */}
       </nav>
       </div>
     </>

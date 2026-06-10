@@ -4,7 +4,8 @@ import {
   XCircleIcon,
   ArrowPathIcon,
   PlusIcon,
-  ChatBubbleLeftRightIcon
+  ChatBubbleLeftRightIcon,
+  ShoppingBagIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../hooks/useAuth';
 import { checkWhatsAppStatus, getWhatsAppLink } from '../../services/firebaseService';
@@ -18,6 +19,7 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
   const { user } = useAuth();
   const [isTesting, setIsTesting] = useState(false);
   const [whatsappStatus, setWhatsappStatus] = useState(null);
+  const [shopifyStatus, setShopifyStatus] = useState({ isIntegrated: false });
   const [isCheckingWhatsapp, setIsCheckingWhatsapp] = useState(false);
   const [whatsappLink, setWhatsappLink] = useState(null);
   const [isLoadingLink, setIsLoadingLink] = useState(false);
@@ -138,6 +140,14 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
       messageCount: getWhatsAppStatus() === 'connected' ? '1,247' : '0'
     },
     {
+      id: 'shopify',
+      name: 'Shopify',
+      status: shopifyStatus?.isIntegrated ? 'connected' : 'setup_required',
+      description: 'E-commerce store integration',
+      lastSync: shopifyStatus?.isIntegrated ? 'Just now' : 'Not connected',
+      messageCount: '0'
+    },
+    {
       id: 'instagram',
       name: 'Instagram',
       status: 'coming_soon',
@@ -233,6 +243,7 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
               <div className="flex items-center space-x-3">
                 <div className="text-2xl">
                   {integration.id === 'whatsapp' && <ChatBubbleLeftRightIcon className="h-8 w-8 text-green-600" />}
+                  {integration.id === 'shopify' && <ShoppingBagIcon className="h-8 w-8 text-[#95BF47]" />}
                   {integration.id === 'instagram' && <span className="text-pink-600">📷</span>}
                   {integration.id === 'website' && <span className="text-blue-600">🌐</span>}
                 </div>

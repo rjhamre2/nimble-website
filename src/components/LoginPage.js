@@ -235,68 +235,10 @@ const LoginPage = ({ isDarkMode }) => {
   return (
     <div className={`min-h-screen flex flex-col ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <div className="flex-grow container mx-auto px-4 py-12 max-w-7xl">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-          {/* Left Side - Heading and Features */}
-          <div className="flex flex-col">
-            {/* Main Heading */}
-            <h1 className={`text-4xl md:text-5xl font-bold mb-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              Everything you need to grow your business on WhatsApp
-            </h1>
-
-            {/* Features List */}
-            <ul className="space-y-4">
-              <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Targeted Campaigns to deliver personalized offers
-                </span>
-              </li>
-              <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Pre-built templates to send updates & reminders
-                </span>
-              </li>
-              <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  24x7 instant engagement with no-code chatbots
-                </span>
-              </li>
-              <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Powerful automations to resolve issues faster
-                </span>
-              </li>
-              <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Integrations to bring in context from Zoho, Shopify, etc.
-                </span>
-              </li>
-            </ul>
-
-            {/* Trust Badge */}
-            <div className="mt-8">
-              <p className={`text-lg font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Trusted by 8000+ customers across 52 countries
-              </p>
-            </div>
-          </div>
+        <div className="flex flex-col lg:grid lg:grid-cols-2 gap-12 items-start">
 
           {/* Right Side - Login Form */}
-          <div className="flex flex-col">
+          <div className="flex flex-col order-1 lg:order-2">
             <div className={`rounded-lg p-8 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg`}>
               <h2 className={`text-2xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 Log in to your account
@@ -509,6 +451,67 @@ const LoginPage = ({ isDarkMode }) => {
               </div>
             </div>
           </div>
+
+          {/* Left Side - Heading and Features */}
+          <div className="flex flex-col order-2 lg:order-1">
+            {/* Main Heading */}
+            <h1 className={`text-4xl md:text-5xl font-bold mb-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              Everything you need to grow your business on WhatsApp
+            </h1>
+
+            {/* Features List */}
+            <ul className="space-y-4">
+              <li className="flex items-start">
+                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Targeted Campaigns to deliver personalized offers
+                </span>
+              </li>
+              <li className="flex items-start">
+                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Pre-built templates to send updates & reminders
+                </span>
+              </li>
+              <li className="flex items-start">
+                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  24x7 instant engagement with no-code chatbots
+                </span>
+              </li>
+              <li className="flex items-start">
+                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Powerful automations to resolve issues faster
+                </span>
+              </li>
+              <li className="flex items-start">
+                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Integrations to bring in context from Zoho, Shopify, etc.
+                </span>
+              </li>
+            </ul>
+
+            {/* Trust Badge */}
+            <div className="mt-8">
+              <p className={`text-lg font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                Trusted by 8000+ customers across 52 countries
+              </p>
+            </div>
+          </div>
+
+
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { checkWhatsAppStatus, getUserDashboardStatus } from '../../services/firebaseService';
+import {checkShopifyStatus} from '../../services/checkShopifyStatus';
 import { apiConfig } from '../../config/api';
 import LiveChat from '../LiveChat';
 import Sidebar from './Sidebar';
@@ -64,13 +65,14 @@ if (firebaseConfig.apiKey && getApps().length === 0) {
   firebaseApp = getApps()[0];
 }
 
-const Dashboard = () => {
+const Dashboard = ({isMobileMenuOpen, setIsMobileMenuOpen}) => {
   const { user, userData, loading } = useAuth();
   const [isEmailVerified, setIsEmailVerified] = useState(null);
   const [isCheckingEmailVerification, setIsCheckingEmailVerification] = useState(false);
   const hasCheckedEmailVerification = useRef(false);
   const lastCheckedUserId = useRef(null);
-  
+  console.log("DEBUG: Is setIsMobileMenuOpen a function?", typeof setIsMobileMenuOpen === 'function');
+console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   // Tab and view state
   const [activeTab, setActiveTab] = useState('overview');
   const [broadcastView, setBroadcastView] = useState('new-broadcast');
@@ -121,6 +123,7 @@ const Dashboard = () => {
   
   // Status state
   const [whatsappStatus, setWhatsappStatus] = useState(null);
+  const [shopifyStatus, setShopifyStatus] = useState(null);
   const [onboardingStatus, setOnboardingStatus] = useState(null);
   const [trainingStatus, setTrainingStatus] = useState(null);
   const [subscriptionDetails, setSubscriptionDetails] = useState(null);
@@ -128,6 +131,7 @@ const Dashboard = () => {
   
   // Loading states
   const [isCheckingWhatsapp, setIsCheckingWhatsapp] = useState(false);
+  const [isCheckingShopify, setIsCheckingShopify] = useState(false);
   const [isLoadingOnboarding, setIsLoadingOnboarding] = useState(false);
   const [isLoadingTraining, setIsLoadingTraining] = useState(false);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(false);
@@ -247,6 +251,9 @@ const Dashboard = () => {
   const whatsappBorderClass = whatsappStatus?.success && whatsappStatus?.isIntegrated 
     ? 'border-green-500' 
     : 'border-gray-300';
+  const shopifyBorderClass = shopifyStatus?.isIntegrated 
+    ? 'border-green-500' 
+    : 'border-gray-300';
   const onboardingBorderClass = onboardingStatus?.status === 'completed' 
     ? 'border-yellow-500' 
     : 'border-gray-300';
@@ -263,6 +270,10 @@ const Dashboard = () => {
   };
 
   const handleWhatsAppClick = () => {
+    setActiveTab('integrations');
+  };
+
+  const handleShopifyClick = () => {
     setActiveTab('integrations');
   };
 
@@ -432,15 +443,23 @@ const Dashboard = () => {
             setIsEmailVerified(false);
           }
         } else {
-          // If no Firebase user, we can't check verification
-          // This might happen if user signed up with email/password but Firebase Auth isn't used
-          // In this case, assume email is not verified and show warning
+          // If no Firebase user, we can't check verification via reload
           if (!isMounted) return;
-          console.warn("⚠️ [Email Verification] No Firebase user found. Cannot check email verification status.");
-          console.warn("📝 [Email Verification] This might happen if user signed up with email/password but Firebase Auth isn't used.");
-          console.warn("📝 [Email Verification] Showing warning banner as precaution.");
-          // Set to false to show warning banner when we can't verify
-          setIsEmailVerified(false);
+          console.warn("⚠️ [Email Verification] No Firebase user found in auth.currentUser.");
+          
+          // FALLBACK: Trust the user object or Firestore data if available
+          const isVerifiedInDb = userData?.isEmailVerified === true || 
+                                 user?.emailVerified === true || 
+                                 user?.email_verified === true;
+ 
+          if (isVerifiedInDb) {
+            console.log("✅ [Email Verification] Email Verified: Status confirmed via Database/User Object!");
+            setIsEmailVerified(true);
+          } else {
+            console.warn("📝 [Email Verification] Showing warning banner as precaution.");
+            // Set to false to show warning banner when we can't verify
+            setIsEmailVerified(false);
+          }
         }
       } catch (error) {
         if (!isMounted) return;
@@ -2348,18 +2367,21 @@ const Dashboard = () => {
     if (!user?.uid) return;
     
     setIsCheckingWhatsapp(true);
+    setIsCheckingShopify(true);
     setIsLoadingOnboarding(true);
     setIsLoadingTraining(true);
     setIsLoadingSubscription(true);
     
     try {
-      const [wa, ob, pricingSub] = await Promise.all([
+      const [wa, shopify, ob, pricingSub] = await Promise.all([
         checkWhatsAppStatus(user.uid),
+        checkShopifyStatus(user.uid),
         getUserDashboardStatus(user.uid),
         fetchPricingSubscriptionStatus()
       ]);
       
       setWhatsappStatus(wa);
+      setShopifyStatus(shopify);
       setOnboardingStatus(ob?.onboarding || null);
       setTrainingStatus(ob?.training || null);
       setSubscriptionDetails(ob?.subscription || null);
@@ -2368,6 +2390,7 @@ const Dashboard = () => {
       console.error('Error refreshing statuses:', error);
     } finally {
       setIsCheckingWhatsapp(false);
+      setIsCheckingShopify(false);
       setIsLoadingOnboarding(false);
       setIsLoadingTraining(false);
       setIsLoadingSubscription(false);
@@ -5215,7 +5238,7 @@ const Dashboard = () => {
                         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
                           {/* Icons */}
                           <div className="flex items-center justify-center gap-4 mb-6">
-                            <svg className="w-12 h-12" fill="#25D366" viewBox="0 0 24 24">
+                            <svg className="w-12 h-12" fill="#264A36" viewBox="0 0 24 24">
                               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
                             </svg>
                             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5443,15 +5466,29 @@ const Dashboard = () => {
           </div>
         );
       case 'dashboard':
+        return (
+          <div className="space-y-6">
+            <div className="text-center py-12">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to NimbleAI Dashboard</h2>
+              {/* Desktop View: Shows "sidebar" */}
+              <p className="hidden md:block text-gray-600">
+               Select a section from the sidebar to get started.
+              </p>
+  
+              {/* Mobile View: Shows "menu" */}
+              <p className="md:hidden text-gray-600">
+              Select a section from the Menu to get started.
+              </p>
+            </div>
+          </div>
+        );
       case 'knowledge':
       case 'live-chat':
       case 'billing':
       case 'subscriptions':
       case 'settings':
-        // Keep existing cases for backward compatibility
-        switch (activeTab) {
-          case 'dashboard':
-        return (
+      case 'setup':
+                return (
           <div className="space-y-6">
             {/* Status Indicators Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
@@ -5461,7 +5498,7 @@ const Dashboard = () => {
                 onClick={handleWhatsAppClick}
               >
                 <div>
-                  <span className="block text-lg font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded mb-2 mx-auto text-center">Step 1: WhatsApp</span>
+                  <span className="block text-lg font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded mb-2 mx-auto text-center">WhatsApp Business</span>
                   <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="24" height="24" viewBox="0 0 48 48">
                       <path fill="#fff" d="M4.868,43.303l2.694-9.835C5.9,30.59,5.026,27.324,5.027,23.979C5.032,13.514,13.548,5,24.014,5c5.079,0.002,9.845,1.979,13.43,5.566c3.584,3.588,5.558,8.356,5.556,13.428c-0.004,10.465-8.522,18.98-18.986,18.98c-0.001,0,0,0,0,0h-0.008c-3.177-0.001-6.3-0.798-9.073-2.311L4.868,43.303z"></path>
@@ -5481,8 +5518,32 @@ const Dashboard = () => {
                   </p>
                 </div>
               </div>
-
+              
+              {/* 2. Shopify Status */}
+              <div 
+                className={`bg-white rounded-xl shadow-sm border-2 ${shopifyBorderClass || 'border-gray-300'} hover:border-gray-400 p-6 cursor-pointer hover:shadow-md transition`}
+                onClick={handleShopifyClick}
+              >
+                <div>
+                  <span className="block text-lg font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded mb-2 mx-auto text-center">Shopify</span>
+                  <div className="w-12 h-12 bg-[#95BF47]/10 rounded-lg flex items-center justify-center mx-auto">
+                    {/* Simple Shopping Bag SVG in Shopify Green */}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#95BF47" className="w-7 h-7">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900 text-center mt-2">
+                    {isCheckingShopify ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        <span className="ml-2 text-sm font-medium text-gray-500">Loading...</span>
+                      </div>
+                    ) : shopifyStatus?.isIntegrated ? '✅ Connected' : '⏳ Pending'}
+                  </p>
+                </div>
+              </div>
               {/* Onboarding Status */}
+              {/*
               <div 
                 className={`bg-white rounded-xl shadow-sm border-2 ${onboardingBorderClass} hover:border-gray-400 p-6 cursor-pointer hover:shadow-md transition`}
                 onClick={handleOnboardingClick}
@@ -5507,8 +5568,9 @@ const Dashboard = () => {
                     )}
                   </div>
                   </div>
-
+              */}
               {/* Training Status */}
+              {/*
               <div 
                 className={`bg-white rounded-xl shadow-sm border-2 ${trainingBorderClass} hover:border-gray-400 p-6 cursor-pointer hover:shadow-md transition`}
                 onClick={handleTrainingClick}
@@ -5534,8 +5596,9 @@ const Dashboard = () => {
                   )}
                 </div>
               </div>
-
+              */}
               {/* Subscription Details */}
+              {/*
               <div 
                 className={`bg-white rounded-xl shadow-sm border-2 ${subscriptionBorderClass} hover:border-gray-400 p-6 cursor-pointer hover:shadow-md transition`}
                 onClick={handleSubscriptionClick}
@@ -5566,12 +5629,26 @@ const Dashboard = () => {
                   )}
                 </div>
               </div>
+              */}
             </div>
 
             {/* Main Content Grid */}
+            {/*
             <div className="space-y-6">
               <LiveAgentPreview />
               <RecentChats onNavigateToLiveChat={() => setActiveTab('live-chat')} />
+            </div>
+            */}
+          </div>
+        );
+        // Keep existing cases for backward compatibility
+        switch (activeTab) {
+          case 'dashboard':
+        return (
+          <div className="space-y-6">
+            <div className="text-center py-12">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to NimbleAI Dashboard</h2>
+              <p className="text-gray-600">Select a section from the sidebar to get started.</p>
             </div>
           </div>
         );
@@ -5602,7 +5679,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex flex-col bg-gray-50 overflow-hidden w-full" style={{ height: 'calc(100vh - 75px)' }}>
       {/* Email Verification Banner - Show when email is not verified */}
       {/* Debug: Current verification status */}
       {console.log('🔍 [Email Verification Banner] Current state:', { 
@@ -5616,7 +5693,7 @@ const Dashboard = () => {
 
       {/* Show banner when email is not verified (false) or when status is unknown (null) but we have a user */}
       {(isEmailVerified === false || (isEmailVerified === null && user && !isCheckingEmailVerification)) && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+        <div className="shrink-0 bg-yellow-50 border-l-4 border-yellow-400 border-b p-4">
           <div className="flex items-start">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
@@ -7199,7 +7276,8 @@ const Dashboard = () => {
       <OnboardingBanner userData={userData} />
       */}
       
-      <div className="flex flex-col lg:flex-row">
+
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full">
         {/* Left Sidebar */}
         <Sidebar 
           activeTab={activeTab} 
@@ -7209,11 +7287,13 @@ const Dashboard = () => {
           trainingStatus={trainingStatus}
           pricingSubscriptionStatus={pricingSubscriptionStatus}
           isWabaDetailsEmpty={isWabaDetailsEmpty}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
         />
         {/* Main Content */}
-        <div className={`flex-1 ${activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'p-0 overflow-hidden' : 'p-4 lg:p-6'}`}>
-          <div className={activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'w-full h-full' : 'max-w-7xl mx-auto'}>
-            {renderMainContent()}
+<div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'p-0 overflow-hidden' : 'p-4 lg:p-6 overflow-y-auto'}`}>
+          <div className={`flex flex-col flex-1 min-h-0 ${activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'w-full h-full' : 'max-w-7xl mx-auto w-full'}`}>
+           {renderMainContent()}
           </div>
         </div>
       </div>

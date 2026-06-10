@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import websocketService from '../services/websocketService';
 import { fetchRecentChats, chatService, formatRelativeTime } from '../services/chatService';
-
 import { 
   ReplyButtonsBuilder, 
   MediaBuilder, 
@@ -18,7 +17,6 @@ import {
 } from './LiveChatModals';
 
 import { 
-  ArrowLeftIcon,
   MagnifyingGlassIcon, 
   ChatBubbleLeftRightIcon,
   PaperAirplaneIcon, 
@@ -88,6 +86,7 @@ const LiveChat = ({ isDarkMode }) => {
     const handleNewMessage = (newMessage) => {
       setAllMessages(prev => [...prev, newMessage]);
       if (selectedSenderNumber === newMessage.sender_number) {
+        scrollToBottom();
       }
     };
 
@@ -121,7 +120,7 @@ const LiveChat = ({ isDarkMode }) => {
     return params;
   }, [allMessages, searchQuery]);
 
-  // 4. Chat History
+// 4. Chat History
   const activeMessages = useMemo(() => {
     if (!selectedSenderNumber) return [];
     return allMessages.filter(m => 
@@ -130,32 +129,18 @@ const LiveChat = ({ isDarkMode }) => {
     );
   }, [allMessages, selectedSenderNumber]);
 
-// SINGLE, ROBUST SCROLL LOGIC
-  const scrollToBottom = (isSmooth = true) => {
+  // SINGLE, ROBUST SCROLL LOGIC
+  const scrollToBottom = () => {
+    // The 100ms timeout guarantees React has finished drawing the new message on screen
     setTimeout(() => {
-      if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTo({
-          top: chatContainerRef.current.scrollHeight,
-          // Use 'auto' for an instant jump, 'smooth' for an animation
-          behavior: isSmooth ? 'smooth' : 'auto' 
-        });
-      }
-    }, 150);
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 100);
   };
 
-  // TRIGGER 1: When you click a different contact, INSTANTLY jump to the bottom.
+  // Run this whenever the active messages change (new message sent/received, or different chat opened)
   useEffect(() => {
-    if (selectedSenderNumber) {
-      scrollToBottom(false); // false = instant jump
-    }
-  }, [selectedSenderNumber]);
-
-  // TRIGGER 2: When a NEW message is sent/received, SMOOTH scroll to it.
-  useEffect(() => {
-    if (activeMessages.length > 0) {
-      scrollToBottom(true); // true = smooth scroll
-    }
-  }, [activeMessages.length]);
+    scrollToBottom();
+  }, [activeMessages]);
 
   // --- HANDLERS ---
   const handleSendText = async (e) => {
@@ -233,6 +218,7 @@ const handleSendComplexMessage = async ({ type, payload }) => {
     };
     
     setAllMessages(prev => [...prev, tempMsg]);
+    scrollToBottom();
 
     // 3. Send via chatService
     try {
@@ -293,27 +279,14 @@ const handleSendComplexMessage = async ({ type, payload }) => {
   };
   
   const selectedName = conversations.find(c => c.sender_number === selectedSenderNumber)?.sender_name || selectedSenderNumber;
-  const [activeFilter, setActiveFilter] = useState('all');
-
-  const filteredConversations = conversations.filter((chat) => {
-    if (activeFilter === 'unread') {
-      return chat.unread_count > 0; // Change this to match your actual unread property name
-    }
-    return true; // 'all'
-  });
 
   return (
-    <div className={`flex-1 min-h-0 w-full h-full flex overflow-hidden ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+    <div className={`h-[calc(100vh-64px)] flex relative ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
       
       {/* SIDEBAR */}
-      <div className={`
-            ${selectedSenderNumber ? 'hidden lg:flex' : 'flex'} 
-            w-full lg:w-1/4 lg:min-w-[320px] border-r flex-col z-10 
-        ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}
-      `}>
-        <div className="p-4 border-b border-transparent">
+      <div className={`w-1/4 min-w-[320px] border-r flex flex-col z-10 ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
+        <div className="p-4">
           <h2 className={`text-xl font-bold tracking-tight mb-4 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Messages</h2>
-          
           <div className="relative">
             <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-2.5 text-slate-400" />
             <input
@@ -321,104 +294,41 @@ const handleSendComplexMessage = async ({ type, payload }) => {
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-[#264A36] transition-all ${
+              className={`w-full pl-10 pr-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-[#25D366] transition-all ${
                 isDarkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-200 text-slate-900'
               }`}
             />
-          </div>
-
-          {/* WhatsApp-style Filter Pills */}
-          <div className="flex gap-2 mt-4 px-1">
-            <button
-              onClick={() => setActiveFilter('all')}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                activeFilter === 'all'
-                  ? (isDarkMode ? 'bg-[#264A36]/20 text-[#264A36]' : 'bg-[#264A36]/10 text-[#1a9c4e]')
-                  : (isDarkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setActiveFilter('unread')}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                activeFilter === 'unread'
-                  ? (isDarkMode ? 'bg-[#264A36]/20 text-[#264A36]' : 'bg-[#264A36]/10 text-[#1a9c4e]')
-                  : (isDarkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
-              }`}
-            >
-              Unread
-            </button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           {loading ? (
              <div className="p-8 text-center text-slate-400 text-sm font-medium animate-pulse">Loading chats...</div>
-          ) : filteredConversations.map((chat) => { // <-- Using filteredConversations here
+          ) : conversations.map((chat) => {
             const isSelected = selectedSenderNumber === chat.sender_number;
-            const isUnread = chat.unread_count > 0; // Adjust property name based on your data
-
             return (
               <div
                 key={chat.sender_number}
                 onClick={() => setSelectedSenderNumber(chat.sender_number)}
-                className={`p-3.5 cursor-pointer transition-all border-b ${
-                  isDarkMode ? 'border-slate-800/50' : 'border-slate-100'
+                className={`p-4 cursor-pointer transition-all border-b ${
+                  isDarkMode ? 'border-slate-800' : 'border-slate-100'
                 } ${
                   isSelected 
-                    ? (isDarkMode ? 'bg-slate-800' : 'bg-[#F9FAFB]') 
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    ? (isDarkMode ? 'bg-slate-800 border-l-4 border-l-[#25D366]' : 'bg-[#F9FAFB] border-l-4 border-l-[#25D366]') 
+                    : 'border-l-4 border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  
-                  {/* AVATAR */}
-                  <div className={`w-12 h-12 rounded-full shrink-0 flex items-center justify-center overflow-hidden ${
-                    isDarkMode ? 'bg-slate-700' : 'bg-slate-200'
-                  }`}>
-                    {chat.profile_picture ? (
-                      <img src={chat.profile_picture} alt={chat.sender_name} className="w-full h-full object-cover" />
-                    ) : (
-                      // Fallback if no picture exists
-                      <UserIcon className={`w-6 h-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} />
-                    )}
-                  </div>
-
-                  {/* CHAT INFO */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline mb-0.5">
-                      <h3 className={`font-semibold text-[15px] truncate ${isDarkMode ? 'text-gray-200' : 'text-slate-900'}`}>
-                        {chat.sender_name}
-                      </h3>
-                      {/* Timestamp (Green if unread, just like WhatsApp) */}
-                      <span className={`text-[11px] font-medium whitespace-nowrap ml-2 ${
-                        isUnread ? 'text-[#264A36]' : 'text-slate-400'
-                      }`}>
-                        {formatRelativeTime(chat.time_stamp)}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center gap-2">
-                      {/* Last Message (Bolder if unread) */}
-                      <p className={`text-[13px] truncate flex-1 ${
-                        isUnread 
-                          ? (isDarkMode ? 'text-white font-medium' : 'text-slate-800 font-medium') 
-                          : (isDarkMode ? 'text-slate-400' : 'text-slate-500')
-                      }`}>
-                        {chat.last_message}
-                      </p>
-                      
-                      {/* Unread Badge */}
-                      {isUnread && (
-                        <span className="bg-[#264A36] text-white text-[10px] font-bold px-1.5 min-w-[20px] h-5 rounded-full flex items-center justify-center shrink-0">
-                          {chat.unread_count}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
+                <div className="flex justify-between items-start mb-1">
+                  <h3 className={`font-semibold text-sm truncate ${isDarkMode ? 'text-gray-200' : 'text-slate-900'}`}>
+                    {chat.sender_name}
+                  </h3>
+                  <span className="text-[11px] font-medium text-slate-400 whitespace-nowrap ml-2">
+                    {formatRelativeTime(chat.time_stamp)}
+                  </span>
                 </div>
+                <p className={`text-sm truncate ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {chat.last_message}
+                </p>
               </div>
             );
           })}
@@ -426,32 +336,17 @@ const handleSendComplexMessage = async ({ type, payload }) => {
       </div>
 
       {/* CHAT AREA */}
-      <div className={`${!selectedSenderNumber ? 'hidden lg:flex' : 'flex'} flex-1 flex-col relative z-0 min-h-0 ${isDarkMode ? 'bg-[#0A0A0A]' : 'bg-[#F9FAFB]'}`}>
-          {selectedSenderNumber ? (
+      <div className={`flex-1 flex flex-col relative z-0 ${isDarkMode ? 'bg-[#0A0A0A]' : 'bg-[#F9FAFB]'}`}>
+        {selectedSenderNumber ? (
           <>
-            <div className={`shrink-0 p-4 border-b flex justify-between items-center z-10 backdrop-blur-md ${isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
+            <div className={`p-4 border-b flex justify-between items-center z-10 backdrop-blur-md ${isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
               <div>
-                {/* Back button and Name horizontally aligned */}
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => setSelectedSenderNumber(null)} 
-                    className="lg:hidden -ml-2 p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"
-                    aria-label="Back to chats"
-                  >
-                    <ArrowLeftIcon className={`w-5 h-5 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`} />
-                  </button>
-                  <h3 className={`font-bold text-lg tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                    {selectedName}
-                  </h3>
-                </div>
-                
-                {/* Number aligned nicely under the name */}
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider ml-8 lg:ml-0">
-                  {selectedSenderNumber}
-                </p>
+                <h3 className={`font-bold text-lg tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{selectedName}</h3>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{selectedSenderNumber}</p>
               </div>
             </div>
-            <div ref={chatContainerRef} className="flex-1 overflow-y-auto min-h-0 p-6 space-y-6">
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {activeMessages.map((msg, idx) => {
                  const isOutbound = msg.direction === 'outbound' || msg.sender === 'agent';
 
@@ -459,8 +354,8 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                    <div key={idx} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
                      <div className={`max-w-[70%] p-3.5 rounded-2xl text-sm shadow-sm ${
                        isOutbound 
-                         ? 'bg-[#325E45] text-white rounded-br-sm' 
-                         : (isDarkMode ? 'bg-[#3C3D3D] text-white' : 'bg-[#3C3D3D] border border-slate-200 text-white') + ' rounded-bl-sm'
+                         ? 'bg-[#DCF8C6] text-white rounded-br-sm' 
+                         : (isDarkMode ? 'bg-slate-800 text-gray-200' : 'bg-white border border-slate-200 text-slate-800') + ' rounded-bl-sm'
                      }`}>
                        
                       {/* --- RICH MEDIA RENDERER --- */}
@@ -533,7 +428,7 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                             {msg.content?.header && <p className="font-bold text-sm">{msg.content.header}</p>}
                             <p>{msg.content?.body || msg.message.replace('[Menu] ', '')}</p>
                             {msg.content?.footer && <p className="text-xs opacity-80">{msg.content.footer}</p>}
-                            <div className={`mt-2 py-2 flex items-center justify-center gap-2 border-t font-bold text-sm rounded-b-lg ${isOutbound ? 'border-white/20 bg-black/10' : 'border-slate-200 bg-slate-50 text-[#264A36]'}`}>
+                            <div className={`mt-2 py-2 flex items-center justify-center gap-2 border-t font-bold text-sm rounded-b-lg ${isOutbound ? 'border-white/20 bg-black/10' : 'border-slate-200 bg-slate-50 text-[#25D366]'}`}>
                               <ListBulletIcon className="w-4 h-4" />
                               {msg.content?.button_text || 'Menu'}
                             </div>
@@ -551,7 +446,7 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                                   )}
                                   <div className="p-3 flex flex-col flex-1">
                                     <p className="text-sm font-medium flex-1 line-clamp-2">{card.body?.text}</p>
-                                    <div className={`mt-3 text-center text-xs font-bold py-2 border-t ${isOutbound ? 'border-white/20' : 'border-slate-100 text-[#264A36]'}`}>
+                                    <div className={`mt-3 text-center text-xs font-bold py-2 border-t ${isOutbound ? 'border-white/20' : 'border-slate-100 text-[#25D366]'}`}>
                                       {card.action?.parameters?.display_text || 'Link'}
                                     </div>
                                   </div>
@@ -569,7 +464,7 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                             )}
                             <p className="whitespace-pre-wrap leading-relaxed">{msg.content?.body || msg.message.replace('[Link] ', '')}</p>
                             {msg.content?.footer && <p className="text-xs opacity-80">{msg.content.footer}</p>}
-                            <div className={`mt-2 py-2.5 flex items-center justify-center gap-2 border-t font-bold text-sm rounded-b-lg ${isOutbound ? 'border-white/20 bg-black/10 text-white' : 'border-slate-200 bg-slate-50 text-[#264A36]'}`}>
+                            <div className={`mt-2 py-2.5 flex items-center justify-center gap-2 border-t font-bold text-sm rounded-b-lg ${isOutbound ? 'border-white/20 bg-black/10 text-white' : 'border-slate-200 bg-slate-50 text-[#25D366]'}`}>
                               <LinkIcon className="w-4 h-4" />
                               {msg.content?.display_text || 'Open Link'}
                             </div>
@@ -637,7 +532,7 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                                       + {count - 3} more contacts
                                     </div>
                                   )}
-                                  <div className={`text-center text-xs font-bold py-2.5 border-t cursor-pointer transition-colors ${isOutbound ? 'border-white/10 hover:bg-black/20' : 'border-slate-200 text-[#264A36] hover:bg-slate-100'}`}>
+                                  <div className={`text-center text-xs font-bold py-2.5 border-t cursor-pointer transition-colors ${isOutbound ? 'border-white/10 hover:bg-black/20' : 'border-slate-200 text-[#25D366] hover:bg-slate-100'}`}>
                                     View Contact{count > 1 ? 's' : ''}
                                   </div>
                                 </div>
@@ -664,40 +559,40 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                          {msg.status === 'sending' && <span>⏳</span>}
                          {msg.status === 'sent' && <span>✓</span>}
                          {msg.status === 'delivered' && <span>✓✓</span>}
-                         {msg.status === 'read' && <span className={isOutbound ? "text-white drop-shadow-md" : "text-[#264A36]"}>✓✓</span>}
+                         {msg.status === 'read' && <span className={isOutbound ? "text-white drop-shadow-md" : "text-[#25D366]"}>✓✓</span>}
                          {msg.status === 'failed' && <span className="text-red-300">❌</span>}
                        </div>
                      </div>
                    </div>
                  );
                })}
+               <div ref={messagesEndRef} />
             </div>
 
             {/* INPUT AREA */}
-            <div className={`shrink-0 p-4 border-t relative z-20 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+            <div className={`p-4 border-t relative z-20 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
               
               {/* UNIVERSAL ACTION MENU */}
               {showAttachments && (
                 <div className={`absolute bottom-20 left-4 rounded-2xl p-5 z-50 w-80 grid grid-cols-2 gap-2 shadow-[0_0_40px_rgba(37,211,102,0.1)] border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'}`}>
                   
-                  <div className={`col-span-2 text-[10px] font-bold mb-1 uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Media & Docs</div>
-                  <ActionMenuButton isDarkMode={isDarkMode} colorClass="bg-pink-500" icon={<PhotoIcon className="w-4 h-4" />} label="Image/Video" onClick={() => handleOpenBuilder('media')} />
-                  <ActionMenuButton isDarkMode={isDarkMode} colorClass="bg-purple-500" icon={<DocumentIcon className="w-4 h-4" />} label="Document" onClick={() => handleOpenBuilder('document')} />
-                  <ActionMenuButton isDarkMode={isDarkMode} colorClass="bg-orange-500" icon={<MusicalNoteIcon className="w-4 h-4" />} label="Audio" onClick={() => handleOpenBuilder('audio')} />
+                  <div className={`col-span-2 text-[10px] font-bold mb-1 uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>Media & Docs</div>
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<PhotoIcon className="text-blue-500" />} label="Image/Video" onClick={() => handleOpenBuilder('media')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<DocumentIcon className="text-purple-500" />} label="Document" onClick={() => handleOpenBuilder('document')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<MusicalNoteIcon className="text-yellow-500" />} label="Audio" onClick={() => handleOpenBuilder('audio')} />
                   
-                  <div className={`col-span-2 text-[10px] font-bold mt-3 mb-1 uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Interactive</div>
-                  {/* Using your custom brand green for the interactive features */}
-                  <ActionMenuButton isDarkMode={isDarkMode} colorClass="bg-[#264A36]" icon={<CheckCircleIcon className="w-4 h-4" />} label="Reply Buttons" onClick={() => handleOpenBuilder('reply-buttons')} />
-                  <ActionMenuButton isDarkMode={isDarkMode} colorClass="bg-[#264A36]" icon={<ListBulletIcon className="w-4 h-4" />} label="List Menu" onClick={() => handleOpenBuilder('list')} />
-                  <ActionMenuButton isDarkMode={isDarkMode} colorClass="bg-[#264A36]" icon={<ViewColumnsIcon className="w-4 h-4" />} label="Carousel" onClick={() => handleOpenBuilder('carousel')} />
-                  <ActionMenuButton isDarkMode={isDarkMode} colorClass="bg-[#264A36]" icon={<LinkIcon className="w-4 h-4" />} label="CTA Link" onClick={() => handleOpenBuilder('cta-url')} />
-                  <ActionMenuButton isDarkMode={isDarkMode} colorClass="bg-[#264A36]" icon={<ShoppingBagIcon className="w-4 h-4" />} label="Products" onClick={() => handleOpenBuilder('product-carousel')} />
+                  <div className={`col-span-2 text-[10px] font-bold mt-3 mb-1 uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>Interactive</div>
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<CheckCircleIcon className="text-[#25D366]" />} label="Reply Buttons" onClick={() => handleOpenBuilder('reply-buttons')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<ListBulletIcon className="text-[#25D366]" />} label="List Menu" onClick={() => handleOpenBuilder('list')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<ViewColumnsIcon className="text-[#25D366]" />} label="Carousel" onClick={() => handleOpenBuilder('carousel')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<LinkIcon className="text-[#25D366]" />} label="CTA Link" onClick={() => handleOpenBuilder('cta-url')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<ShoppingBagIcon className="text-[#25D366]" />} label="Products" onClick={() => handleOpenBuilder('product-carousel')} />
                   
-                  <div className={`col-span-2 text-[10px] font-bold mt-3 mb-1 uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Utilities</div>
-                  <ActionMenuButton isDarkMode={isDarkMode} colorClass="bg-green-500" icon={<MapPinIcon className="w-4 h-4" />} label="Send Location" onClick={() => handleOpenBuilder('send-location')} />
-                  <ActionMenuButton isDarkMode={isDarkMode} colorClass="bg-green-600" icon={<MapPinIcon className="w-4 h-4" />} label="Request Location" onClick={() => handleOpenBuilder('request-location')} />
-                  <ActionMenuButton isDarkMode={isDarkMode} colorClass="bg-blue-500" icon={<UserIcon className="w-4 h-4" />} label="Send Contact" onClick={() => handleOpenBuilder('contact')} />
-                  <ActionMenuButton isDarkMode={isDarkMode} colorClass="bg-teal-500" icon={<DocumentIcon className="w-4 h-4" />} label="Request Address" onClick={() => handleOpenBuilder('request-address')} />
+                  <div className={`col-span-2 text-[10px] font-bold mt-3 mb-1 uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>Utilities</div>
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<MapPinIcon className="text-red-500" />} label="Send Location" onClick={() => handleOpenBuilder('send-location')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<MapPinIcon className="text-red-400 border-dashed" />} label="Request Location" onClick={() => handleOpenBuilder('request-location')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<UserIcon className="text-teal-500" />} label="Send Contact" onClick={() => handleOpenBuilder('contact')} />
+                  <ActionMenuButton isDarkMode={isDarkMode} icon={<DocumentIcon className="text-slate-500" />} label="Request Address" onClick={() => handleOpenBuilder('request-address')} />
                 </div>
               )}
 
@@ -715,7 +610,7 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Type a message..."
-                  className={`flex-1 border rounded-full px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#264A36] transition-all shadow-sm ${
+                  className={`flex-1 border rounded-full px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#25D366] transition-all shadow-sm ${
                     isDarkMode 
                       ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' 
                       : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400'
@@ -728,7 +623,7 @@ const handleSendComplexMessage = async ({ type, payload }) => {
                   className={`p-3 rounded-full transition-all duration-200 ${
                     !inputText.trim() 
                       ? (isDarkMode ? 'bg-slate-800 text-slate-600' : 'bg-slate-100 text-slate-400') 
-                      : 'bg-[#264A36] text-white hover:bg-[#20bd5a] hover:scale-[1.02] shadow-md shadow-green-200/50'
+                      : 'bg-[#25D366] text-white hover:bg-[#20bd5a] hover:scale-[1.02] shadow-md shadow-green-200/50'
                   }`}
                 >
                   <PaperAirplaneIcon className="w-5 h-5" />
@@ -794,19 +689,17 @@ const handleSendComplexMessage = async ({ type, payload }) => {
 };
 
 // --- HELPER COMPONENTS ---
-const ActionMenuButton = ({ icon, label, onClick, colorClass, isDarkMode }) => (
+
+const ActionMenuButton = ({ icon, label, onClick, isDarkMode }) => (
   <button 
     onClick={onClick} 
-    className={`flex items-center gap-3 px-2 py-2 rounded-lg text-sm font-medium text-left transition-all hover:scale-[1.02] ${
+    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-left transition-all hover:scale-[1.02] ${
       isDarkMode 
         ? 'text-slate-300 hover:bg-slate-700' 
         : 'text-slate-700 hover:bg-slate-50'
     }`}
   >
-    {/* This creates the beautiful colored circles for the icons */}
-    <div className={`w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-white shadow-sm ${colorClass}`}>
-      {icon}
-    </div>
+    <span className="w-5 h-5 flex-shrink-0 flex items-center justify-center bg-white dark:bg-slate-900 rounded shadow-sm border border-slate-100 dark:border-slate-800">{icon}</span>
     <span className="truncate">{label}</span>
   </button>
 );
