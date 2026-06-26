@@ -87,7 +87,7 @@ const MainLanding = () => {
             <div className="space-y-8">
               <div className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-bold text-green-700">
                 <Sparkles className="w-3.5 h-3.5" />
-                Launching June 21st · No credit card required
+                Exclusive Beta Pricing for Shopify Store Owners — Contact Us Today.
               </div>
               <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight text-slate-900 leading-[1.1]">
                 The WhatsApp{" "}
