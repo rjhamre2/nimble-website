@@ -140,17 +140,35 @@ const Broadcast = ({ user, userData, loading }) => {
     if (broadcastSelectedTemplate) {
       const extractedVars = extractVariablesFromTemplate(broadcastSelectedTemplate);
       setBroadcastTemplateVariables(extractedVars);
+      
       const initialMapping = { header: {}, body: {} };
+      
       ['header', 'body'].forEach(compType => {
         extractedVars[compType].forEach(vName => {
-          let defaultField = 'first_name';
-          if (vName.includes('company')) defaultField = 'custom_attributes.company';
-          initialMapping[compType][vName] = { type: 'dynamic', field: defaultField, fallback: '' };
+          
+          // Grab the example value we just extracted (e.g. "10%" or "Sale name")
+          const exampleText = extractedVars.examples[compType]?.[vName] || '';
+          
+          if (vName === 'name') {
+            // It's a name: Default to dynamic mapping with 'first_name'
+            initialMapping[compType][vName] = { type: 'dynamic', field: 'first_name', text: exampleText, fallback: '' };
+          } else {
+            // Not a name: If we have an example, set it to static so the user sees it pre-filled!
+            // If there's no example, leave it dynamic + empty so they are forced to map it.
+            initialMapping[compType][vName] = { 
+              type: exampleText ? 'static' : 'dynamic', 
+              field: '', 
+              text: exampleText, 
+              fallback: '' 
+            };
+          }
+          
         });
       });
+      
       setBroadcastVariableMapping(initialMapping);
     } else {
-      setBroadcastTemplateVariables({ header: [], body: [] });
+      setBroadcastTemplateVariables({ header: [], body: [], examples: { header: {}, body: {} } });
       setBroadcastVariableMapping({ header: {}, body: {} });
     }
   }, [broadcastSelectedTemplate]);
@@ -172,17 +190,18 @@ const Broadcast = ({ user, userData, loading }) => {
             </button>
             
             <div className="relative flex-shrink-0" onMouseEnter={() => setShowTemplatesDropdown(true)} onMouseLeave={() => setShowTemplatesDropdown(false)}>
-              <button onClick={() => { setBroadcastView('templates'); setTemplateSubView('template-library'); }} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap w-full ${broadcastView === 'templates' ? 'bg-blue-50 text-blue-700 border border-blue-300' : 'text-gray-700 hover:bg-gray-50 border border-transparent'}`}>
+              <button onClick={() => { setBroadcastView('templates'); setTemplateSubView('your-templates'); }} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap w-full ${broadcastView === 'templates' ? 'bg-blue-50 text-blue-700 border border-blue-300' : 'text-gray-700 hover:bg-gray-50 border border-transparent'}`}>
                 Templates
               </button>
               {showTemplatesDropdown && (
-                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 min-w-[180px]">
-                  <button onClick={() => { if (selectedTemplate && !window.confirm('Abandon changes?')) return; setSelectedTemplate(null); setBroadcastView('templates'); setTemplateSubView('template-library'); setShowTemplatesDropdown(false); }} className={`w-full text-left px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${broadcastView === 'templates' && templateSubView === 'template-library' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}`}>
-                    Template library
-                  </button>
+                <div className="absolute top-full left-0 mt-0 bg-white border border-gray-200 rounded-lg shadow-xl z-50 min-w-[180px]">
                   <button onClick={() => { if (selectedTemplate && !window.confirm('Abandon changes?')) return; setSelectedTemplate(null); setBroadcastView('templates'); setTemplateSubView('your-templates'); setShowTemplatesDropdown(false); }} className={`w-full text-left px-4 py-2 text-sm font-medium rounded-b-lg transition-colors ${broadcastView === 'templates' && templateSubView === 'your-templates' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}`}>
                     Your templates
                   </button>
+                  <button onClick={() => { if (selectedTemplate && !window.confirm('Abandon changes?')) return; setSelectedTemplate(null); setBroadcastView('templates'); setTemplateSubView('template-library'); setShowTemplatesDropdown(false); }} className={`w-full text-left px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${broadcastView === 'templates' && templateSubView === 'template-library' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                    Template library
+                  </button>
+                  
                 </div>
               )}
             </div>
@@ -304,7 +323,92 @@ const Broadcast = ({ user, userData, loading }) => {
                   </div>
                 );
               })()}
+              {/* Variable Mapping Section */}
+{(broadcastTemplateVariables.header?.length > 0 || broadcastTemplateVariables.body?.length > 0) && (
+  <div className="border-t pt-6 mt-6">
+    <div className="mb-4">
+      <h2 className="text-xl font-semibold text-gray-900 mb-2">Map Template Variables</h2>
+      <p className="text-sm text-gray-600">Assign contact fields or enter custom text for your template variables.</p>
+    </div>
 
+    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-6">
+      {['header', 'body'].map(compType => {
+        if (!broadcastTemplateVariables[compType] || broadcastTemplateVariables[compType].length === 0) return null;
+
+        return (
+          <div key={compType} className="space-y-4">
+            <h3 className="text-sm font-bold text-gray-700 capitalize border-b pb-2">{compType} Variables</h3>
+            
+            {broadcastTemplateVariables[compType].map(varName => {
+              const config = broadcastVariableMapping[compType]?.[varName] || { type: 'dynamic', field: 'first_name', text: '' };
+
+              return (
+                <div key={varName} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white p-3 border border-gray-200 rounded-md shadow-sm">
+  
+  {/* COLUMN 1: Fixed width for the variable tag (e.g., 112px on desktop) */}
+  <div className="w-full sm:w-48 shrink-0 font-mono text-sm text-blue-600 font-semibold bg-blue-50 px-2 py-1.5 rounded text-center">
+    {`{{${varName}}}`}
+  </div>
+  
+  {/* COLUMN 2: Fixed width for the type selector (e.g., 192px on desktop) */}
+  <select 
+    className="w-full sm:w-48 shrink-0 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
+    value={config.type}
+    onChange={(e) => {
+      setBroadcastVariableMapping(prev => ({
+        ...prev,
+        [compType]: { ...prev[compType], [varName]: { ...config, type: e.target.value } }
+      }));
+    }}
+  >
+    <option value="dynamic">Contact Field</option>
+    <option value="static">Static Text</option>
+  </select>
+
+  {/* COLUMN 3: flex-1 makes it absorb all remaining space evenly */}
+  <div className="w-full flex-1 min-w-0">
+    {config.type === 'dynamic' ? (
+      <select 
+        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
+        value={config.field || ''}
+        onChange={(e) => {
+          setBroadcastVariableMapping(prev => ({
+            ...prev,
+            [compType]: { ...prev[compType], [varName]: { ...config, field: e.target.value } }
+          }));
+        }}
+      >
+        <option value="first_name">First Name</option>
+        <option value="last_name">Last Name</option>
+        <option value="phone_number">Phone Number</option>
+        <option value="email">Email</option>
+        <option value="custom_attributes.company">Company (Custom)</option>
+        <option value="custom_attributes.order_number">Order Number (Custom)</option>
+      </select>
+    ) : (
+      <input 
+        type="text" 
+        placeholder="Enter text to show for all users..."
+        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+        value={config.text || ''}
+        onChange={(e) => {
+          setBroadcastVariableMapping(prev => ({
+            ...prev,
+            [compType]: { ...prev[compType], [varName]: { ...config, text: e.target.value } }
+          }));
+        }}
+      />
+    )}
+  </div>
+</div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+)}
               {/* Audience Selection */}
               <div className="border-t pt-6 mt-6">
                 <div className="mb-4">

@@ -10,7 +10,8 @@ const MediaCarouselEditor = forwardRef(({
     setTemplateName,
     templateLanguage,
     setTemplateLanguage,
-    setIsSubmitting
+    setIsSubmitting,
+    onSaveStatusChange
 }, ref) => {
 
     // --- Carousel States ---
@@ -22,7 +23,11 @@ const MediaCarouselEditor = forwardRef(({
     const [showAddBodyVariable, setShowAddBodyVariable] = useState(false);
     const [newBodyVariableName, setNewBodyVariableName] = useState('');
     const [newBodyVariableValue, setNewBodyVariableValue] = useState('');
+    // Add these near your other states
+    const [isAutoSaving, setIsAutoSaving] = useState(false);
+    const [lastSavedTime, setLastSavedTime] = useState(null);
 
+    const [activeTemplateId, setActiveTemplateId] = useState(initialTemplate?.template_id || null);
     const [cards, setCards] = useState([
         { id: 1, mediaFile: null, mediaPreviewUrl: '', mediaHandle: '', bodyText: '', buttons: [], draftButton: { type: '', text: '', value: '' } },
         { id: 2, mediaFile: null, mediaPreviewUrl: '', mediaHandle: '', bodyText: '', buttons: [], draftButton: { type: '', text: '', value: '' } }
@@ -238,7 +243,7 @@ const MediaCarouselEditor = forwardRef(({
 
                 // --- NEW: SMART DRAFT EDITING LOGIC ---
                 // Check if we are editing a draft that already exists in the database
-                const isExistingDraft = initialTemplate && initialTemplate.template_id && initialTemplate.template_status === 'draft';
+                const isExistingDraft = activeTemplateId !== null;
 
                 let submitUrl;
                 let fetchMethod;
@@ -247,27 +252,33 @@ const MediaCarouselEditor = forwardRef(({
                 if (isExistingDraft) {
                     if (isDraft) {
                         // Scenario A: User is updating an existing draft
-                        submitUrl = `${dbServerUrl}/api/templates/${dbId}/templates/${initialTemplate.template_id}`;
+                        submitUrl = `${dbServerUrl}/api/templates/${dbId}/templates/${activeTemplateId}`;
                         fetchMethod = 'PUT';
-                        bodyPayload = { object: templateJSON };
+                        bodyPayload = { 
+                            template_status: 'draft',
+                            object: templateJSON 
+                        };
                     } else {
                         // Scenario B: User edited a draft and now wants to Submit it to Meta
                         // Step 1: Update the draft in the database first to ensure latest edits are saved
-                        await fetch(`${dbServerUrl}/api/templates/${dbId}/templates/${initialTemplate.template_id}`, {
+                        await fetch(`${dbServerUrl}/api/templates/${dbId}/templates/${activeTemplateId}`, {
                             method: 'PUT',
                             headers: {
                                 'Content-Type': 'application/json',
                                 'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
                             },
-                            body: JSON.stringify({ object: templateJSON })
+                            body: JSON.stringify({ 
+                                template_status: 'draft', 
+                                object: templateJSON 
+                            })
                         });
 
                         // Step 2: Trigger the backend submission route
-                        submitUrl = `${dbServerUrl}/api/templates/${dbId}/templates/${initialTemplate.template_id}/submit_carousel_template`;
+                        submitUrl = `${dbServerUrl}/api/templates/${dbId}/templates/${activeTemplateId}/submit_carousel_template`;
                         fetchMethod = 'POST';
                         bodyPayload = {
-                        template_status: isDraft ? 'draft' : 'pending',
-                        object: templateJSON
+                            template_status: isDraft ? 'draft' : 'pending',
+                            object: templateJSON
                         };
                     }
                 } else {
@@ -312,29 +323,32 @@ const MediaCarouselEditor = forwardRef(({
     useEffect(() => {
         if (!initialTemplate || Object.keys(initialTemplate).length === 0) return;
 
-    // --- SAFELY PARSE THE OBJECT ---
-    let templateData = initialTemplate.object || initialTemplate;
-    if (typeof templateData === 'string') {
-      try {
-        templateData = JSON.parse(templateData);
-      } catch (e) {
-        console.error("Failed to parse carousel template object", e);
-      }
-    }
-
-    const components = templateData.components || [];
+        // --- SAFELY PARSE THE OBJECT ---
+        let templateData = initialTemplate.object || initialTemplate;
+        if (typeof templateData === 'string') {
+            try {
+                templateData = JSON.parse(templateData);
+            } catch (e) {
+                console.error("Failed to parse carousel template object", e);
+            }
+        }
+        setTemplateName(initialTemplate.name);
+        const components = templateData.components || [];
 
         // 1. Parse Root Body & Variables
         const rootBody = components.find(c => c.type?.toLowerCase() === 'body');
+
         if (rootBody) {
             setTemplateBody(rootBody.text || '');
             if (rootBody.example?.body_text_named_params) {
+                console.log("Body variables found ", JSON.stringify(rootBody.example?.body_text_named_params));
                 setBodyVariables(rootBody.example.body_text_named_params.map(p => ({
                     name: p.param_name,
                     value: p.example || ''
                 })));
             }
         }
+        
 
         // 2. Parse Root "Seed" Buttons (if available)
         const rootButtonsComp = components.find(c => c.type?.toLowerCase() === 'buttons');
@@ -437,20 +451,117 @@ const MediaCarouselEditor = forwardRef(({
         setCards(loadedCards);
     }, [initialTemplate]);
 
-    useEffect(() => {
-        const matches = templateBody.match(/\{\{[\w_]+\}\}/g) || [];
-        const activeNamesInText = [...new Set(matches.map(m => m.replace(/[{}]/g, '')))].slice(0, 2);
+    const handleBodyTextChange = (newText) => {
+        setTemplateBody(newText);
 
         setBodyVariables((prev) => {
-            const nextVars = prev.filter(v => activeNamesInText.includes(v.name));
+            const matches = newText.match(/\{\{[\w_]+\}\}/g) || [];
+            // Slice to 2 to enforce the Meta carousel limit
+            const activeNamesInText = [...new Set(matches.map(m => m.replace(/[{}]/g, '')))].slice(0, 2);
+            let hasChanges = false;
+
+            const normalizedPrev = prev.map((v, index) => {
+                if (typeof v === 'string') {
+                    hasChanges = true;
+                    return { name: activeNamesInText[index] || String(index + 1), value: v };
+                }
+                return v;
+            });
+
+            const nextVars = normalizedPrev.filter(v => {
+                if (!activeNamesInText.includes(v.name)) {
+                    hasChanges = true;
+                    return false;
+                }
+                return true;
+            });
+
             activeNamesInText.forEach(name => {
                 if (!nextVars.some(v => v.name === name)) {
                     nextVars.push({ name: name, value: '' });
+                    hasChanges = true;
                 }
             });
-            return nextVars;
+
+            return hasChanges ? nextVars : prev;
         });
-    }, [templateBody]);
+    };
+    // --- DEBOUNCED AUTO-SAVE FOR CAROUSEL TAB ---
+    useEffect(() => {
+        // Prevent auto-saving if a media file is currently uploading
+        const isUploadingMedia = cards.some(c => c.mediaHandle === 'uploading...');
+        if (isUploadingMedia) return;
+
+        const performAutoSave = async () => {
+            try {
+                if (onSaveStatusChange) onSaveStatusChange({ status: 'saving' });
+
+                const templateJSON = generateCarouselJSON(cards);
+                const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+                const dbId = userData?.db_id || user?.db_id;
+
+                if (!activeTemplateId) {
+                    // 1. Create a brand new Draft on the very first auto-save
+                    const response = await fetch(`${dbServerUrl}/api/templates/${dbId}/templates`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                        },
+                        body: JSON.stringify({
+                            template_status: 'draft',
+                            object: templateJSON,
+                            name: templateName || 'default_carousel_draft',
+                            category: 'marketing',
+                            language: templateLanguage || 'en_US'
+                        })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        const newDraft = result.template || result.data;
+                        setActiveTemplateId(newDraft.template_id); // Save DB tracking ID
+                        if (onSaveStatusChange) onSaveStatusChange({ status: 'saved', time: new Date() });
+                    } else {
+                        throw new Error('Auto-create request failed');
+                    }
+                } else {
+                    // 2. Silently update the existing Draft via PUT
+                    const submitUrl = `${dbServerUrl}/api/templates/${dbId}/templates/${activeTemplateId}`;
+                    const response = await fetch(submitUrl, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                        },
+                        body: JSON.stringify({ 
+                            template_status: 'draft',
+                            object: templateJSON 
+                        })
+                    });
+
+                    if (response.ok) {
+                        if (onSaveStatusChange) onSaveStatusChange({ status: 'saved', time: new Date() });
+                    } else {
+                        throw new Error('Auto-save request failed');
+                    }
+                }
+            } catch (error) {
+                console.error("Auto-save failed implicitly:", error);
+                if (onSaveStatusChange) onSaveStatusChange({ status: 'error' });
+            }
+        };
+
+        const timerId = setTimeout(() => {
+            // Ensure they have basic required info before spamming auto-saves
+            if (templateName && templateBody) {
+                performAutoSave();
+            }
+        }, 1500);
+
+        return () => clearTimeout(timerId);
+
+    }, [templateName, templateLanguage, templateBody, bodyVariables, cards, activeTemplateId, user, userData, onSaveStatusChange]);
 
     const renderHighlightedText = () => {
         if (!templateBody) return <span className="text-gray-400">Add the Carousels body text here</span>;
@@ -477,7 +588,42 @@ const MediaCarouselEditor = forwardRef(({
 
     const addCard = () => {
         if (cards.length < 10) {
-            setCards([...cards, { id: Date.now(), mediaFile: null, mediaPreviewUrl: '', mediaHandle: '', bodyText: '', buttons: [], draftButton: { type: '', text: '', value: '' } }]);
+            // Meta requires all cards to have the exact same button types and text.
+            // We use Card 1 as the source of truth for the button structure.
+            const firstCard = cards[0];
+            const readyButtons = [];
+            let draftBtn = { type: '', text: '', value: '' };
+
+            // Gather all buttons currently established or staged on Card 1
+            const allFirstCardButtons = [...firstCard.buttons];
+            if (firstCard.draftButton.type) {
+                allFirstCardButtons.push(firstCard.draftButton);
+            }
+
+            allFirstCardButtons.forEach(b => {
+                if (b.type === 'url' || b.type === 'phone_number') {
+                    // Stash the input-requiring button into the draft area so the user must fill it out
+                    if (!draftBtn.type) {
+                        draftBtn = { type: b.type, text: b.text, value: '' };
+                    } else {
+                        // Fallback if there are multiple URL buttons
+                        readyButtons.push({ type: b.type, text: b.text, value: '' });
+                    }
+                } else {
+                    // Quick replies go straight to the active list
+                    readyButtons.push({ type: b.type, text: b.text, value: '' });
+                }
+            });
+
+            setCards([...cards, { 
+                id: Date.now(), 
+                mediaFile: null, 
+                mediaPreviewUrl: '', 
+                mediaHandle: '', 
+                bodyText: '', 
+                buttons: readyButtons, 
+                draftButton: draftBtn 
+            }]);
         }
     };
 
@@ -493,10 +639,41 @@ const MediaCarouselEditor = forwardRef(({
         setCards(cards.map(card => card.id === id ? { ...card, [field]: value } : card));
     };
 
-    const handleMediaUpload = (id, file) => {
-        if (file) {
-            const previewUrl = URL.createObjectURL(file);
-            setCards(cards.map(card => card.id === id ? { ...card, mediaFile: file, mediaPreviewUrl: previewUrl, mediaHandle: '' } : card));
+    // Replace your existing handleMediaUpload with this:
+    const handleMediaUpload = async (id, file) => {
+        if (!file) return;
+
+        // Show instant local preview while uploading
+        const localPreviewUrl = URL.createObjectURL(file);
+        setCards(cards.map(card => card.id === id ? { ...card, mediaPreviewUrl: localPreviewUrl, mediaHandle: 'uploading...' } : card));
+
+        try {
+            const dbServerUrl = apiConfig.dbServerConfig.baseURL;
+            const dbId = userData?.db_id || user?.db_id;
+            const uploadUrl = `${dbServerUrl}/api/templates/${dbId}/templates/upload_media`;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(uploadUrl, { method: 'POST', body: formData });
+            if (!response.ok) throw new Error('Media upload failed');
+
+            const result = await response.json();
+            const handle = result.data?.uploaded_file_handle || result.uploaded_file_handle || result.handle;
+            let s3_key = result.data?.s3_key || result.s3_key || result.data?.key || result.key;
+            const finalPreviewUrl = `${process.env.REACT_APP_S3_MEDIA_BUCKET_URL}${s3_key}`;
+
+            // Update the card with the permanent URLs from the backend
+            setCards(prevCards => prevCards.map(card =>
+                card.id === id ? { ...card, mediaFile: file, mediaPreviewUrl: finalPreviewUrl, mediaHandle: handle } : card
+            ));
+        } catch (error) {
+            console.error("Media upload error:", error);
+            alert("Failed to upload media. Please try again.");
+            // Revert to empty state on failure
+            setCards(prevCards => prevCards.map(card =>
+                card.id === id ? { ...card, mediaPreviewUrl: '', mediaHandle: '' } : card
+            ));
         }
     };
 
@@ -604,7 +781,8 @@ const MediaCarouselEditor = forwardRef(({
                         <textarea
                             ref={bodyTextRef}
                             value={templateBody}
-                            onChange={(e) => setTemplateBody(e.target.value)}
+                            // ✅ Updated onChange
+                            onChange={(e) => handleBodyTextChange(e.target.value)}
                             onBlur={(e) => { bodySelection.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; }}
                             onKeyUp={(e) => { bodySelection.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; }}
                             onClick={(e) => { bodySelection.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; }}
@@ -615,7 +793,9 @@ const MediaCarouselEditor = forwardRef(({
                                     const match = templateBody.substring(0, e.target.selectionStart).match(/\{\{[\w_]+\}\}$/);
                                     if (match) {
                                         e.preventDefault();
-                                        setTemplateBody(templateBody.substring(0, e.target.selectionStart - match[0].length) + templateBody.substring(e.target.selectionStart));
+                                        // ✅ Updated Backspace handler
+                                        const newText = templateBody.substring(0, e.target.selectionStart - match[0].length) + templateBody.substring(e.target.selectionStart);
+                                        handleBodyTextChange(newText);
                                         setTimeout(() => { e.target.focus(); e.target.setSelectionRange(e.target.selectionStart - match[0].length, e.target.selectionStart - match[0].length); }, 0);
                                     }
                                 }
@@ -667,7 +847,12 @@ const MediaCarouselEditor = forwardRef(({
                                         <span className="font-mono font-bold text-blue-700">{`{{${v.name}}}`}</span>
                                         <span className="text-gray-400">=</span>
                                         <input type="text" value={v.value} onChange={(e) => setBodyVariables(prev => prev.map(item => item.name === v.name ? { ...item, value: e.target.value } : item))} className={`px-1.5 py-0.5 text-[11px] border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 w-24 ${!v.value ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-white'}`} placeholder="Sample..." />
-                                        <button onClick={() => setTemplateBody(prev => prev.replace(new RegExp(`\\{\\{${v.name}\\}\\}`, 'g'), ''))} className="ml-1 text-red-500 font-bold">✕</button>
+                                        
+                                        {/* ✅ Updated Cross button handler */}
+                                        <button onClick={() => {
+                                            const newText = templateBody.replace(new RegExp(`\\{\\{${v.name}\\}\\}`, 'g'), '');
+                                            handleBodyTextChange(newText);
+                                        }} className="ml-1 text-red-500 font-bold">✕</button>
                                     </div>
                                 ))}
                             </div>

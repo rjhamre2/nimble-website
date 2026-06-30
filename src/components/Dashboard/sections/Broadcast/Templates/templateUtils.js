@@ -1,24 +1,41 @@
 import { isValid } from "zod";
 
 export const extractVariablesFromTemplate = (template) => {
-  if (!template) return { header: [], body: [] };
+  if (!template) return { header: [], body: [], examples: { header: {}, body: {} } };
+  
   const templateData = template.object || template;
   const vars = { header: new Set(), body: new Set() };
+  const examples = { header: {}, body: {} }; // Store extracted examples here
   const components = templateData.components || [];
 
   components.forEach(comp => {
     const type = comp.type?.toLowerCase();
+    
     if (comp.text && (type === 'header' || type === 'body')) {
+      // 1. Extract Variable Names
       const matches = comp.text.match(/\{\{[\w_]+\}\}/g);
       if (matches) {
         matches.forEach(m => vars[type].add(m.replace(/[{}]/g, '')));
+      }
+      
+      // 2. Extract Example Values
+      if (comp.example) {
+        const namedParams = comp.example[`${type}_text_named_params`];
+        if (namedParams && Array.isArray(namedParams)) {
+          namedParams.forEach(param => {
+            if (param.param_name && param.example) {
+              examples[type][param.param_name] = param.example;
+            }
+          });
+        }
       }
     }
   });
 
   return {
     header: Array.from(vars.header),
-    body: Array.from(vars.body)
+    body: Array.from(vars.body),
+    examples: examples // Pass the examples payload back to the component
   };
 };
 
@@ -257,4 +274,55 @@ export const validateFileExtension = (file) => {
   const fileExtension = file.name.split('.').pop().toLowerCase();
   
   return ALLOWED_EXTENSIONS.includes(fileExtension);
+};
+
+
+const META_ERROR_REGISTRY = {
+  // OAuth / Validation Errors
+  100: {
+    2388023: {
+      message: "Meta denied your request because the template language is currently being deleted.",
+      suggestion: "Try changing the name of the template or wait 60 seconds before retrying."
+    },
+
+    2593027: {
+      message: "Meta denied your request because you have provided a wrong button example.",
+      suggestion: "Try changing the example value for the button."
+    },
+    // You can easily add more subcodes here
+    default: {
+      message: "Invalid parameter or malformed request sent to Meta.",
+      suggestion: "Double-check your template payload structure and variable placement."
+    }
+  },
+  
+  // Rate Limiting Errors
+  4: {
+    default: {
+      message: "The WhatsApp Business Account has hit its rate limit.",
+      suggestion: "Pause outgoing traffic and implement an exponential backoff retry system."
+    }
+  }
+};
+
+/**
+ * Resolves Meta Graph API errors into human-readable messages and actionable fixes.
+ * @param {number|string} code - The top-level Meta error code
+ * @param {number|string} subcode - The specific Meta error_subcode
+ * @returns {string} Formatted explanation and solution
+ */
+export const getMetaErrorSolution = (code, subcode) => {
+  const errorCode = String(code);
+  const errorSubcode = String(subcode);
+
+  // 1. Look up the top-level error code
+  const errorGroup = META_ERROR_REGISTRY[errorCode];
+  if (!errorGroup) {
+    return `Unknown Meta Error (${errorCode}/${errorSubcode}).\nOur suggestion: Check Meta's status dashboard or verify your API configuration.`;
+  }
+
+  // 2. Look up the specific subcode, fallback to group default if missing
+  const solution = errorGroup[errorSubcode] || errorGroup.default;
+
+  return `${solution.message}\nOur suggestion: ${solution.suggestion}`;
 };

@@ -683,7 +683,7 @@ function Footer({ isDarkMode }) {
 						isDarkMode ? 'text-gray-300 border-gray-700' : 'text-gray-600 border-gray-200'
 					}`}
 				>
-					<p className='mb-1.5 sm:mb-0'>&copy; 2025, Nimble AI, Inc</p>
+					<p className='mb-1.5 sm:mb-0'>&copy; Nimble AI, Inc. | A subsidiary of Experted Nexus Pvt. Ltd. (In Registration)</p>
 					<p>100x your productivity while supporting customers!</p>
 				</div>
 			</div>
