@@ -360,7 +360,7 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
         }
     }, [user, userData]);
 
-    const generateTemplateJSON = useCallback((overrideHandle = null, overrideS3Key = null) => {
+    const generateTemplateJSON = useCallback((overrideHandle = null, overrideS3Key = null, overrideMediaId = null) => {
         const components = [];
         if (broadcastTitleType === 'text' && broadcastTitleText) {
             // ... text logic stays the same ...
@@ -380,10 +380,11 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
         } else if (broadcastTitleType === 'image' && (broadcastTitleImageHandle || broadcastTitleImageLink || broadcastTitleImageFile || overrideHandle)) {
             let handle = overrideHandle || broadcastTitleImageHandle || broadcastTitleImageLink;
             let s3_key = overrideS3Key || broadcastTitleMediaKey || '';
+            let mediaId = overrideMediaId || broadcastTitleImageMediaId;
 
             if (handle && typeof handle === 'object') handle = handle.handle || handle.uploaded_file_handle || JSON.stringify(handle);
             handle = String(handle || '');
-            if (handle) components.push({ type: "header", format: "IMAGE", example: { header_handle: [handle] }, s3_key: s3_key });
+            if (handle) components.push({ type: "header", format: "IMAGE", example: { header_handle: [handle] }, s3_key: s3_key, mediaId : mediaId });
 
         } else if (broadcastTitleType === 'video' && (broadcastTitleVideoHandle || broadcastTitleVideoLink || broadcastTitleVideoFile || overrideHandle)) {
             let handle = overrideHandle || broadcastTitleVideoHandle || broadcastTitleVideoLink;
@@ -484,7 +485,7 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
                 // Use your existing JSON generator
                 const templateJSON = generateTemplateJSON(
                     broadcastTitleImageHandle || broadcastTitleVideoHandle || broadcastTitleDocumentHandle, 
-                    broadcastTitleMediaKey
+                    broadcastTitleMediaKey, broadcastTitleImageMediaId
                 );
                 
                 const dbId = userData?.db_id || user?.db_id;

@@ -138,9 +138,9 @@ const Broadcast = ({ user, userData, loading }) => {
 
   useEffect(() => {
     if (broadcastSelectedTemplate) {
-      //const extractedVars = extractVariablesFromTemplate(broadcastSelectedTemplate);
-      //setBroadcastTemplateVariables(extractedVars);
-      {/*
+      const extractedVars = extractVariablesFromTemplate(broadcastSelectedTemplate);
+      setBroadcastTemplateVariables(extractedVars);
+      
       const initialMapping = { header: {}, body: {} };
       
       ['header', 'body'].forEach(compType => {
@@ -164,113 +164,7 @@ const Broadcast = ({ user, userData, loading }) => {
           }
           
         });
-      }); */}
-
-      let initialMapping = []; // FIX: Initialize as empty array
-      const template = broadcastSelectedTemplate.object || broadcastSelectedTemplate;
-      
-      template.components?.forEach(component => {
-        const compType = component.type?.toLowerCase();
-
-        // ==========================================
-        // HEADER COMPONENT
-        // ==========================================
-        if (compType === 'header') {
-          let parameters = []; // FIX: Initialize as empty array
-          let config;
-          let compFormat = component.format?.toLowerCase();
-          
-          if (compFormat === 'text') {
-            if (component.example && component.example.header_text_named_params) {
-              component.example.header_text_named_params.forEach(headerVar => {  
-                const varName = headerVar.param_name;
-                const varSampleVal = headerVar.example || '';
-
-                if (varName.toLowerCase() === 'name') {
-                  config = { type: 'text', fieldType: 'dynamic', field: 'first_name', text: ' ', fallback: '', parameter_name : varName };
-                } else {
-                  config = { type: 'text', fieldType: varSampleVal ? 'static' : 'dynamic', field: '', text: varName, fallback: '', parameter_name : varName };
-                }
-                parameters.push(config);
-              });
-            }
-          } else if(compFormat === 'image' || compFormat === 'video' || compFormat === 'document') {
-            const link = process.env.REACT_APP_S3_MEDIA_BUCKET_URL + component.s3_key;
-            config = { type: compFormat, link: link || '' };
-            parameters.push(config);
-          }
-          
-          initialMapping.push({ type: 'header', parameters: parameters });
-        
-        // ==========================================
-        // BODY COMPONENT
-        // ==========================================
-        } else if (compType === 'body') {
-          let parameters = []; // FIX: Declare inside the body block
-          let config; // FIX: Declare inside the body block
-          
-          // FIX: Check for body_text_named_params, not header
-          if (component.example && component.example.body_text_named_params) {
-            component.example.body_text_named_params.forEach(bodyVar => {  
-              const varName = bodyVar.param_name;
-              const varSampleVal = bodyVar.example || ''; // FIX: Use bodyVar instead of headerVar
-
-              if (varName.toLowerCase() === 'name') {
-                config = { type: 'text', fieldType: 'dynamic', field: 'first_name', text: ' ', fallback: '' , parameter_name : varName };
-              } else {
-                config = { type: 'text', fieldType: varSampleVal ? 'static' : 'dynamic', field: '', text: varSampleVal, fallback: '', parameter_name : varName };
-              }
-              
-              parameters.push(config); 
-            });
-          }
-          
-          initialMapping.push({ type: 'body', parameters: parameters }); // FIX: Change type to 'body'
-
-        // ==========================================
-        // BUTTONS COMPONENT
-        // ==========================================
-        } else if (compType === 'buttons') {
-          
-          if (component.buttons) {
-            component.buttons.forEach((btn, index) => {
-              
-              let mappedValue = '';
-              if (btn.example) {
-                if (Array.isArray(btn.example)) {
-                  mappedValue = btn.example[0];
-                } else if (typeof btn.example === 'string') {
-                  mappedValue = btn.example;
-                } else if (btn.example.url_button_named_params) {
-                  mappedValue = btn.example.url_button_named_params[0]?.example || '';
-                }
-              }
-
-              if (mappedValue) {
-                const subType = btn.type.toLowerCase(); 
-                
-                const buttonPayload = {
-                  type: "button",
-                  sub_type: subType,
-                  index: String(index), 
-                  parameters: []
-                };
-
-                if (subType === 'copy_code') {
-                  buttonPayload.parameters.push({ type: "coupon_code", coupon_code: mappedValue });
-                } else {
-                  buttonPayload.parameters.push({ type: "text", text: mappedValue });
-                }
-
-                // FIX: Moved inside the `if(mappedValue)` block so buttonPayload is defined!
-                initialMapping.push(buttonPayload); 
-              }
-            });
-          }
-        }
-      });     
-
-      console.log(JSON.stringify(initialMapping));
+      });
       
       setBroadcastVariableMapping(initialMapping);
     } else {
