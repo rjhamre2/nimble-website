@@ -64,9 +64,12 @@ const Navbar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
           )}
         </div>
         )}
+{/*      
         {window.location.hostname === "localhost" &&(
           <SignInButton /> 
         )}
+*/}     
+        <SignInButton /> 
       </div>
     </header>
   );

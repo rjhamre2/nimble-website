@@ -26,7 +26,6 @@ const Broadcast = ({ user, userData, loading }) => {
 
   // Selecting template to send in the broadcast
   const [broadcastSelectedTemplate, setBroadcastSelectedTemplate] = useState(null);
-  const [broadcastTemplateVariables, setBroadcastTemplateVariables] = useState([]);
   const [broadcastVariableMapping, setBroadcastVariableMapping] = useState({});
 
   // Broadcast Submission State
@@ -81,7 +80,7 @@ const Broadcast = ({ user, userData, loading }) => {
     }
   }, [user, userData]);
 
-  const handleSendBroadcast = async () => {
+const handleSendBroadcast = async () => {
     if (!broadcastName.trim() || !broadcastSelectedTemplate || !selectedAudienceId) {
       setBroadcastStatus({ type: 'error', message: 'Please provide a broadcast name, select a template, and choose an audience.' });
       return;
@@ -90,17 +89,52 @@ const Broadcast = ({ user, userData, loading }) => {
     let isMappingValid = true;
     let mappingErrorMsg = '';
 
+    // 1. Validate Header & Body Variables
     ['header', 'body'].forEach(compType => {
-      if (!broadcastTemplateVariables[compType]) return;
-      broadcastTemplateVariables[compType].forEach(varName => {
-        const config = broadcastVariableMapping[compType]?.[varName];
-        if (!config) { isMappingValid = false; mappingErrorMsg = `Mapping configuration missing for {{${varName}}}.`; return; }
-        if (config.type === 'dynamic' && !config.field) { isMappingValid = false; mappingErrorMsg = `Please select a contact field for dynamic variable {{${varName}}}.`; return; }
-        if (config.type === 'static' && (!config.text || config.text.trim() === '')) { isMappingValid = false; mappingErrorMsg = `Please enter text for static variable {{${varName}}}.`; return; }
+      const variables = Object.keys(broadcastVariableMapping[compType] || {});
+      
+      variables.forEach(varName => {
+        if (!isMappingValid) return; // Skip if we already found an error
+        
+        const config = broadcastVariableMapping[compType][varName];
+        
+        if (config.type === 'dynamic' && !config.field) { 
+          isMappingValid = false; 
+          mappingErrorMsg = `Please select a contact field for dynamic variable {{${varName}}}.`; 
+        } else if (config.type === 'static' && (!config.text || config.text.trim() === '')) { 
+          isMappingValid = false; 
+          mappingErrorMsg = `Please enter text for static variable {{${varName}}}.`; 
+        }
       });
     });
 
-    if (!isMappingValid) return setBroadcastStatus({ type: 'error', message: mappingErrorMsg });
+    // 2. Validate Button Variables
+    if (isMappingValid && broadcastVariableMapping.buttons && broadcastVariableMapping.buttons.length > 0) {
+      broadcastVariableMapping.buttons.forEach((btn) => {
+        btn.parameters.forEach((param) => {
+          if (!isMappingValid) return; // Skip if we already found an error
+
+          const isCoupon = btn.sub_type === 'copy_code';
+          const valueKey = isCoupon ? 'coupon_code' : 'text';
+          const fieldType = param.fieldType || 'static';
+          const varLabel = isCoupon ? `button_${btn.index}_code` : `button_${btn.index}_url`;
+
+          if (fieldType === 'dynamic' && !param.field) {
+            isMappingValid = false;
+            mappingErrorMsg = `Please select a contact field for {{${varLabel}}}.`;
+          } else if (fieldType === 'static' && (!param[valueKey] || param[valueKey].trim() === '')) {
+            isMappingValid = false;
+            mappingErrorMsg = `Please enter a value for static button variable {{${varLabel}}}.`;
+          }
+        });
+      });
+    }
+
+    // Halt execution if any validation failed
+    if (!isMappingValid) {
+      setBroadcastStatus({ type: 'error', message: mappingErrorMsg });
+      return;
+    }
 
     setIsSendingBroadcast(true);
     setBroadcastStatus({ type: '', message: '' });
@@ -111,15 +145,27 @@ const Broadcast = ({ user, userData, loading }) => {
       const response = await fetch(`${apiConfig.dbServerConfig.baseURL}/api/broadcasts/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
-        body: JSON.stringify({ userId: dbId, name: broadcastName, templateId: templateId, audienceListId: selectedAudienceId, variableMapping: broadcastVariableMapping })
+        body: JSON.stringify({ 
+          userId: dbId, 
+          name: broadcastName, 
+          templateId: templateId, 
+          audienceListId: selectedAudienceId, 
+          variableMapping: broadcastVariableMapping 
+        })
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to initiate broadcast');
 
       setBroadcastStatus({ type: 'success', message: `Success! ${data.queuedCount} messages have been queued for delivery.` });
-      setBroadcastName(''); setBroadcastSelectedTemplate(null); setSelectedAudienceId(null);
-      setTimeout(() => { setBroadcastView('analytics'); setBroadcastStatus({ type: '', message: '' }); }, 2000);
+      setBroadcastName(''); 
+      setBroadcastSelectedTemplate(null); 
+      setSelectedAudienceId(null);
+      
+      setTimeout(() => { 
+        setBroadcastView('analytics'); 
+        setBroadcastStatus({ type: '', message: '' }); 
+      }, 2000);
     } catch (error) {
       setBroadcastStatus({ type: 'error', message: error.message });
     } finally {
@@ -136,102 +182,57 @@ const Broadcast = ({ user, userData, loading }) => {
     }
   }, [templateSubView, broadcastView, user, userData, loading, fetchUserTemplates]);
 
-  useEffect(() => {
+useEffect(() => {
     if (broadcastSelectedTemplate) {
-      //const extractedVars = extractVariablesFromTemplate(broadcastSelectedTemplate);
-      //setBroadcastTemplateVariables(extractedVars);
-      {/*
-      const initialMapping = { header: {}, body: {} };
-      
-      ['header', 'body'].forEach(compType => {
-        extractedVars[compType].forEach(vName => {
-          
-          // Grab the example value we just extracted (e.g. "10%" or "Sale name")
-          const exampleText = extractedVars.examples[compType]?.[vName] || '';
-          
-          if (vName === 'name') {
-            // It's a name: Default to dynamic mapping with 'first_name'
-            initialMapping[compType][vName] = { type: 'dynamic', field: 'first_name', text: exampleText, fallback: '' };
-          } else {
-            // Not a name: If we have an example, set it to static so the user sees it pre-filled!
-            // If there's no example, leave it dynamic + empty so they are forced to map it.
-            initialMapping[compType][vName] = { 
-              type: exampleText ? 'static' : 'dynamic', 
-              field: '', 
-              text: exampleText, 
-              fallback: '' 
-            };
-          }
-          
-        });
-      }); */}
-
-      let initialMapping = []; // FIX: Initialize as empty array
       const template = broadcastSelectedTemplate.object || broadcastSelectedTemplate;
+      
+      // Initialize with header, body, AND the array for buttons
+      const initialMapping = { header: {}, body: {}, buttons: [] };
       
       template.components?.forEach(component => {
         const compType = component.type?.toLowerCase();
 
         // ==========================================
-        // HEADER COMPONENT
+        // HEADER & BODY COMPONENTS
         // ==========================================
-        if (compType === 'header') {
-          let parameters = []; // FIX: Initialize as empty array
-          let config;
-          let compFormat = component.format?.toLowerCase();
-          
-          if (compFormat === 'text') {
-            if (component.example && component.example.header_text_named_params) {
-              component.example.header_text_named_params.forEach(headerVar => {  
-                const varName = headerVar.param_name;
-                const varSampleVal = headerVar.example || '';
+        if (compType === 'header' || compType === 'body') {
+           const isTextFormat = compType === 'body' || component.format?.toLowerCase() === 'text';
+           
+           if (isTextFormat) {
+             const paramKey = compType === 'header' ? 'header_text_named_params' : 'body_text_named_params';
+             
+             // 1. If Meta provides examples, map them automatically
+             if (component.example && component.example[paramKey]) {
+               component.example[paramKey].forEach(v => {
+                 const varName = v.param_name;
+                 const varSampleVal = v.example || '';
 
-                if (varName.toLowerCase() === 'name') {
-                  config = { type: 'text', fieldType: 'dynamic', field: 'first_name', text: ' ', fallback: '', parameter_name : varName };
-                } else {
-                  config = { type: 'text', fieldType: varSampleVal ? 'static' : 'dynamic', field: '', text: varName, fallback: '', parameter_name : varName };
+                 if (varName.toLowerCase().includes('name')) {
+                   initialMapping[compType][varName] = { type: 'dynamic', field: 'first_name', text: varSampleVal, fallback: '' };
+                 } else {
+                   initialMapping[compType][varName] = { type: varSampleVal ? 'static' : 'dynamic', field: '', text: varSampleVal, fallback: '' };
+                 }
+               });
+             } else {
+                // 2. Fallback: If no examples exist, extract using regex
+                const textWithVars = component.text || '';
+                const matches = textWithVars.match(/\{\{[\w_]+\}\}/g);
+                if (matches) {
+                    matches.forEach(m => {
+                        const varName = m.replace(/[{}]/g, '');
+                        if (!initialMapping[compType][varName]) {
+                            initialMapping[compType][varName] = { type: 'dynamic', field: '', text: '', fallback: '' };
+                        }
+                    });
                 }
-                parameters.push(config);
-              });
-            }
-          } else if(compFormat === 'image' || compFormat === 'video' || compFormat === 'document') {
-            const link = process.env.REACT_APP_S3_MEDIA_BUCKET_URL + component.s3_key;
-            config = { type: compFormat, link: link || '' };
-            parameters.push(config);
-          }
-          
-          initialMapping.push({ type: 'header', parameters: parameters });
+             }
+           }
+        }
         
         // ==========================================
-        // BODY COMPONENT
+        // BUTTONS COMPONENT (RESTORED)
         // ==========================================
-        } else if (compType === 'body') {
-          let parameters = []; // FIX: Declare inside the body block
-          let config; // FIX: Declare inside the body block
-          
-          // FIX: Check for body_text_named_params, not header
-          if (component.example && component.example.body_text_named_params) {
-            component.example.body_text_named_params.forEach(bodyVar => {  
-              const varName = bodyVar.param_name;
-              const varSampleVal = bodyVar.example || ''; // FIX: Use bodyVar instead of headerVar
-
-              if (varName.toLowerCase() === 'name') {
-                config = { type: 'text', fieldType: 'dynamic', field: 'first_name', text: ' ', fallback: '' , parameter_name : varName };
-              } else {
-                config = { type: 'text', fieldType: varSampleVal ? 'static' : 'dynamic', field: '', text: varSampleVal, fallback: '', parameter_name : varName };
-              }
-              
-              parameters.push(config); 
-            });
-          }
-          
-          initialMapping.push({ type: 'body', parameters: parameters }); // FIX: Change type to 'body'
-
-        // ==========================================
-        // BUTTONS COMPONENT
-        // ==========================================
-        } else if (compType === 'buttons') {
-          
+        else if (compType === 'buttons') {
           if (component.buttons) {
             component.buttons.forEach((btn, index) => {
               
@@ -262,20 +263,17 @@ const Broadcast = ({ user, userData, loading }) => {
                   buttonPayload.parameters.push({ type: "text", text: mappedValue });
                 }
 
-                // FIX: Moved inside the `if(mappedValue)` block so buttonPayload is defined!
-                initialMapping.push(buttonPayload); 
+                // Push directly into our new buttons array in the state object
+                initialMapping.buttons.push(buttonPayload); 
               }
             });
           }
         }
-      });     
+      });
 
-      console.log(JSON.stringify(initialMapping));
-      
       setBroadcastVariableMapping(initialMapping);
     } else {
-      setBroadcastTemplateVariables({ header: [], body: [], examples: { header: {}, body: {} } });
-      setBroadcastVariableMapping({ header: {}, body: {} });
+      setBroadcastVariableMapping({ header: {}, body: {}, buttons: [] });
     }
   }, [broadcastSelectedTemplate]);
 
@@ -392,7 +390,7 @@ const Broadcast = ({ user, userData, loading }) => {
           )}
 
           {broadcastView === 'analytics' && (
-            <BroadcastAnalytics onNewBroadcastClick={() => setBroadcastView('new-broadcast')} />
+            <BroadcastAnalytics onNewBroadcastClick={() => setBroadcastView('new-broadcast')} user={user} userData={userData} />
           )}
 
           {broadcastView === 'new-broadcast' && (
@@ -430,91 +428,188 @@ const Broadcast = ({ user, userData, loading }) => {
                 );
               })()}
               {/* Variable Mapping Section */}
-{(broadcastTemplateVariables.header?.length > 0 || broadcastTemplateVariables.body?.length > 0) && (
-  <div className="border-t pt-6 mt-6">
-    <div className="mb-4">
-      <h2 className="text-xl font-semibold text-gray-900 mb-2">Map Template Variables</h2>
-      <p className="text-sm text-gray-600">Assign contact fields or enter custom text for your template variables.</p>
-    </div>
+              {(Object.keys(broadcastVariableMapping.header || {}).length > 0 || 
+                Object.keys(broadcastVariableMapping.body || {}).length > 0 || 
+                (broadcastVariableMapping.buttons && broadcastVariableMapping.buttons.length > 0)) && (
+                <div className="border-t pt-6 mt-6">
+                  <div className="mb-4">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2">Map Template Variables</h2>
+                    <p className="text-sm text-gray-600">Assign contact fields or enter custom text for your template variables.</p>
+                  </div>
 
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-6">
-      {['header', 'body'].map(compType => {
-        if (!broadcastTemplateVariables[compType] || broadcastTemplateVariables[compType].length === 0) return null;
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-6">
+                    
+                    {/* ========================================== */}
+                    {/* 1 & 2. HEADER AND BODY VARIABLES             */}
+                    {/* ========================================== */}
+                    {['header', 'body'].map(compType => {
+                      const variables = Object.keys(broadcastVariableMapping[compType] || {});
+                      if (variables.length === 0) return null;
 
-        return (
-          <div key={compType} className="space-y-4">
-            <h3 className="text-sm font-bold text-gray-700 capitalize border-b pb-2">{compType} Variables</h3>
-            
-            {broadcastTemplateVariables[compType].map(varName => {
-              const config = broadcastVariableMapping[compType]?.[varName] || { type: 'dynamic', field: 'first_name', text: '' };
+                      return (
+                        <div key={compType} className="space-y-4">
+                          <h3 className="text-sm font-bold text-gray-700 capitalize border-b pb-2">{compType} Variables</h3>
+                          
+                          {variables.map(varName => {
+                            const config = broadcastVariableMapping[compType][varName];
 
-              return (
-                <div key={varName} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white p-3 border border-gray-200 rounded-md shadow-sm">
-  
-  {/* COLUMN 1: Fixed width for the variable tag (e.g., 112px on desktop) */}
-  <div className="w-full sm:w-48 shrink-0 font-mono text-sm text-blue-600 font-semibold bg-blue-50 px-2 py-1.5 rounded text-center">
-    {`{{${varName}}}`}
-  </div>
-  
-  {/* COLUMN 2: Fixed width for the type selector (e.g., 192px on desktop) */}
-  <select 
-    className="w-full sm:w-48 shrink-0 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
-    value={config.type}
-    onChange={(e) => {
-      setBroadcastVariableMapping(prev => ({
-        ...prev,
-        [compType]: { ...prev[compType], [varName]: { ...config, type: e.target.value } }
-      }));
-    }}
-  >
-    <option value="dynamic">Contact Field</option>
-    <option value="static">Static Text</option>
-  </select>
+                            return (
+                              <div key={varName} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white p-3 border border-gray-200 rounded-md shadow-sm">
+                                
+                                {/* COLUMN 1: Variable Name */}
+                                <div className="w-full sm:w-48 shrink-0 font-mono text-sm text-blue-600 font-semibold bg-blue-50 px-2 py-1.5 rounded text-center">
+                                  {`{{${varName}}}`}
+                                </div>
+                                
+                                {/* COLUMN 2: Type Selector */}
+                                <select 
+                                  className="w-full sm:w-48 shrink-0 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                  value={config.type}
+                                  onChange={(e) => {
+                                    setBroadcastVariableMapping(prev => ({
+                                      ...prev,
+                                      [compType]: { ...prev[compType], [varName]: { ...config, type: e.target.value } }
+                                    }));
+                                  }}
+                                >
+                                  <option value="dynamic">Contact Field</option>
+                                  <option value="static">Static Text</option>
+                                </select>
 
-  {/* COLUMN 3: flex-1 makes it absorb all remaining space evenly */}
-  <div className="w-full flex-1 min-w-0">
-    {config.type === 'dynamic' ? (
-      <select 
-        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
-        value={config.field || ''}
-        onChange={(e) => {
-          setBroadcastVariableMapping(prev => ({
-            ...prev,
-            [compType]: { ...prev[compType], [varName]: { ...config, field: e.target.value } }
-          }));
-        }}
-      >
-        <option value="first_name">First Name</option>
-        <option value="last_name">Last Name</option>
-        <option value="phone_number">Phone Number</option>
-        <option value="email">Email</option>
-        <option value="custom_attributes.company">Company (Custom)</option>
-        <option value="custom_attributes.order_number">Order Number (Custom)</option>
-      </select>
-    ) : (
-      <input 
-        type="text" 
-        placeholder="Enter text to show for all users..."
-        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-        value={config.text || ''}
-        onChange={(e) => {
-          setBroadcastVariableMapping(prev => ({
-            ...prev,
-            [compType]: { ...prev[compType], [varName]: { ...config, text: e.target.value } }
-          }));
-        }}
-      />
-    )}
-  </div>
-</div>
-              );
-            })}
-          </div>
-        );
-      })}
-    </div>
-  </div>
-)}
+                                {/* COLUMN 3: Input / Field Mapping */}
+                                <div className="w-full flex-1 min-w-0">
+                                  {config.type === 'dynamic' ? (
+                                    <select 
+                                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                      value={config.field || ''}
+                                      onChange={(e) => {
+                                        setBroadcastVariableMapping(prev => ({
+                                          ...prev,
+                                          [compType]: { ...prev[compType], [varName]: { ...config, field: e.target.value } }
+                                        }));
+                                      }}
+                                    >
+                                      <option value="" disabled>-- Select a field --</option>
+                                      <option value="first_name">First Name</option>
+                                      <option value="last_name">Last Name</option>
+                                      <option value="phone_number">Phone Number</option>
+                                      <option value="email">Email</option>
+                                      <option value="custom_attributes.company">Company (Custom)</option>
+                                      <option value="custom_attributes.order_number">Order Number (Custom)</option>
+                                    </select>
+                                  ) : (
+                                    <input 
+                                      type="text" 
+                                      placeholder="Enter text to show for all users..."
+                                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                      value={config.text || ''}
+                                      onChange={(e) => {
+                                        setBroadcastVariableMapping(prev => ({
+                                          ...prev,
+                                          [compType]: { ...prev[compType], [varName]: { ...config, text: e.target.value } }
+                                        }));
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+
+                    {/* ========================================== */}
+                    {/* 3. BUTTON VARIABLES                        */}
+                    {/* ========================================== */}
+                    {broadcastVariableMapping.buttons && broadcastVariableMapping.buttons.length > 0 && (
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-bold text-gray-700 capitalize border-b pb-2">Button Variables</h3>
+                        
+                        {broadcastVariableMapping.buttons.map((btn, btnIndex) => {
+                          return btn.parameters.map((param, paramIndex) => {
+                            
+                            // Determine if this is a URL string or a Coupon Code
+                            const isCoupon = btn.sub_type === 'copy_code';
+                            const valueKey = isCoupon ? 'coupon_code' : 'text';
+                            const varLabel = isCoupon ? 'Copy code' : 'URL';
+                            
+                            // Buttons default to static unless user changes them
+                            const fieldType = param.fieldType || 'static';
+
+                            return (
+                              <div key={`btn-${btn.index}-${paramIndex}`} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white p-3 border border-gray-200 rounded-md shadow-sm">
+                                
+                                {/* COLUMN 1: Variable Name */}
+                                <div className="w-full sm:w-48 shrink-0 font-mono text-sm text-blue-600 font-semibold bg-blue-50 px-2 py-1.5 rounded text-center">
+                                  {varLabel}
+                                </div>
+                                
+                                {/* COLUMN 2: Type Selector */}
+                                <select 
+                                  className="w-full sm:w-48 shrink-0 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                  value={fieldType}
+                                  onChange={(e) => {
+                                    setBroadcastVariableMapping(prev => {
+                                      const updated = { ...prev };
+                                      updated.buttons[btnIndex].parameters[paramIndex].fieldType = e.target.value;
+                                      return updated;
+                                    });
+                                  }}
+                                >
+                                  <option value="dynamic">Contact Field</option>
+                                  <option value="static">Static Text</option>
+                                </select>
+
+                                {/* COLUMN 3: Input / Field Mapping */}
+                                <div className="w-full flex-1 min-w-0">
+                                  {fieldType === 'dynamic' ? (
+                                    <select 
+                                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                      value={param.field || ''}
+                                      onChange={(e) => {
+                                        setBroadcastVariableMapping(prev => {
+                                          const updated = { ...prev };
+                                          updated.buttons[btnIndex].parameters[paramIndex].field = e.target.value;
+                                          return updated;
+                                        });
+                                      }}
+                                    >
+                                      <option value="" disabled>-- Select a field --</option>
+                                      <option value="first_name">First Name</option>
+                                      <option value="last_name">Last Name</option>
+                                      <option value="phone_number">Phone Number</option>
+                                      <option value="email">Email</option>
+                                      <option value="custom_attributes.company">Company (Custom)</option>
+                                      <option value="custom_attributes.order_number">Order Number (Custom)</option>
+                                    </select>
+                                  ) : (
+                                    <input 
+                                      type="text" 
+                                      placeholder={`Enter ${isCoupon ? 'coupon code' : 'url suffix'}...`}
+                                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                      value={param[valueKey] || ''}
+                                      onChange={(e) => {
+                                        setBroadcastVariableMapping(prev => {
+                                          const updated = { ...prev };
+                                          updated.buttons[btnIndex].parameters[paramIndex][valueKey] = e.target.value;
+                                          return updated;
+                                        });
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          });
+                        })}
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+              )}
+              {/* End Variable Mapping Section */}
               {/* Audience Selection */}
               <div className="border-t pt-6 mt-6">
                 <div className="mb-4">

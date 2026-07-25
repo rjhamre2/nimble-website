@@ -423,7 +423,7 @@ const AudienceBuilder = ({ onSave, onCancel }) => {
                   onChange={(e) => handleLoadTemplate(e.target.value)}
                   defaultValue=""
                 >
-                  <option value="" disabled>-- Select template --</option>
+                  <option value="" disabled>Select saved audience</option>
                   {savedAudiences.map(aud => (
                     <option key={aud.id} value={aud.id}>
                       {aud.name} ({aud.contact_count.toLocaleString()})
@@ -440,8 +440,8 @@ const AudienceBuilder = ({ onSave, onCancel }) => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Filter Engine</h3>
           <RuleGroup group={ruleGroup} onChange={setRuleGroup} isRoot={true} />
         </div>
-
-        {/* Manual Overrides */}
+{/* 
+        {/* Manual Overrides 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Manual Overrides</h3>
           <div className="grid grid-cols-2 gap-6">
@@ -467,7 +467,7 @@ const AudienceBuilder = ({ onSave, onCancel }) => {
             </div>
           </div>
         </div>
-
+*/}
       </div>
 
       {/* Sticky Feedback Sidebar */}

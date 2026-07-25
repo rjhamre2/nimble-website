@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiConfig } from '../../../../config/api';
 import { 
   IndianRupee, 
   TrendingUp, 
@@ -12,33 +13,70 @@ import {
   ArrowRight
 } from "lucide-react";
 
-const BroadcastAnalytics = ({ onNewBroadcastClick }) => {
-  // Mock data for the historical table based on your specs
-  const historicalCampaigns = [
-    {
-      name: "Carat&Chrome Akshaya Tritiya Blast",
-      date: "May 12, 2026",
-      segment: "All Past Buyers",
-      openRate: "91.2%",
-      clickRate: "22.4%",
-      revenue: "₹4,12,500"
-    },
-    {
-      name: "Abandoned Cart Sequence (Automated)",
-      date: "Ongoing",
-      segment: "Cart Drop-offs",
-      openRate: "88.5%",
-      clickRate: "19.1%",
-      revenue: "₹1,89,200 (Mo)"
-    },
-    {
-      name: "Weekend Flash Sale",
-      date: "Apr 18, 2026",
-      segment: "Tag: High Spenders",
-      openRate: "79.4%",
-      clickRate: "15.2%",
-      revenue: "₹2,45,000"
-    }
+const BroadcastAnalytics = ({ onNewBroadcastClick, user, userData }) => {
+  const [historicalCampaigns, setHistoricalCampaigns] = useState([]);
+  const [latestBroadcast, setLatestBroadcast] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserBroadcasts = async () => {
+      try {
+        const dbId = userData?.db_id || user?.db_id;
+        if (!dbId) {
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetch(`${apiConfig.dbServerConfig.baseURL}/api/broadcasts/user/${dbId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to fetch broadcasts');
+        
+        // Map the fetched data to match the UI format
+        const formattedCampaigns = (data.data || []).map(broadcast => ({
+          name: broadcast.name || "Unnamed Broadcast",
+          date: new Date(broadcast.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          segment: broadcast.audienceListId ? `List: ${broadcast.audienceListId}` : "All Audience", 
+          openRate: broadcast.stats?.openRate || "0%",
+          clickRate: broadcast.stats?.clickRate || "0%",
+          revenue: broadcast.stats?.revenue || "₹0"
+        }));
+        
+        setHistoricalCampaigns(formattedCampaigns);
+        setLatestBroadcast(data.data?.[0] || null);
+      } catch (error) {
+        console.error("Error fetching broadcasts:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserBroadcasts();
+  }, [user, userData]);
+
+  const sent = parseInt(latestBroadcast?.messages_sent) || 0;
+  const delivered = parseInt(latestBroadcast?.messages_delivered) || 0;
+  const read = parseInt(latestBroadcast?.messages_read) || 0;
+  const clicked = parseInt(latestBroadcast?.messages_clicked) || 0; 
+  const converted = parseInt(latestBroadcast?.messages_converted) || 0;
+
+  const funnelData = [
+    { label: "Sent", count: sent.toLocaleString(), pct: sent ? 100 : 0, color: "bg-gray-200" },
+    { label: "Delivered", count: delivered.toLocaleString(), pct: sent ? Math.round((delivered/sent)*100) : 0, color: "bg-blue-200" },
+    { label: "Read", count: read.toLocaleString(), pct: sent ? Math.round((read/sent)*100) : 0, color: "bg-purple-200" },
+    { label: "Clicked", count: clicked.toLocaleString(), pct: sent ? Math.round((clicked/sent)*100) : 0, color: "bg-yellow-200" },
+    { label: "Converted", count: converted.toLocaleString(), pct: sent ? Math.round((converted/sent)*100) : 0, color: "bg-[#25D366]" }
+  ];
+
+  const heroCards = [
+    { title: "Attributed Revenue", value: latestBroadcast?.attributed_revenue ? `₹${Number(latestBroadcast.attributed_revenue).toLocaleString()}` : "₹0", icon: IndianRupee, color: "text-[#25D366]", bg: "bg-[#25D366]/10", sub: "24-hour attribution window" },
+    { title: "Campaign Cost", value: latestBroadcast?.campaign_cost ? `₹${Number(latestBroadcast.campaign_cost).toLocaleString()}` : "₹0", icon: Activity, color: "text-gray-700", bg: "bg-gray-100", sub: "Meta API + Platform fees" },
+    { title: "ROAS", value: latestBroadcast?.roas ? `${Number(latestBroadcast.roas).toFixed(1)}x` : "0.0x", icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-100", sub: "Return on ad spend" },
+    { title: "Conversion Rate", value: latestBroadcast?.conversion_rate ? `${Number(latestBroadcast.conversion_rate).toFixed(1)}%` : "0.0%", icon: ShoppingCart, color: "text-purple-600", bg: "bg-purple-100", sub: "From delivered to ordered" }
   ];
 
   return (
@@ -65,12 +103,7 @@ const BroadcastAnalytics = ({ onNewBroadcastClick }) => {
 
       {/* 1. The Financial Hero Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { title: "Attributed Revenue", value: "₹4,12,500", icon: IndianRupee, color: "text-[#25D366]", bg: "bg-[#25D366]/10", sub: "24-hour attribution window" },
-          { title: "Campaign Cost", value: "₹33,266", icon: Activity, color: "text-gray-700", bg: "bg-gray-100", sub: "Meta API + Platform fees" },
-          { title: "ROAS", value: "12.4x", icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-100", sub: "Return on ad spend" },
-          { title: "Conversion Rate", value: "3.2%", icon: ShoppingCart, color: "text-purple-600", bg: "bg-purple-100", sub: "From delivered to ordered" }
-        ].map((metric, i) => (
+        {heroCards.map((metric, i) => (
           <div key={i} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:-translate-y-1 transition-transform duration-300">
             <div className="flex items-center justify-between mb-4">
               <div className={`p-2 rounded-lg ${metric.bg}`}>
@@ -93,13 +126,7 @@ const BroadcastAnalytics = ({ onNewBroadcastClick }) => {
           <p className="text-sm text-gray-500 mb-6">Diagnose copy and offer drop-offs at every micro-interaction.</p>
           
           <div className="space-y-5">
-            {[
-              { label: "Sent", count: "10,000", pct: 100, color: "bg-gray-200" },
-              { label: "Delivered", count: "9,820", pct: 98.2, color: "bg-blue-200" },
-              { label: "Read", count: "8,500", pct: 85.0, color: "bg-purple-200" },
-              { label: "Clicked", count: "1,850", pct: 18.5, color: "bg-yellow-200" },
-              { label: "Converted", count: "320", pct: 3.2, color: "bg-[#25D366]" }
-            ].map((step, i) => (
+            {funnelData.map((step, i) => (
               <div key={i} className="relative">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="font-semibold text-gray-700 w-24">{step.label}</span>
@@ -210,7 +237,15 @@ const BroadcastAnalytics = ({ onNewBroadcastClick }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {historicalCampaigns.map((camp, index) => (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-4 text-center text-gray-500">Loading campaigns...</td>
+                  </tr>
+                ) : historicalCampaigns.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-4 text-center text-gray-500">No broadcast history found</td>
+                  </tr>
+                ) : historicalCampaigns.map((camp, index) => (
                   <tr key={index} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-6 py-4 font-medium text-[#0A0A0A]">{camp.name}</td>
                     <td className="px-6 py-4 text-gray-500">{camp.date}</td>
