@@ -12,9 +12,9 @@ import WhatsAppEmbeddedSignup from '../WhatsAppEmbeddedSignup';
 import { QRCodeSVG } from 'qrcode.react';
 
 const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
-  const { user, userData} = useAuth();
+  const { user, userData } = useAuth();
   const [isTesting, setIsTesting] = useState(false);
-  
+
   // --- WhatsApp State ---
   const [whatsappStatus, setWhatsappStatus] = useState(null);
   const [isCheckingWhatsapp, setIsCheckingWhatsapp] = useState(false);
@@ -30,7 +30,7 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
   const [isConnectingShopify, setIsConnectingShopify] = useState(false);
 
   // 👉 HARDCODED SHOPIFY LINK (Update this whenever you generate a new link in your Partner Dashboard)
-  const SHOPIFY_HARDCODED_INSTALL_LINK = "https://admin.shopify.com/oauth/install_custom_app?client_id=bb53119640138d98e580be35811931dc&no_redirect=true&signature=eyJleHBpcmVzX2F0IjoxNzgyMTI4NjIxLCJwZXJtYW5lbnRfZG9tYWluIjoiZWR0bWpjLWJjLm15c2hvcGlmeS5jb20iLCJjbGllbnRfaWQiOiJiYjUzMTE5NjQwMTM4ZDk4ZTU4MGJlMzU4MTE5MzFkYyIsInB1cnBvc2UiOiJjdXN0b21fYXBwIiwibWVyY2hhbnRfb3JnYW5pemF0aW9uX2lkIjoyMTI5MzI1NzZ9--c92d3bf853777539773eb767101cf7a44e6c2979";
+  const SHOPIFY_HARDCODED_INSTALL_LINK = "https://admin.shopify.com/oauth/install_custom_app?client_id=f7dfd538c8935ab1fc83a6f4e0ae44ef&no_redirect=true&signature=eyJleHBpcmVzX2F0IjoxNzg2Njk2NjA2LCJwZXJtYW5lbnRfZG9tYWluIjoiNWcwbXd5LXpxLm15c2hvcGlmeS5jb20iLCJjbGllbnRfaWQiOiJmN2RmZDUzOGM4OTM1YWIxZmM4M2E2ZjRlMGFlNDRlZiIsInB1cnBvc2UiOiJjdXN0b21fYXBwIiwibWVyY2hhbnRfb3JnYW5pemF0aW9uX2lkIjoyMjkzNzYxOTN9--60c012f72d5ef7e07c65d3d644bca0e799ca9e82";
   // Check WhatsApp status when component mounts
   useEffect(() => {
     const performWhatsAppStatusCheck = async () => {
@@ -76,7 +76,7 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
   const handleWhatsAppSetupComplete = async () => {
     setWhatsappStatus(null);
     setIsCheckingWhatsapp(false);
-    
+
     if (user?.uid) {
       setIsCheckingWhatsapp(true);
       try {
@@ -92,16 +92,16 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
         setIsCheckingWhatsapp(false);
       }
     }
-    
+
     if (onWhatsAppSetupComplete) {
       onWhatsAppSetupComplete();
     }
   };
 
   const getWhatsAppStatus = () => {
-    return isCheckingWhatsapp ? 'checking' : 
-           (!whatsappStatus || !whatsappStatus.success) ? 'error' :
-           whatsappStatus.isIntegrated ? 'connected' : 'setup_required';
+    return isCheckingWhatsapp ? 'checking' :
+      (!whatsappStatus || !whatsappStatus.success) ? 'error' :
+        whatsappStatus.isIntegrated ? 'connected' : 'setup_required';
   };
 
   const handleReconnect = async (integrationId) => {
@@ -120,7 +120,7 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
   const handleShopifyConnectSubmit = async (e) => {
     e.preventDefault();
     setShopifyError('');
-    
+
     let cleanedDomain = shopifyDomain.trim().toLowerCase();
     if (!cleanedDomain) {
       setShopifyError('Please enter your store domain.');
@@ -149,7 +149,7 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
       // 2. Hide the form and SHOW the static install link
       setShowShopifyForm(false);
       setShopifyStatus(prev => ({ ...prev, preRegisteredDomain: cleanedDomain }));
-      
+
     } catch (err) {
       console.error(err);
       setShopifyError('Failed to save your store domain. Try again.');
@@ -303,7 +303,7 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
               )}
 
               {/* --- SHOPIFY PRE-REGISTRATION FLOW --- */}
-              
+
               {/* Step 1: The Input Form (Visible when Connect is clicked and domain not yet registered) */}
               {integration.id === 'shopify' && showShopifyForm && !shopifyStatus?.preRegisteredDomain && (
                 <form onSubmit={handleShopifyConnectSubmit} className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -357,7 +357,7 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
 
             {/* Global Actions Block */}
             <div className="mt-4">
-              
+
               {/* CONNECT BUTTON FOR SHOPIFY: Disappears when form is open OR domain is registered */}
               {integration.id === 'shopify' && integration.status !== 'connected' && !showShopifyForm && !shopifyStatus?.preRegisteredDomain && (
                 <button
