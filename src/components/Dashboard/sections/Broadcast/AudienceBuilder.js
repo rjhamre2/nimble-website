@@ -92,13 +92,13 @@ const RuleGroup = ({ group, onChange, onRemove, isRoot = false }) => {
       {!isRoot && (
         <div className="absolute -left-6 top-1/2 w-6 border-t border-gray-300"></div>
       )}
-      
+
       {/* Group Logic Header */}
       <div className="flex items-center space-x-3 bg-gray-50 p-2 rounded border border-gray-200">
         <span className="text-sm font-medium text-gray-700">Match</span>
-        <select 
+        <select
           className="border border-gray-300 p-1 rounded text-sm bg-white font-bold text-blue-700"
-          value={group.matchType} 
+          value={group.matchType}
           onChange={(e) => onChange({ ...group, matchType: e.target.value })}
         >
           <option value="AND">ALL</option>
@@ -139,9 +139,9 @@ const RuleGroup = ({ group, onChange, onRemove, isRoot = false }) => {
             <div key={rule.id} className="flex space-x-3 items-start relative pl-2 border-l-2 border-transparent hover:border-blue-300 transition-colors">
               {/* Column A: Field Selector */}
               <div className="w-1/3 flex flex-col gap-2">
-                <select 
+                <select
                   className="w-full border border-gray-300 p-2 rounded text-sm bg-white focus:ring-2 focus:ring-blue-500"
-                  value={rule.field.startsWith('custom_') && rule.field !== 'custom_field' ? 'custom_field' : rule.field} 
+                  value={rule.field.startsWith('custom_') && rule.field !== 'custom_field' ? 'custom_field' : rule.field}
                   onChange={(e) => updateRule(rule.id, { ...rule, field: e.target.value, value: '' })}
                 >
                   {FIELD_GROUPS.map((fg, i) => (
@@ -154,8 +154,8 @@ const RuleGroup = ({ group, onChange, onRemove, isRoot = false }) => {
                 </select>
                 {/* Reveal custom input if they selected Custom Field */}
                 {(rule.field === 'custom_field' || (rule.field.startsWith('custom_') && rule.field !== 'custom_field')) && (
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="Enter variable key (e.g., ltv)"
                     className="w-full p-2 border border-blue-300 rounded text-sm bg-blue-50 focus:outline-none"
                     value={rule.field.startsWith('custom_') ? rule.field.replace('custom_', '') : ''}
@@ -166,9 +166,9 @@ const RuleGroup = ({ group, onChange, onRemove, isRoot = false }) => {
 
               {/* Column B: Operator */}
               <div className="w-1/4">
-                <select 
+                <select
                   className="w-full border border-gray-300 p-2 rounded text-sm bg-white focus:ring-2 focus:ring-blue-500"
-                  value={rule.operator} 
+                  value={rule.operator}
                   onChange={(e) => updateRule(rule.id, { ...rule, operator: e.target.value, value: '' })}
                 >
                   {operators.map((op, i) => (
@@ -182,9 +182,9 @@ const RuleGroup = ({ group, onChange, onRemove, isRoot = false }) => {
                 {rule.operator === 'is_not_empty' ? (
                   <div className="p-2 text-sm text-gray-500 italic bg-gray-50 rounded border border-dashed border-gray-300">No value required</div>
                 ) : fieldType === 'boolean' ? (
-                  <select 
+                  <select
                     className="w-full border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                    value={rule.value} 
+                    value={rule.value}
                     onChange={(e) => updateRule(rule.id, { ...rule, value: e.target.value })}
                   >
                     <option value="">Select...</option>
@@ -192,36 +192,36 @@ const RuleGroup = ({ group, onChange, onRemove, isRoot = false }) => {
                     <option value="false">False / No</option>
                   </select>
                 ) : fieldType === 'date' && rule.operator !== 'is_within_the_last' ? (
-                  <input 
-                    type="date" 
+                  <input
+                    type="date"
                     className="w-full border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                    value={rule.value} 
+                    value={rule.value}
                     onChange={(e) => updateRule(rule.id, { ...rule, value: e.target.value })}
                   />
                 ) : fieldType === 'date' && rule.operator === 'is_within_the_last' ? (
                   <div className="flex items-center gap-2">
-                    <input 
+                    <input
                       type="number" min="1"
                       className="w-24 border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                      value={rule.value} 
+                      value={rule.value}
                       onChange={(e) => updateRule(rule.id, { ...rule, value: e.target.value })}
                     />
                     <span className="text-sm text-gray-600">days</span>
                   </div>
                 ) : fieldType === 'array' ? (
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     className="w-full border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter tags separated by commas (e.g. VIP, 2026_Sale)"
-                    value={Array.isArray(rule.value) ? rule.value.join(', ') : rule.value} 
-                    onChange={(e) => updateRule(rule.id, { ...rule, value: e.target.value.split(',').map(s=>s.trim()).filter(Boolean) })}
+                    value={Array.isArray(rule.value) ? rule.value.join(', ') : rule.value}
+                    onChange={(e) => updateRule(rule.id, { ...rule, value: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                   />
                 ) : (
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     className="w-full border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-blue-500"
                     placeholder="Value..."
-                    value={rule.value} 
+                    value={rule.value}
                     onChange={(e) => updateRule(rule.id, { ...rule, value: e.target.value })}
                   />
                 )}
@@ -255,10 +255,10 @@ const AudienceBuilder = ({ onSave, onCancel }) => {
   const dbId = userData?.db_id || user?.db_id || user?.uid;
 
   const [segmentName, setSegmentName] = useState('');
-  
+
   // Saved Audiences State (for templating)
   const [savedAudiences, setSavedAudiences] = useState([]);
-  
+
   // The Root Rule Group State
   const [ruleGroup, setRuleGroup] = useState({
     id: 'root',
@@ -305,8 +305,8 @@ const AudienceBuilder = ({ onSave, onCancel }) => {
     setIsCalculating(true);
     try {
       const token = localStorage.getItem('authToken');
-      const apiUrl = apiConfig?.endpoints?.audience?.preview?.() || '/api/audience/preview'; 
-      
+      const apiUrl = apiConfig?.endpoints?.audience?.preview?.() || '/api/audience/preview';
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -317,14 +317,14 @@ const AudienceBuilder = ({ onSave, onCancel }) => {
           always_exclude: parseOverrides(currentExclude)
         })
       });
-      
+
       const data = await response.json();
       if (data.success) {
         setPreviewData({ count: data.count, sample: data.preview || [] });
       }
     } catch (error) {
       console.error('Failed to fetch preview', error);
-      setPreviewData({ count: 0, sample: [] }); 
+      setPreviewData({ count: 0, sample: [] });
     } finally {
       setIsCalculating(false);
     }
@@ -346,8 +346,8 @@ const AudienceBuilder = ({ onSave, onCancel }) => {
     setIsSaving(true);
     try {
       const token = localStorage.getItem('authToken');
-      const apiUrl = apiConfig?.endpoints?.audience?.save?.() || '/api/audience/save'; 
-      
+      const apiUrl = apiConfig?.endpoints?.audience?.save?.() || '/api/audience/save';
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -381,10 +381,10 @@ const AudienceBuilder = ({ onSave, onCancel }) => {
       // Append "(Copy)" to clarify they are creating a new segment based on the old one
       setSegmentName(`${selected.name} (Copy)`);
       try {
-        const parsed = typeof selected.rules_json === 'string' 
-          ? JSON.parse(selected.rules_json) 
+        const parsed = typeof selected.rules_json === 'string'
+          ? JSON.parse(selected.rules_json)
           : selected.rules_json;
-          
+
         if (parsed.ruleGroup) setRuleGroup(parsed.ruleGroup);
         if (parsed.always_include) setAlwaysIncludeStr(parsed.always_include.join(', '));
         if (parsed.always_exclude) setAlwaysExcludeStr(parsed.always_exclude.join(', '));
@@ -398,27 +398,27 @@ const AudienceBuilder = ({ onSave, onCancel }) => {
     <div className="flex flex-col lg:flex-row gap-6 w-full animate-fade-in">
       {/* Main Builder Area */}
       <div className="flex-1 space-y-6">
-        
+
         {/* Header with Template Loader */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex flex-col md:flex-row md:items-end gap-6 mb-2">
             <div className="flex-1">
               <label className="block text-sm font-semibold text-gray-900 mb-2">Audience Name</label>
-              <input 
-                type="text" 
-                placeholder="e.g., Inactive VIPs 2026" 
+              <input
+                type="text"
+                placeholder="e.g., Inactive VIPs 2026"
                 className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-lg"
                 value={segmentName}
                 onChange={(e) => setSegmentName(e.target.value)}
               />
             </div>
-            
+
             {savedAudiences.length > 0 && (
               <div className="md:w-1/3">
                 <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">
                   Or load saved segment
                 </label>
-                <select 
+                <select
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-gray-50 text-gray-700 cursor-pointer"
                   onChange={(e) => handleLoadTemplate(e.target.value)}
                   defaultValue=""
@@ -440,7 +440,7 @@ const AudienceBuilder = ({ onSave, onCancel }) => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Filter Engine</h3>
           <RuleGroup group={ruleGroup} onChange={setRuleGroup} isRoot={true} />
         </div>
-{/* 
+        {/* 
         {/* Manual Overrides 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Manual Overrides</h3>
@@ -473,15 +473,15 @@ const AudienceBuilder = ({ onSave, onCancel }) => {
       {/* Sticky Feedback Sidebar */}
       <div className="w-full lg:w-80 flex-shrink-0">
         <div className="sticky top-6 bg-white rounded-lg shadow-lg border border-blue-200 overflow-hidden">
-          
+
           <div className="bg-blue-600 p-4 text-center text-white">
             <p className="text-sm font-medium opacity-90 uppercase tracking-wider">Target Audience</p>
             <div className="text-4xl font-bold my-2 flex justify-center items-center h-10">
               {isCalculating ? (
                 <div className="flex gap-1">
                   <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                 </div>
               ) : (
                 previewData.count.toLocaleString()
@@ -528,14 +528,14 @@ const AudienceBuilder = ({ onSave, onCancel }) => {
           {/* Action Buttons */}
           <div className="p-4 bg-gray-50 border-t border-gray-200 flex gap-3">
             {onCancel && (
-              <button 
+              <button
                 onClick={onCancel}
                 className="flex-1 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 Cancel
               </button>
             )}
-            <button 
+            <button
               onClick={handleSaveSegment}
               disabled={isSaving || previewData.count === 0 || !segmentName.trim()}
               className="flex-1 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

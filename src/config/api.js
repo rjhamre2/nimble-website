@@ -17,7 +17,7 @@ const API_CONFIG = {
       }
     }
   },
-  
+
   // Production environment (AWS Lambda)
   production: {
     // Use environment variable for Lambda Function URL
@@ -220,7 +220,7 @@ const buildContactsUrl = (endpoint, params = {}) => {
     updateContact: (contactId) => `/${contactId}`,
     deleteContact: (contactId) => `/${contactId}`
   };
-  
+
   let url;
   if (endpoint === 'getUserContacts' && params.dbId) {
     url = `${config.baseURL}${contactsEndpoints.getUserContacts(params.dbId)}`;
@@ -231,7 +231,7 @@ const buildContactsUrl = (endpoint, params = {}) => {
   } else {
     url = `${config.baseURL}${contactsEndpoints[endpoint] || endpoint}`;
   }
-  
+
   console.log('🔧 Building Contacts API URL:', {
     endpoint,
     baseURL: config.baseURL,
@@ -240,7 +240,7 @@ const buildContactsUrl = (endpoint, params = {}) => {
     envVarExists: !!process.env.REACT_APP_CONTACTS_API,
     allEnvVars: Object.keys(process.env).filter(key => key.includes('CONTACTS'))
   });
-  
+
   // Warn if using fallback URL
   if (config.baseURL === 'https://your-contacts-api-url.amazonaws.com') {
     console.warn('⚠️ Using fallback Contacts API URL. REACT_APP_CONTACTS_API environment variable is not set or not loaded.');
@@ -250,7 +250,7 @@ const buildContactsUrl = (endpoint, params = {}) => {
     console.warn('   3. You have restarted the development server after adding the variable');
     console.warn('   4. The variable name is exactly REACT_APP_CONTACTS_API (case-sensitive)');
   }
-  
+
   return url;
 };
 
@@ -275,7 +275,7 @@ const buildDbServerUrl = (endpoint) => {
 export const apiConfig = {
   // Current environment
   environment: getCurrentEnvironment(),
-  
+
   // Current configuration
   config: getApiConfig(),
   authConfig: getAuthConfig(),
@@ -284,7 +284,7 @@ export const apiConfig = {
   pricingLambdaConfig: getPricingLambdaConfig(),
   contactsConfig: getContactsConfig(),
   dbServerConfig: getDbServerConfig(),
-  
+
   // Helper functions
   buildUrl: buildApiUrl,
   buildAuthUrl: buildAuthUrl,
@@ -293,7 +293,7 @@ export const apiConfig = {
   buildPricingLambdaUrl: buildPricingLambdaUrl,
   buildContactsUrl: buildContactsUrl,
   buildDbServerUrl: buildDbServerUrl,
-  
+
   // Direct endpoint access
   endpoints: {
     whatsapp: () => buildWaEsUrl('exchange'), // Now uses the new WA_ES_LAMBDA
@@ -329,6 +329,12 @@ export const apiConfig = {
     // DB Server endpoints
     dbServer: {
       createUser: () => buildDbServerUrl('createUser')
+    },
+    // Audience endpoints
+    audience: {
+      getUserAudiences: (dbId) => buildDbServerUrl(`/api/audience/user/${dbId}`),
+      preview: () => buildDbServerUrl('/api/audience/preview'),
+      save: () => buildDbServerUrl('/api/audience/save')
     }
   }
 };
