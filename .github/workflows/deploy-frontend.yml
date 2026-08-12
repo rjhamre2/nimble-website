@@ -50,7 +50,7 @@ jobs:
           #REACT_APP_WEBSOCKET_API_GATEWAY: "https://api.nimbleai.in/api/database"
           REACT_APP_WEBSOCKET_API_GATEWAY: "https://relocation-vitamins-requirements-abu.trycloudflare.com"
           #REACT_APP_DB_SERVER_URL: "https://api.nimbleai.in/api/database"
-          REACT_APP_DB_SERVER_URL:: "https://relocation-vitamins-requirements-abu.trycloudflare.com"
+          REACT_APP_DB_SERVER_URL: "https://relocation-vitamins-requirements-abu.trycloudflare.com"
           #REACT_APP_CONTACTS_API: "https://api.nimbleai.in/api/database/api/contacts"
           REACT_APP_CONTACTS_API: "https://relocation-vitamins-requirements-abu.trycloudflare.com/api/contacts"
           REACT_APP_WA_SERVER_URL: "https://ads-accessibility-equipped-allow.trycloudflare.com"
