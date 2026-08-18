@@ -250,21 +250,23 @@ useEffect(() => {
               if (mappedValue) {
                 const subType = btn.type.toLowerCase(); 
                 
-                const buttonPayload = {
-                  type: "button",
-                  sub_type: subType,
-                  index: String(index), 
-                  parameters: []
-                };
+                if (subType !== 'url') {
+                  const buttonPayload = {
+                    type: "button",
+                    sub_type: subType,
+                    index: String(index), 
+                    parameters: []
+                  };
 
-                if (subType === 'copy_code') {
-                  buttonPayload.parameters.push({ type: "coupon_code", coupon_code: mappedValue });
-                } else {
-                  buttonPayload.parameters.push({ type: "text", text: mappedValue });
+                  if (subType === 'copy_code') {
+                    buttonPayload.parameters.push({ type: "coupon_code", coupon_code: mappedValue });
+                  } else {
+                    buttonPayload.parameters.push({ type: "text", text: mappedValue });
+                  }
+
+                  // Push directly into our new buttons array in the state object
+                  initialMapping.buttons.push(buttonPayload); 
                 }
-
-                // Push directly into our new buttons array in the state object
-                initialMapping.buttons.push(buttonPayload); 
               }
             });
           }

@@ -152,7 +152,19 @@ export const parseTemplateForForm = (template) => {
             if (btn.type === 'QUICK_REPLY') {
                 templateButtons.push({ type: 'QUICK_REPLY', text: btn.text || '', value: '' });
             } else if (btn.type === 'URL' || btn.type === 'URL') {
-                templateButtons.push({ type: 'URL', text: btn.text || '', value: btn.url || '' });
+                let originalUrl = btn.url || '';
+                try {
+                    if (originalUrl.includes('redirectLink=')) {
+                        const urlObj = new URL(originalUrl);
+                        const redirectLink = urlObj.searchParams.get('redirectLink');
+                        if (redirectLink) {
+                            originalUrl = redirectLink;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error parsing redirectLink from URL", e);
+                }
+                templateButtons.push({ type: 'URL', text: btn.text || '', value: originalUrl });
             } else if (btn.type === 'PHONE_NUMBER') {
                 templateButtons.push({ type: 'PHONE_NUMBER', text: btn.text || '', value: btn.phone_number || '' });
             } else if (btn.type === 'COPY_CODE') {
