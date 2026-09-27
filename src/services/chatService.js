@@ -31,13 +31,29 @@ const getUserId = () => {
 };
 
 
+// Attach Bearer token to requests
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers = config.headers || {};
+    if (!config.headers.Authorization && !config.headers.authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+}, (error) => Promise.reject(error));
+
 export const fetchRecentChats = async (userId, limit = 100) => {
   try {
     const url = `${DB_API}/messages/user/${userId}`;
     console.log(`🌐 Fetching history from: ${url}`);
     
+    const token = localStorage.getItem('authToken');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
     const response = await axios.get(url, {
-      params: { limit, offset: 0 }
+      params: { limit, offset: 0 },
+      headers
     });
     
     return response.data; 

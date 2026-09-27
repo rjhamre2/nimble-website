@@ -4,6 +4,23 @@ import AudienceBuilder from './AudienceBuilder';
 import BroadcastAnalytics from './BroadcastAnalytics';
 import { extractVariablesFromTemplate, TemplateEditor, TemplateLibrary, UserTemplatesList } from './Templates';
 
+// ─── Tab button helper ────────────────────────────────────────────────────────
+const TabBtn = ({ active, onClick, children }) => (
+  <button
+    onClick={onClick}
+    className={[
+      'flex items-center gap-1.5 px-4 py-3.5 text-xs font-semibold whitespace-nowrap flex-shrink-0',
+      'border-b-2 transition-colors duration-150',
+      active
+        ? 'border-[#25D366] text-green-700'
+        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-200',
+    ].join(' ')}
+  >
+    {children}
+  </button>
+);
+
+
 const Broadcast = ({ user, userData, loading }) => {
   // ==========================================
   // STATE MANAGEMENT
@@ -50,7 +67,12 @@ const Broadcast = ({ user, userData, loading }) => {
       if (!dbId) return;
       setIsLoadingUserTemplates(true);
       const url = `${apiConfig.dbServerConfig.baseURL}/api/templates/${dbId}/templates`;
-      const response = await fetch(url);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(url, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       if (!response.ok) throw new Error('Fetch failed');
       const result = await response.json();
       const templates = result.data || result.templates || result || [];
@@ -283,233 +305,319 @@ useEffect(() => {
   // RENDER UI
   // ==========================================
   return (
-    <div className="w-full h-full flex flex-col min-h-0 relative">
-      <div className="rounded-lg shadow-sm border border-gray-200 flex flex-col bg-white flex-1 min-h-0">
-        
-        {/* Top Navigation Tabs */}
-        <div className="border-b border-gray-200 flex-shrink-0 w-full relative z-20">
-          <style>{`.hide-scroll::-webkit-scrollbar { display: none; }`}</style>
-          <div className={`flex items-center gap-2 px-4 sm:px-6 py-3 hide-scroll w-full ${showTemplatesDropdown ? 'overflow-visible' : 'overflow-x-auto md:overflow-visible'}`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            
-            <button onClick={() => setBroadcastView('new-broadcast')} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex-shrink-0 ${broadcastView === 'new-broadcast' ? 'bg-blue-50 text-blue-700 border border-blue-300' : 'text-gray-700 hover:bg-gray-50 border border-transparent'}`}>
-              New Broadcast
-            </button>
-            
-            <div className="relative flex-shrink-0" onMouseEnter={() => setShowTemplatesDropdown(true)} onMouseLeave={() => setShowTemplatesDropdown(false)}>
-              <button onClick={() => { setBroadcastView('templates'); setTemplateSubView('your-templates'); }} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap w-full ${broadcastView === 'templates' ? 'bg-blue-50 text-blue-700 border border-blue-300' : 'text-gray-700 hover:bg-gray-50 border border-transparent'}`}>
-                Templates
+    <div className="w-full h-full flex flex-col min-h-0 bg-slate-50">
+
+      {/* ── Tab bar ── */}
+      <div className="bg-white border-b border-slate-200 flex-shrink-0 z-20">
+        <div className="flex items-center gap-1 px-4 sm:px-6 overflow-x-auto scrollbar-thin">
+
+          {/* New Broadcast */}
+          <TabBtn
+            active={broadcastView === 'new-broadcast'}
+            onClick={() => setBroadcastView('new-broadcast')}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Broadcast
+          </TabBtn>
+
+          {/* Templates tab */}
+          <TabBtn
+            active={broadcastView === 'templates'}
+            onClick={() => { setBroadcastView('templates'); setTemplateSubView('your-templates'); }}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Templates
+          </TabBtn>
+
+          {/* Analytics */}
+          <TabBtn
+            active={broadcastView === 'analytics'}
+            onClick={() => setBroadcastView('analytics')}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Analytics
+          </TabBtn>
+
+          {/* Scheduled */}
+          <TabBtn
+            active={broadcastView === 'scheduled-broadcasts'}
+            onClick={() => setBroadcastView('scheduled-broadcasts')}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Scheduled
+          </TabBtn>
+        </div>
+      </div>
+
+      {/* ── Sub-tab bar (Templates) ── */}
+      {broadcastView === 'templates' && (
+        <div className="bg-white border-b border-slate-100 flex-shrink-0 px-4 sm:px-6">
+          <div className="flex items-center gap-1">
+            {[
+              { key: 'your-templates',  label: 'Your Templates' },
+              { key: 'template-library', label: 'Template Library' },
+            ].map(sub => (
+              <button
+                key={sub.key}
+                onClick={() => {
+                  if (selectedTemplate && !window.confirm('Abandon changes?')) return;
+                  setSelectedTemplate(null);
+                  setTemplateSubView(sub.key);
+                }}
+                className={[
+                  'px-3 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors duration-150',
+                  templateSubView === sub.key
+                    ? 'border-[#25D366] text-green-700'
+                    : 'border-transparent text-slate-400 hover:text-slate-600',
+                ].join(' ')}
+              >
+                {sub.label}
               </button>
-              {showTemplatesDropdown && (
-                <div className="absolute top-full left-0 mt-0 bg-white border border-gray-200 rounded-lg shadow-xl z-50 min-w-[180px]">
-                  <button onClick={() => { if (selectedTemplate && !window.confirm('Abandon changes?')) return; setSelectedTemplate(null); setBroadcastView('templates'); setTemplateSubView('your-templates'); setShowTemplatesDropdown(false); }} className={`w-full text-left px-4 py-2 text-sm font-medium rounded-b-lg transition-colors ${broadcastView === 'templates' && templateSubView === 'your-templates' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}`}>
-                    Your templates
-                  </button>
-                  <button onClick={() => { if (selectedTemplate && !window.confirm('Abandon changes?')) return; setSelectedTemplate(null); setBroadcastView('templates'); setTemplateSubView('template-library'); setShowTemplatesDropdown(false); }} className={`w-full text-left px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${broadcastView === 'templates' && templateSubView === 'template-library' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}`}>
-                    Template library
-                  </button>
-                  
-                </div>
-              )}
-            </div>
-            
-            <button onClick={() => setBroadcastView('analytics')} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex-shrink-0 ${broadcastView === 'analytics' ? 'bg-blue-50 text-blue-700 border border-blue-300' : 'text-gray-700 hover:bg-gray-50 border border-transparent'}`}>
-              Analytics
-            </button>
-            
-            <button onClick={() => setBroadcastView('scheduled-broadcasts')} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex-shrink-0 ${broadcastView === 'scheduled-broadcasts' ? 'bg-blue-50 text-blue-700 border border-blue-300' : 'text-gray-700 hover:bg-gray-50 border border-transparent'}`}>
-              Scheduled Broadcasts
-            </button>
+            ))}
           </div>
         </div>
+      )}
 
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {broadcastView === 'templates' && (
-            <div className="space-y-6">
-              {selectedTemplate ? (
-                <TemplateEditor 
-                  user={user} 
-                  userData={userData} 
-                  initialTemplate={selectedTemplate} 
-                  onCancel={() => setSelectedTemplate(null)}
-                  onSuccess={() => {
-                    setSelectedTemplate(null);
-                    setBroadcastView('templates');
-                    setTemplateSubView('your-templates');
-                    fetchUserTemplates();
-                  }}
-                />
-              ) : null}
+      {/* ── Content area ── */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin p-4 sm:p-6">
 
-              {!selectedTemplate && templateSubView === 'template-library' && (
-                <TemplateLibrary onSelectTemplate={(template) => setSelectedTemplate(template)} />
-              )}
+        {/* ── Templates ── */}
+        {broadcastView === 'templates' && (
+          <div className="space-y-6 max-w-5xl mx-auto">
+            {selectedTemplate ? (
+              <TemplateEditor
+                user={user}
+                userData={userData}
+                initialTemplate={selectedTemplate}
+                onCancel={() => setSelectedTemplate(null)}
+                onSuccess={() => {
+                  setSelectedTemplate(null);
+                  setBroadcastView('templates');
+                  setTemplateSubView('your-templates');
+                  fetchUserTemplates();
+                }}
+              />
+            ) : null}
 
-              {!selectedTemplate && templateSubView === 'your-templates' && (
-                <UserTemplatesList 
-                  user={user} 
-                  userData={userData} 
-                  templates={userTemplates} 
-                  isLoading={isLoadingUserTemplates} 
-                  onEditTemplate={(template) => setSelectedTemplate(template)}
-                  setTemplates={setUserTemplates}
-                />
-              )}
+            {!selectedTemplate && templateSubView === 'template-library' && (
+              <TemplateLibrary onSelectTemplate={(template) => setSelectedTemplate(template)} />
+            )}
 
-              {!selectedTemplate && !templateSubView && (
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-2">Templates</h2>
-                    <p className="text-sm text-gray-600 mb-4">Select "Template library" or "Your templates" from the sidebar to get started.</p>
+            {!selectedTemplate && templateSubView === 'your-templates' && (
+              <UserTemplatesList
+                user={user}
+                userData={userData}
+                templates={userTemplates}
+                isLoading={isLoadingUserTemplates}
+                onEditTemplate={(template) => setSelectedTemplate(template)}
+                setTemplates={setUserTemplates}
+              />
+            )}
+
+            {!selectedTemplate && !templateSubView && (
+              <div className="card p-8 text-center">
+                <p className="text-sm text-slate-500">Select "Template library" or "Your templates" from the tab above to get started.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Scheduled broadcasts ── */}
+        {broadcastView === 'scheduled-broadcasts' && (
+          <div className="max-w-5xl mx-auto space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Scheduled Broadcasts</h2>
+              <p className="text-sm text-slate-400 mt-0.5">Manage your upcoming broadcast campaigns.</p>
+            </div>
+            <div className="card flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
+                <svg className="w-7 h-7 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.4} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-semibold text-slate-700 mb-1">No scheduled broadcasts</h3>
+              <p className="text-xs text-slate-400 max-w-xs">Create a broadcast and choose "Schedule for a specific time" to see it here.</p>
+              <button onClick={() => setBroadcastView('new-broadcast')} className="btn-primary mt-6 text-xs gap-1.5">
+                Create broadcast
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Broadcast history ── */}
+        {broadcastView === 'broadcast-history' && (
+          <div className="max-w-5xl mx-auto space-y-4">
+            <h2 className="text-lg font-bold text-slate-900">Broadcast History</h2>
+            <div className="card p-8 text-center text-sm text-slate-400">No broadcast history found.</div>
+          </div>
+        )}
+
+        {/* ── Analytics ── */}
+        {broadcastView === 'analytics' && (
+          <BroadcastAnalytics
+            onNewBroadcastClick={() => setBroadcastView('new-broadcast')}
+            user={user}
+            userData={userData}
+          />
+        )}
+
+        {/* ── New Broadcast ── */}
+        {broadcastView === 'new-broadcast' && (
+          <div className="max-w-3xl mx-auto space-y-6">
+
+            {/* Broadcast name */}
+            <div className="card p-5">
+              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
+                Broadcast Name
+              </label>
+              <input
+                type="text"
+                className="input"
+                placeholder="e.g. Diwali Sale – Oct 2025"
+                value={broadcastName}
+                onChange={(e) => setBroadcastName(e.target.value)}
+              />
+            </div>
+
+            {/* Select Template */}
+            {(() => {
+              const approvedTemplates = userTemplates.filter(t =>
+                t.template_status?.toLowerCase() === 'approved' || t.status?.toLowerCase() === 'approved'
+              );
+              return (
+                <div className="card p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                      Template Message
+                    </label>
+                    <button
+                      onClick={() => { setBroadcastView('templates'); setTemplateSubView('template-library'); }}
+                      className="btn-outline text-xs py-1.5 px-3"
+                    >
+                      + Create template
+                    </button>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {broadcastView === 'broadcast-history' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Broadcast History</h2>
-                <p className="text-sm text-gray-600 mb-4">View all your past broadcast messages and their performance.</p>
-              </div>
-              <div className="border border-gray-200 rounded-lg bg-white">
-                <div className="p-8 text-center text-gray-500 text-sm">No broadcast history</div>
-              </div>
-            </div>
-          )}
-
-          {broadcastView === 'scheduled-broadcasts' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Scheduled Broadcasts</h2>
-                <p className="text-sm text-gray-600 mb-4">Manage your scheduled broadcast messages.</p>
-              </div>
-              <div className="border border-gray-200 rounded-lg bg-white">
-                <div className="p-8 text-center text-gray-500 text-sm">No scheduled broadcasts</div>
-              </div>
-            </div>
-          )}
-
-          {broadcastView === 'analytics' && (
-            <BroadcastAnalytics onNewBroadcastClick={() => setBroadcastView('new-broadcast')} user={user} userData={userData} />
-          )}
-
-          {broadcastView === 'new-broadcast' && (
-            <div className="space-y-4 max-w-4xl">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Broadcast name</label>
-                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter broadcast name" value={broadcastName} onChange={(e) => setBroadcastName(e.target.value)} />
-              </div>
-
-              {/* Select Template Message Section */}
-              {(() => {
-                const approvedTemplates = userTemplates.filter(t => t.template_status?.toLowerCase() === 'approved' || t.status?.toLowerCase() === 'approved');
-                return (
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-gray-700">Select template message</label>
-                      <button onClick={() => { setBroadcastView('templates'); setTemplateSubView('template-library'); }} className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md shadow-sm text-xs font-medium hover:bg-gray-50 transition-colors shrink-0">
-                        Create template
+                  {isLoadingUserTemplates ? (
+                    <div className="input text-slate-400 animate-pulse">Loading approved templates...</div>
+                  ) : approvedTemplates.length > 0 ? (
+                    <select
+                      className="input"
+                      value={broadcastSelectedTemplate?.template_id || ''}
+                      onChange={(e) => setBroadcastSelectedTemplate(
+                        approvedTemplates.find(t => (t.template_id || t.id || t._id) === e.target.value)
+                      )}
+                    >
+                      <option value="" disabled>— Select an approved template —</option>
+                      {approvedTemplates.map(t => (
+                        <option key={t.template_id || t.id || t._id} value={t.template_id || t.id || t._id}>
+                          {t.name || t.template_name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+                      <p className="text-sm text-slate-400 mb-3">No approved templates found.</p>
+                      <button
+                        onClick={() => { setBroadcastView('templates'); setTemplateSubView('template-library'); }}
+                        className="btn-primary text-xs gap-1.5"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Create your first template
                       </button>
                     </div>
-                    {isLoadingUserTemplates ? (
-                      <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm animate-pulse">Loading approved templates...</div>
-                    ) : approvedTemplates.length > 0 ? (
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white" value={broadcastSelectedTemplate?.template_id || ''} onChange={(e) => setBroadcastSelectedTemplate(approvedTemplates.find(t => (t.template_id || t.id || t._id) === e.target.value))}>
-                        <option value="" disabled>-- Select an approved template --</option>
-                        {approvedTemplates.map(template => <option key={template.template_id} value={template.template_id}>{(template.object || template).name || "Unnamed Template"}</option>)}
-                      </select>
-                    ) : (
-                      <div className="w-full px-4 py-2.5 border border-dashed border-gray-300 rounded-lg bg-gray-50 flex items-center gap-2">
-                        <span className="text-yellow-500 text-base leading-none">⚠️</span>
-                        <p className="text-xs text-gray-600">You don't have any approved templates yet. Click the button above to build one.</p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-              {/* Variable Mapping Section */}
-              {(Object.keys(broadcastVariableMapping.header || {}).length > 0 || 
-                Object.keys(broadcastVariableMapping.body || {}).length > 0 || 
-                (broadcastVariableMapping.buttons && broadcastVariableMapping.buttons.length > 0)) && (
-                <div className="border-t pt-6 mt-6">
-                  <div className="mb-4">
-                    <h2 className="text-xl font-semibold text-gray-900 mb-2">Map Template Variables</h2>
-                    <p className="text-sm text-gray-600">Assign contact fields or enter custom text for your template variables.</p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Variable Mapping */}
+            {broadcastSelectedTemplate && (() => {
+              const template = broadcastSelectedTemplate.object || broadcastSelectedTemplate;
+              const hasVariables =
+                Object.keys(broadcastVariableMapping.header || {}).length > 0 ||
+                Object.keys(broadcastVariableMapping.body || {}).length > 0 ||
+                (broadcastVariableMapping.buttons && broadcastVariableMapping.buttons.some(btn => btn.parameters?.length > 0));
+
+              if (!hasVariables) return null;
+
+              return (
+                <div className="card p-5 space-y-5">
+                  <div>
+                    <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-0.5">Personalisation</h3>
+                    <p className="text-xs text-slate-400">Map template variables to contact fields or static text.</p>
                   </div>
 
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-6">
-                    
-                    {/* ========================================== */}
-                    {/* 1 & 2. HEADER AND BODY VARIABLES             */}
-                    {/* ========================================== */}
-                    {['header', 'body'].map(compType => {
-                      const variables = Object.keys(broadcastVariableMapping[compType] || {});
-                      if (variables.length === 0) return null;
-
-                      return (
-                        <div key={compType} className="space-y-4">
-                          <h3 className="text-sm font-bold text-gray-700 capitalize border-b pb-2">{compType} Variables</h3>
-                          
+                  {['header', 'body'].map(compType => {
+                    const variables = Object.keys(broadcastVariableMapping[compType] || {});
+                    if (!variables.length) return null;
+                    return (
+                      <div key={compType}>
+                        <p className="text-xs font-semibold text-slate-700 mb-3 capitalize">{compType} variables</p>
+                        <div className="space-y-3">
                           {variables.map(varName => {
                             const config = broadcastVariableMapping[compType][varName];
-
                             return (
-                              <div key={varName} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white p-3 border border-gray-200 rounded-md shadow-sm">
-                                
-                                {/* COLUMN 1: Variable Name */}
-                                <div className="w-full sm:w-48 shrink-0 font-mono text-sm text-blue-600 font-semibold bg-blue-50 px-2 py-1.5 rounded text-center">
+                              <div key={varName} className="grid grid-cols-3 gap-3 items-center">
+                                <div className="col-span-1 font-mono text-xs bg-slate-100 rounded-lg px-3 py-2 text-slate-600 truncate">
                                   {`{{${varName}}}`}
                                 </div>
-                                
-                                {/* COLUMN 2: Type Selector */}
-                                <select 
-                                  className="w-full sm:w-48 shrink-0 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
-                                  value={config.type}
-                                  onChange={(e) => {
-                                    setBroadcastVariableMapping(prev => ({
-                                      ...prev,
-                                      [compType]: { ...prev[compType], [varName]: { ...config, type: e.target.value } }
-                                    }));
+                                <select
+                                  className="input text-xs py-2"
+                                  value={config.type || 'dynamic'}
+                                  onChange={e => {
+                                    setBroadcastVariableMapping(prev => {
+                                      const updated = { ...prev };
+                                      updated[compType][varName] = { ...updated[compType][varName], type: e.target.value, field: '', text: '' };
+                                      return updated;
+                                    });
                                   }}
                                 >
                                   <option value="dynamic">Contact Field</option>
                                   <option value="static">Static Text</option>
                                 </select>
-
-                                {/* COLUMN 3: Input / Field Mapping */}
-                                <div className="w-full flex-1 min-w-0">
+                                <div>
                                   {config.type === 'dynamic' ? (
-                                    <select 
-                                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                    <select
+                                      className="input text-xs py-2"
                                       value={config.field || ''}
-                                      onChange={(e) => {
-                                        setBroadcastVariableMapping(prev => ({
-                                          ...prev,
-                                          [compType]: { ...prev[compType], [varName]: { ...config, field: e.target.value } }
-                                        }));
+                                      onChange={e => {
+                                        setBroadcastVariableMapping(prev => {
+                                          const updated = { ...prev };
+                                          updated[compType][varName] = { ...updated[compType][varName], field: e.target.value };
+                                          return updated;
+                                        });
                                       }}
                                     >
-                                      <option value="" disabled>-- Select a field --</option>
+                                      <option value="" disabled>— Select field —</option>
                                       <option value="first_name">First Name</option>
                                       <option value="last_name">Last Name</option>
                                       <option value="phone_number">Phone Number</option>
                                       <option value="email">Email</option>
-                                      <option value="custom_attributes.company">Company (Custom)</option>
-                                      <option value="custom_attributes.order_number">Order Number (Custom)</option>
+                                      <option value="custom_attributes.company">Company</option>
+                                      <option value="custom_attributes.order_number">Order Number</option>
                                     </select>
                                   ) : (
-                                    <input 
-                                      type="text" 
-                                      placeholder="Enter text to show for all users..."
-                                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                    <input
+                                      type="text"
+                                      className="input text-xs py-2"
+                                      placeholder="Static value..."
                                       value={config.text || ''}
-                                      onChange={(e) => {
-                                        setBroadcastVariableMapping(prev => ({
-                                          ...prev,
-                                          [compType]: { ...prev[compType], [varName]: { ...config, text: e.target.value } }
-                                        }));
+                                      onChange={e => {
+                                        setBroadcastVariableMapping(prev => {
+                                          const updated = { ...prev };
+                                          updated[compType][varName] = { ...updated[compType][varName], text: e.target.value };
+                                          return updated;
+                                        });
                                       }}
                                     />
                                   )}
@@ -518,157 +626,189 @@ useEffect(() => {
                             );
                           })}
                         </div>
-                      );
-                    })}
+                      </div>
+                    );
+                  })}
 
-                    {/* ========================================== */}
-                    {/* 3. BUTTON VARIABLES                        */}
-                    {/* ========================================== */}
-                    {broadcastVariableMapping.buttons && broadcastVariableMapping.buttons.length > 0 && (
-                      <div className="space-y-4">
-                        <h3 className="text-sm font-bold text-gray-700 capitalize border-b pb-2">Button Variables</h3>
-                        
-                        {broadcastVariableMapping.buttons.map((btn, btnIndex) => {
-                          return btn.parameters.map((param, paramIndex) => {
-                            
-                            // Determine if this is a URL string or a Coupon Code
-                            const isCoupon = btn.sub_type === 'copy_code';
-                            const valueKey = isCoupon ? 'coupon_code' : 'text';
-                            const varLabel = isCoupon ? 'Copy code' : 'URL';
-                            
-                            // Buttons default to static unless user changes them
-                            const fieldType = param.fieldType || 'static';
-
-                            return (
-                              <div key={`btn-${btn.index}-${paramIndex}`} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white p-3 border border-gray-200 rounded-md shadow-sm">
-                                
-                                {/* COLUMN 1: Variable Name */}
-                                <div className="w-full sm:w-48 shrink-0 font-mono text-sm text-blue-600 font-semibold bg-blue-50 px-2 py-1.5 rounded text-center">
-                                  {varLabel}
-                                </div>
-                                
-                                {/* COLUMN 2: Type Selector */}
-                                <select 
-                                  className="w-full sm:w-48 shrink-0 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
-                                  value={fieldType}
-                                  onChange={(e) => {
-                                    setBroadcastVariableMapping(prev => {
-                                      const updated = { ...prev };
-                                      updated.buttons[btnIndex].parameters[paramIndex].fieldType = e.target.value;
-                                      return updated;
-                                    });
-                                  }}
-                                >
-                                  <option value="dynamic">Contact Field</option>
-                                  <option value="static">Static Text</option>
-                                </select>
-
-                                {/* COLUMN 3: Input / Field Mapping */}
-                                <div className="w-full flex-1 min-w-0">
-                                  {fieldType === 'dynamic' ? (
-                                    <select 
-                                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
-                                      value={param.field || ''}
-                                      onChange={(e) => {
-                                        setBroadcastVariableMapping(prev => {
-                                          const updated = { ...prev };
-                                          updated.buttons[btnIndex].parameters[paramIndex].field = e.target.value;
-                                          return updated;
-                                        });
-                                      }}
-                                    >
-                                      <option value="" disabled>-- Select a field --</option>
-                                      <option value="first_name">First Name</option>
-                                      <option value="last_name">Last Name</option>
-                                      <option value="phone_number">Phone Number</option>
-                                      <option value="email">Email</option>
-                                      <option value="custom_attributes.company">Company (Custom)</option>
-                                      <option value="custom_attributes.order_number">Order Number (Custom)</option>
-                                    </select>
-                                  ) : (
-                                    <input 
-                                      type="text" 
-                                      placeholder={`Enter ${isCoupon ? 'coupon code' : 'url suffix'}...`}
-                                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                      value={param[valueKey] || ''}
-                                      onChange={(e) => {
-                                        setBroadcastVariableMapping(prev => {
-                                          const updated = { ...prev };
-                                          updated.buttons[btnIndex].parameters[paramIndex][valueKey] = e.target.value;
-                                          return updated;
-                                        });
-                                      }}
-                                    />
-                                  )}
-                                </div>
+                  {/* Button variable mapping */}
+                  {broadcastVariableMapping.buttons?.map((btn, btnIndex) => {
+                    if (!btn.parameters?.length) return null;
+                    const isCoupon = btn.sub_type === 'copy_code';
+                    const valueKey = isCoupon ? 'coupon_code' : 'text';
+                    return (
+                      <div key={btnIndex}>
+                        <p className="text-xs font-semibold text-slate-700 mb-3">
+                          Button {btnIndex + 1} ({isCoupon ? 'Coupon Code' : 'URL Suffix'})
+                        </p>
+                        {btn.parameters.map((param, paramIndex) => {
+                          const fieldType = param.fieldType || 'static';
+                          return (
+                            <div key={paramIndex} className="grid grid-cols-3 gap-3 items-center mb-3">
+                              <div className="col-span-1 font-mono text-xs bg-slate-100 rounded-lg px-3 py-2 text-slate-600 truncate">
+                                {`btn_${btnIndex}_${isCoupon ? 'code' : 'url'}`}
                               </div>
-                            );
-                          });
+                              <select
+                                className="input text-xs py-2"
+                                value={fieldType}
+                                onChange={e => {
+                                  setBroadcastVariableMapping(prev => {
+                                    const updated = { ...prev };
+                                    updated.buttons[btnIndex].parameters[paramIndex].fieldType = e.target.value;
+                                    return updated;
+                                  });
+                                }}
+                              >
+                                <option value="dynamic">Contact Field</option>
+                                <option value="static">Static Text</option>
+                              </select>
+                              <div>
+                                {fieldType === 'dynamic' ? (
+                                  <select
+                                    className="input text-xs py-2"
+                                    value={param.field || ''}
+                                    onChange={e => {
+                                      setBroadcastVariableMapping(prev => {
+                                        const updated = { ...prev };
+                                        updated.buttons[btnIndex].parameters[paramIndex].field = e.target.value;
+                                        return updated;
+                                      });
+                                    }}
+                                  >
+                                    <option value="" disabled>— Select field —</option>
+                                    <option value="first_name">First Name</option>
+                                    <option value="last_name">Last Name</option>
+                                    <option value="phone_number">Phone Number</option>
+                                    <option value="email">Email</option>
+                                    <option value="custom_attributes.company">Company</option>
+                                    <option value="custom_attributes.order_number">Order Number</option>
+                                  </select>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    className="input text-xs py-2"
+                                    placeholder={isCoupon ? 'Coupon code...' : 'URL suffix...'}
+                                    value={param[valueKey] || ''}
+                                    onChange={e => {
+                                      setBroadcastVariableMapping(prev => {
+                                        const updated = { ...prev };
+                                        updated.buttons[btnIndex].parameters[paramIndex][valueKey] = e.target.value;
+                                        return updated;
+                                      });
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          );
                         })}
                       </div>
-                    )}
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
-                  </div>
+            {/* Audience */}
+            <div className="card p-5">
+              <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">Who is your audience?</h3>
+              {showAudienceBuilder ? (
+                <AudienceBuilder
+                  onCancel={() => setShowAudienceBuilder(false)}
+                  onSave={(listId, name) => {
+                    setSelectedAudienceId(listId);
+                    setSelectedAudienceName(name);
+                    setShowAudienceBuilder(false);
+                  }}
+                />
+              ) : (
+                <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                  {selectedAudienceId ? (
+                    <div className="flex items-center justify-between bg-white border border-[#25D366]/30 rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#25D366]" />
+                        <p className="text-sm font-semibold text-slate-800">{selectedAudienceName}</p>
+                      </div>
+                      <button onClick={() => setShowAudienceBuilder(true)} className="text-xs text-[#25D366] font-medium hover:underline">
+                        Change
+                      </button>
+                    </div>
+                  ) : showAudienceSelector ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-xs font-semibold text-slate-700">Saved Segments</h4>
+                        <button onClick={() => setShowAudienceSelector(false)} className="text-xs text-slate-400 hover:text-slate-600">Cancel</button>
+                      </div>
+                      {isLoadingAudiences ? (
+                        <div className="py-4 text-center text-sm text-slate-400">Loading...</div>
+                      ) : (
+                        savedAudiences.map(audience => (
+                          <button
+                            key={audience.id}
+                            onClick={() => { setSelectedAudienceId(audience.id); setSelectedAudienceName(audience.name); setShowAudienceSelector(false); }}
+                            className="block w-full text-left px-4 py-3 mb-2 text-sm rounded-lg border border-slate-200 bg-white hover:border-[#25D366] hover:bg-[#25D366]/5 transition-colors"
+                          >
+                            {audience.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row justify-center gap-3 py-4">
+                      <button onClick={fetchSavedAudiences} className="btn-outline text-xs py-2 px-4">
+                        Select saved segment
+                      </button>
+                      <button onClick={() => setShowAudienceBuilder(true)} className="btn-primary text-xs py-2 px-4">
+                        Build new audience
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
-              {/* End Variable Mapping Section */}
-              {/* Audience Selection */}
-              <div className="border-t pt-6 mt-6">
-                <div className="mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Who is your audience?</h2>
-                </div>
-                {showAudienceBuilder ? (
-                  <AudienceBuilder onCancel={() => setShowAudienceBuilder(false)} onSave={(listId, name) => { setSelectedAudienceId(listId); setSelectedAudienceName(name); setShowAudienceBuilder(false); }} />
-                ) : (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                    {selectedAudienceId ? (
-                      <div className="flex justify-between items-center bg-white p-4 border border-blue-200 rounded-lg shadow-sm">
-                        <div><p className="text-sm font-bold">Selected: {selectedAudienceName}</p></div>
-                        <button onClick={() => setShowAudienceBuilder(true)} className="text-sm text-blue-600 font-medium">Change</button>
-                      </div>
-                    ) : showAudienceSelector ? (
-                      <div>
-                        <div className="flex justify-between mb-4"><h3 className="font-semibold text-sm">Select Saved Segment</h3><button onClick={() => setShowAudienceSelector(false)} className="text-xs">Cancel</button></div>
-                        {isLoadingAudiences ? <div className="py-4 text-center">Loading...</div> : savedAudiences.map(audience => (
-                          <button key={audience.id} onClick={() => { setSelectedAudienceId(audience.id); setSelectedAudienceName(audience.name); setShowAudienceSelector(false); }} className="block w-full text-left p-3 mb-2 border rounded hover:bg-blue-50">{audience.name}</button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex justify-center gap-4 py-4">
-                        <button onClick={fetchSavedAudiences} className="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm">Select Saved Segment</button>
-                        <button onClick={() => setShowAudienceBuilder(true)} className="px-4 py-2 bg-black text-white rounded-lg shadow-sm text-sm">Build New Audience</button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Scheduling */}
-              <div className="border-t pt-6 mt-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">When do you want to send it?</h2>
-                <label className="flex items-center gap-2 mb-3 cursor-pointer">
-                  <input type="radio" value="now" checked={sendTimeMode === 'now'} onChange={(e) => setSendTimeMode(e.target.value)} />
-                  <span className="text-sm text-gray-700">Send now</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" value="schedule" checked={sendTimeMode === 'schedule'} onChange={(e) => setSendTimeMode(e.target.value)} />
-                  <span className="text-sm text-gray-700">Schedule for a specific time</span>
-                </label>
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="border-t pt-6 mt-6">
-                {broadcastStatus.message && <div className={`p-4 mb-4 rounded-lg ${broadcastStatus.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{broadcastStatus.message}</div>}
-                <div className="flex justify-end">
-                  <button onClick={handleSendBroadcast} disabled={isSendingBroadcast} className={`px-6 py-3 font-medium text-white rounded-lg shadow-sm ${isSendingBroadcast ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                    {isSendingBroadcast ? (sendTimeMode === 'now' ? 'Queuing...' : 'Scheduling...') : (sendTimeMode === 'now' ? 'Send Broadcast' : 'Schedule Broadcast')}
-                  </button>
-                </div>
-              </div>
-
             </div>
-          )}
-        </div>
+
+            {/* Scheduling */}
+            <div className="card p-5">
+              <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">When to send?</h3>
+              <div className="flex flex-col gap-3">
+                {[{ value: 'now', label: 'Send immediately' }, { value: 'schedule', label: 'Schedule for a specific time' }].map(opt => (
+                  <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${sendTimeMode === opt.value ? 'border-[#25D366]' : 'border-slate-300 group-hover:border-slate-400'}`}>
+                      {sendTimeMode === opt.value && <span className="w-2 h-2 rounded-full bg-[#25D366]" />}
+                    </span>
+                    <input type="radio" value={opt.value} checked={sendTimeMode === opt.value} onChange={e => setSendTimeMode(e.target.value)} className="sr-only" />
+                    <span className="text-sm text-slate-700">{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Status + Submit */}
+            <div>
+              {broadcastStatus.message && (
+                <div className={`rounded-xl px-4 py-3 mb-4 text-sm flex items-start gap-2 ${broadcastStatus.type === 'error' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-emerald-50 border border-emerald-200 text-emerald-700'}`}>
+                  {broadcastStatus.message}
+                </div>
+              )}
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSendBroadcast}
+                  disabled={isSendingBroadcast}
+                  className="btn-primary px-6 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isSendingBroadcast ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      {sendTimeMode === 'now' ? 'Queuing...' : 'Scheduling...'}
+                    </>
+                  ) : sendTimeMode === 'now' ? 'Send Broadcast' : 'Schedule Broadcast'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,518 +1,336 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithGoogleLambda } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
+import { signInWithGoogleLambda } from '../services/authService';
 import { apiConfig } from '../config/api';
 import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { initializeApp, getApps } from 'firebase/app';
-import { MessageCircle } from 'lucide-react'; // <-- ADDED ICON IMPORT
 
-// Initialize Firebase if not already initialized
-let firebaseApp;
+// ─── Firebase bootstrap ───────────────────────────────────────────────────────
 const getFirebaseApp = () => {
-  // First, check if Firebase is already initialized
-  const existingApps = getApps();
-  if (existingApps.length > 0) {
-    console.log('✅ [Firebase] Using existing Firebase app');
-    return existingApps[0];
-  }
-  
-  // If not initialized, try to initialize with config
-  const firebaseConfig = {
-    apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  const cfg = {
+    apiKey:     process.env.REACT_APP_FIREBASE_API_KEY,
     authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || 'nimbleai-firebase.firebaseapp.com',
-    projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || 'nimbleai-firebase',
+    projectId:  process.env.REACT_APP_FIREBASE_PROJECT_ID  || 'nimbleai-firebase',
   };
-  
-  console.log('🔧 [Firebase] Initialization check:', {
-    hasApiKey: !!firebaseConfig.apiKey,
-    authDomain: firebaseConfig.authDomain,
-    projectId: firebaseConfig.projectId,
-    envApiKey: process.env.REACT_APP_FIREBASE_API_KEY ? 'set' : 'not set'
-  });
-  
-  if (firebaseConfig.apiKey) {
-    try {
-      const app = initializeApp(firebaseConfig);
-      console.log('✅ [Firebase] Firebase initialized successfully');
-      return app;
-    } catch (error) {
-      console.error('❌ [Firebase] Error initializing Firebase:', error);
-      return null;
-    }
-  } else {
-    console.warn('⚠️ [Firebase] Firebase API key not found. Email/password login will not work.');
-    console.warn('⚠️ [Firebase] Please set REACT_APP_FIREBASE_API_KEY environment variable.');
-  }
-  
-  return null;
+  if (!cfg.apiKey) return null;
+  try {
+    return getApps().length > 0 ? getApps()[0] : initializeApp(cfg);
+  } catch (e) { return getApps()[0] || null; }
 };
+let firebaseApp = getFirebaseApp();
 
-firebaseApp = getFirebaseApp();
+// ─── Feature bullet ───────────────────────────────────────────────────────────
+const Bullet = ({ text }) => (
+  <li className="flex items-start gap-3">
+    <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-[#25D366]/15 flex items-center justify-center">
+      <svg className="w-3 h-3 text-[#25D366]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+      </svg>
+    </span>
+    <span className="text-sm text-slate-600 leading-relaxed">{text}</span>
+  </li>
+);
 
-const LoginPage = ({ isDarkMode }) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    businessEmail: '',
-    password: ''
-  });
-  const [rememberMe, setRememberMe] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
-  const [loginError, setLoginError] = useState(null);
-  const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
-  const [resetSuccess, setResetSuccess] = useState(false);
+// ─── Main component ───────────────────────────────────────────────────────────
+const LoginPage = () => {
+  const { user }   = useAuth();
+  const navigate   = useNavigate();
 
-  const handleGoogleSignIn = async () => {
-    setIsGoogleSigningIn(true);
+  const [email,           setEmail]           = useState('');
+  const [password,        setPassword]        = useState('');
+  const [rememberMe,      setRememberMe]      = useState(false);
+  const [isSubmitting,    setIsSubmitting]    = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [error,           setError]           = useState('');
+  const [isForgot,        setIsForgot]        = useState(false);
+  const [resetSent,       setResetSent]       = useState(false);
+
+  // Redirect if already authenticated
+  React.useEffect(() => { if (user) navigate('/dashboard'); }, [user, navigate]);
+
+  // ── Google sign-in ──────────────────────────────────────────────────────────
+  const handleGoogle = async () => {
+    setIsGoogleLoading(true);
+    setError('');
     try {
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Sign-in cancelled or timed out')), 5000);
-      });
-      await Promise.race([signInWithGoogleLambda(), timeoutPromise]);
-    } catch (error) {
-      console.error('Google sign in error:', error);
-      setIsGoogleSigningIn(false);
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Timed out')), 8000));
+      await Promise.race([signInWithGoogleLambda(), timeout]);
+    } catch (e) {
+      setError(e.message || 'Google sign-in failed. Please try again.');
+      setIsGoogleLoading(false);
     }
   };
 
+  // ── Email/password login ────────────────────────────────────────────────────
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setLoginError(null);
-    
+    setError('');
     try {
-      // Try to get Firebase app (might be initialized elsewhere)
-      const app = firebaseApp || getFirebaseApp();
-      
-      if (!app) {
-        throw new Error('Firebase is not configured. Please contact support or try using Google Sign-In.');
-      }
-
+      const app  = firebaseApp || getFirebaseApp();
+      if (!app)  throw new Error('Firebase is not configured. Please use Google Sign-In.');
       const auth = getAuth(app);
-      
-      // Step 1: Authenticate with Firebase using email/password
-      console.log('🔐 [Login] Authenticating with Firebase...');
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        formData.businessEmail,
-        formData.password
-      );
-      
-      const firebaseUser = userCredential.user;
-      console.log('✅ [Login] Firebase authentication successful:', firebaseUser.email);
-      
-      // Step 2: Get the ID token from Firebase
-      const idToken = await firebaseUser.getIdToken();
-      console.log('🔑 [Login] ID token obtained');
-      
-      // Step 3: Send ID token to Lambda login endpoint
-      const authBaseURL = apiConfig.authConfig.baseURL;
-      const loginURL = `${authBaseURL}/login`;
-      
-      console.log('🌐 [Login] Calling login API:', loginURL);
-      
-      const response = await fetch(loginURL, {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const tok  = await cred.user.getIdToken();
+
+      const res  = await fetch(`${apiConfig.authConfig.baseURL}/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          idToken: idToken
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: tok }),
       });
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ [Login] Login successful:', result);
-        
-        // Store auth data similar to Google sign-in flow
-        if (result.token) {
-          localStorage.setItem('authToken', result.token);
-        }
-        if (result.user) {
-          localStorage.setItem('userData', JSON.stringify(result.user));
-        }
-        
-        // Store firstTime flag if present (for welcome modal)
-        if (typeof result.firstTime === 'boolean') {
-          localStorage.setItem('nimble_first_time', result.firstTime ? '1' : '0');
-          console.log('✅ Stored firstTime flag:', result.firstTime ? '1' : '0');
-          // Dispatch specific event for firstTime flag
-          window.dispatchEvent(new CustomEvent('firstTimeSet', { detail: { firstTime: result.firstTime } }));
-        }
-        
-        // Dispatch custom event to notify auth state change
-        window.dispatchEvent(new Event('authStateChanged'));
-        
-        // Redirect to dashboard
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 100);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('❌ [Login] Login API error:', errorData);
-        setLoginError(errorData.error || `Login failed: ${response.status} ${response.statusText}`);
-        setIsSubmitting(false);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || `Login failed (${res.status})`);
       }
-    } catch (error) {
-      console.error('❌ [Login] Error:', error);
-      
-      // Handle Firebase Auth errors
-      let errorMessage = 'Failed to login. Please try again.';
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email address.';
-      } else if (error.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password. Please try again.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address.';
-      } else if (error.code === 'auth/user-disabled') {
-        errorMessage = 'This account has been disabled.';
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many failed login attempts. Please try again later.';
-      } else if (error.message) {
-        errorMessage = error.message;
+      const result = await res.json();
+      if (result.token) localStorage.setItem('authToken', result.token);
+      if (result.user)  localStorage.setItem('userData', JSON.stringify(result.user));
+      if (typeof result.firstTime === 'boolean') {
+        localStorage.setItem('nimble_first_time', result.firstTime ? '1' : '0');
+        window.dispatchEvent(new CustomEvent('firstTimeSet', { detail: { firstTime: result.firstTime } }));
       }
-      
-      setLoginError(errorMessage);
+      window.dispatchEvent(new Event('authStateChanged'));
+      setTimeout(() => navigate('/dashboard'), 100);
+    } catch (e) {
+      const MAP = {
+        'auth/user-not-found':    'No account found with this email.',
+        'auth/wrong-password':    'Incorrect password.',
+        'auth/invalid-email':     'Invalid email address.',
+        'auth/user-disabled':     'This account has been disabled.',
+        'auth/too-many-requests': 'Too many attempts. Please try later.',
+        'auth/invalid-credential':'Invalid email or password.',
+      };
+      setError(MAP[e.code] || e.message || 'Login failed. Please try again.');
       setIsSubmitting(false);
     }
   };
 
-  const handlePasswordReset = async (e) => {
+  // ── Password reset ──────────────────────────────────────────────────────────
+  const handleReset = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setLoginError(null);
-    setResetSuccess(false);
-    
+    setError('');
     try {
-      const app = firebaseApp || getFirebaseApp();
-      
-      if (!app) {
-        throw new Error('Firebase is not configured. Please contact support.');
-      }
-
-      const auth = getAuth(app);
-      
-      console.log('🔐 [Password Reset] Sending password reset email to:', formData.businessEmail);
-      await sendPasswordResetEmail(auth, formData.businessEmail);
-      
-      console.log('✅ [Password Reset] Password reset email sent successfully');
-      setResetSuccess(true);
-      setIsSubmitting(false);
-    } catch (error) {
-      console.error('❌ [Password Reset] Error:', error);
-      
-      let errorMessage = 'Failed to send password reset email. Please try again.';
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email address.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      setLoginError(errorMessage);
+      const app  = firebaseApp || getFirebaseApp();
+      if (!app)  throw new Error('Firebase is not configured.');
+      await sendPasswordResetEmail(getAuth(app), email);
+      setResetSent(true);
+    } catch (e) {
+      const MAP = {
+        'auth/user-not-found': 'No account with that email.',
+        'auth/invalid-email':  'Invalid email address.',
+      };
+      setError(MAP[e.code] || e.message || 'Failed. Please try again.');
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  const toggleForgotPasswordMode = () => {
-    setIsForgotPasswordMode(!isForgotPasswordMode);
-    setLoginError(null);
-    setResetSuccess(false);
-    setFormData({ ...formData, password: '' });
+  const toggleForgot = () => {
+    setIsForgot(!isForgot);
+    setError('');
+    setResetSent(false);
+    setPassword('');
   };
-
-  // Redirect if already logged in
-  React.useEffect(() => {
-    if (user) {
-      navigate('/dashboard');
-    }
-  }, [user, navigate]);
 
   return (
-    <div className={`min-h-screen flex flex-col ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="flex-grow container mx-auto px-4 py-12 max-w-7xl">
-        <div className="flex flex-col lg:grid lg:grid-cols-2 gap-12 items-start">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
 
-          {/* Right Side - Login Form */}
-          <div className="flex flex-col order-1 lg:order-2">
-            <div className={`rounded-lg p-8 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg`}>
-              <h2 className={`text-2xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                Log in to your account
+      {/* Decorative top bar */}
+      <div className="h-1 bg-gradient-to-r from-[#25D366] via-[#1ebe5d] to-[#128C7E]" />
+
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-5xl grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
+
+          {/* ── Left panel – feature pitch ──────────────────────────────────── */}
+          <div className="hidden lg:flex flex-col justify-center gap-8 pt-4">
+            {/* Brand */}
+            <div>
+              <img src={require('../logo.png')} alt="NimbleAI" className="h-10 w-auto mb-6" />
+              <h2 className="text-3xl font-bold text-slate-900 leading-snug tracking-tight">
+                Everything you need to grow on WhatsApp.
               </h2>
-
-              {!isForgotPasswordMode && (
-                <>
-                  <p className={`text-sm mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                    Select a method to sign in
-                  </p>
-
-                  {/* Google Sign In Button */}
-                  <div className="mb-6">
-                    <button
-                      onClick={handleGoogleSignIn}
-                      disabled={isGoogleSigningIn}
-                      className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 hover:bg-blue-700"
-                    >
-                      <svg className="w-5 h-5" viewBox="0 0 24 24">
-                        <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                      </svg>
-                      {isGoogleSigningIn ? 'Signing in...' : 'Log in with Google'}
-                    </button>
-                  </div>
-
-                  {/* Divider */}
-                  <div className="flex items-center my-6">
-                    <div className={`flex-1 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-300'}`}></div>
-                    <span className={`px-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>or</span>
-                    <div className={`flex-1 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-300'}`}></div>
-                  </div>
-
-                  {/* Continue with email text */}
-                  <div className="mb-4">
-                    <p className={`text-center ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Continue with email
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {/* Error Message */}
-              {loginError && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-start">
-                    <svg className="w-5 h-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div className="flex-1">
-                      <p className={`text-sm font-medium ${isDarkMode ? 'text-red-300' : 'text-red-800'}`}>
-                        {loginError}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setLoginError(null)}
-                      className={`ml-2 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'}`}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Success Message for Password Reset */}
-              {resetSuccess && (
-                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-start">
-                    <svg className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <div className="flex-1">
-                      <p className={`text-sm font-medium ${isDarkMode ? 'text-green-300' : 'text-green-800'}`}>
-                        Password reset email sent! Please check your inbox and follow the instructions to reset your password.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setResetSuccess(false)}
-                      className={`ml-2 ${isDarkMode ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700'}`}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Login Form or Password Reset Form */}
-              {isForgotPasswordMode ? (
-                <form onSubmit={handlePasswordReset} className="space-y-4">
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Business email
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={formData.businessEmail}
-                      onChange={(e) => setFormData({ ...formData, businessEmail: e.target.value })}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                        isDarkMode 
-                          ? 'bg-gray-700 border-gray-600 text-white' 
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                      placeholder="Enter business email"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-700"
-                  >
-                    {isSubmitting ? 'Sending...' : 'Reset your password'}
-                  </button>
-
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={toggleForgotPasswordMode}
-                      className={`text-sm text-green-600 hover:underline ${isDarkMode ? 'text-green-400' : ''}`}
-                    >
-                      Sign in
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Business email
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={formData.businessEmail}
-                      onChange={(e) => setFormData({ ...formData, businessEmail: e.target.value })}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                        isDarkMode 
-                          ? 'bg-gray-700 border-gray-600 text-white' 
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                      placeholder="Enter business email"
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                        isDarkMode 
-                          ? 'bg-gray-700 border-gray-600 text-white' 
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                      placeholder="Enter password"
-                    />
-                  </div>
-
-                  {/* Remember me and Forgot password */}
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="w-4 h-4 text-green-600 focus:ring-green-500 rounded"
-                      />
-                      <span className={`ml-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Remember me
-                      </span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={toggleForgotPasswordMode}
-                      className={`text-sm text-green-600 hover:underline ${isDarkMode ? 'text-green-400' : ''}`}
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-700"
-                  >
-                    {isSubmitting ? 'Logging in...' : 'Login'}
-                  </button>
-                </form>
-              )}
-
-              {/* Sign up link */}
-              <div className="text-center mt-6">
-                <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
-                  Don't have an account?{' '}
-                  <Link to="/start-now" className="text-green-600 hover:underline font-medium">
-                    Sign up
-                  </Link>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Left Side - Heading and Features */}
-          <div className="flex flex-col order-2 lg:order-1">
-            {/* Main Heading */}
-            <h1 className={`text-4xl md:text-5xl font-bold mb-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              Everything you need to grow your business on WhatsApp
-            </h1>
-
-            {/* Features List */}
-            <ul className="space-y-4">
-              <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Targeted Campaigns to deliver personalized offers
-                </span>
-              </li>
-              <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Pre-built templates to send updates & reminders
-                </span>
-              </li>
-              <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  24x7 instant engagement with no-code chatbots
-                </span>
-              </li>
-              <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Powerful automations to resolve issues faster
-                </span>
-              </li>
-              <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Integrations to bring in context from Zoho, Shopify, etc.
-                </span>
-              </li>
-            </ul>
-
-            {/* Trust Badge */}
-            <div className="mt-8">
-              <p className={`text-lg font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Trusted by 8000+ customers across 52 countries
+              <p className="mt-3 text-slate-500 text-sm leading-relaxed">
+                Sign in to your NimbleAI dashboard and start driving revenue with broadcast campaigns, AI support, and deep Shopify integrations.
               </p>
             </div>
+
+            <ul className="space-y-3">
+              <Bullet text="Targeted broadcasts with 98% open rates" />
+              <Bullet text="AI chatbot that resolves 80% of queries 24/7" />
+              <Bullet text="Recover 25%+ abandoned carts automatically" />
+              <Bullet text="Native Shopify &amp; OpenCart integrations" />
+              <Bullet text="Shared inbox for your entire support team" />
+            </ul>
+
+            <p className="text-xs text-slate-400 font-medium">
+              Trusted by 8,000+ businesses across 52 countries.
+            </p>
           </div>
 
+          {/* ── Right panel – auth card ──────────────────────────────────────── */}
+          <div className="card p-8 animate-scaleIn">
 
+            {/* Mobile logo */}
+            <div className="flex justify-center mb-6 lg:hidden">
+              <img src={require('../logo.png')} alt="NimbleAI" className="h-10 w-auto" />
+            </div>
+
+            <h1 className="text-xl font-bold text-slate-900 mb-1">
+              {isForgot ? 'Reset your password' : 'Welcome back'}
+            </h1>
+            <p className="text-sm text-slate-400 mb-6">
+              {isForgot
+                ? "We'll send a reset link to your email."
+                : 'Sign in to your NimbleAI account.'}
+            </p>
+
+            {/* Error */}
+            {error && (
+              <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5 text-sm text-red-700">
+                <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {error}
+              </div>
+            )}
+
+            {/* Reset success */}
+            {resetSent && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-5 text-sm text-emerald-700">
+                ✅ Reset link sent! Check your inbox.
+              </div>
+            )}
+
+            {/* Google sign-in */}
+            {!isForgot && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleGoogle}
+                  disabled={isGoogleLoading}
+                  className="w-full flex items-center justify-center gap-3 border border-slate-200 bg-white hover:bg-slate-50
+                             text-slate-700 font-medium text-sm rounded-xl py-2.5 transition-all duration-150
+                             disabled:opacity-60 disabled:cursor-not-allowed mb-4"
+                >
+                  {isGoogleLoading ? (
+                    <svg className="w-4 h-4 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                  )}
+                  Continue with Google
+                </button>
+
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex-1 h-px bg-slate-100" />
+                  <span className="text-xs text-slate-400 font-medium">or</span>
+                  <div className="flex-1 h-px bg-slate-100" />
+                </div>
+              </>
+            )}
+
+            {/* Login / Forgot form */}
+            <form onSubmit={isForgot ? handleReset : handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5" htmlFor="loginEmail">
+                  Business email
+                </label>
+                <input
+                  id="loginEmail"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input"
+                  placeholder="you@company.com"
+                />
+              </div>
+
+              {!isForgot && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5" htmlFor="loginPassword">
+                    Password
+                  </label>
+                  <input
+                    id="loginPassword"
+                    type="password"
+                    required
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="input"
+                    placeholder="Your password"
+                  />
+                </div>
+              )}
+
+              {!isForgot && (
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-[#25D366] focus:ring-[#25D366]"
+                    />
+                    <span className="text-xs text-slate-500">Remember me</span>
+                  </label>
+                  <button type="button" onClick={toggleForgot}
+                          className="text-xs text-[#25D366] hover:underline font-medium">
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSubmitting || resetSent}
+                className="w-full btn-primary justify-center py-3 rounded-xl disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : isForgot ? 'Send reset link' : 'Sign in'}
+              </button>
+
+              {isForgot && (
+                <button type="button" onClick={toggleForgot}
+                        className="w-full text-center text-xs text-slate-400 hover:text-slate-600 transition-colors mt-1">
+                  ← Back to sign in
+                </button>
+              )}
+            </form>
+
+            {!isForgot && (
+              <p className="text-center text-xs text-slate-400 mt-6">
+                Don't have an account?{' '}
+                <Link to="/start-now" className="text-[#25D366] font-semibold hover:underline">
+                  Sign up
+                </Link>
+              </p>
+            )}
+          </div>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className="py-4 border-t border-slate-100 text-center">
+        <p className="text-[11px] text-slate-400">
+          © {new Date().getFullYear()} NimbleAI. All rights reserved.
+        </p>
       </div>
     </div>
   );

@@ -138,9 +138,13 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
     try {
       // 1. Pre-register the domain to the user's account using your existing User API
       console.log(`Attempting to save domain "${cleanedDomain}" for user ${user}`);
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`${process.env.REACT_APP_DB_SERVER_URL}/api/users/${userData.db_id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ shopify_domain: cleanedDomain })
       });
 

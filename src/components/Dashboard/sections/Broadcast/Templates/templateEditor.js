@@ -337,12 +337,18 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
             const dbId = userData?.db_id || user?.db_id;
             if (!dbId) throw new Error('User ID not found');
             const dbServerUrl = apiConfig.dbServerConfig.baseURL;
-            if (!dbServerUrl) throw new Error('DB Server URL is not configured');
-
             const uploadUrl = `${dbServerUrl}/api/templates/${dbId}/templates/upload_media`;
             const formData = new FormData();
             formData.append('file', file);
-            const response = await fetch(uploadUrl, { method: 'POST', body: formData });
+
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: formData
+            });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
                 throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);

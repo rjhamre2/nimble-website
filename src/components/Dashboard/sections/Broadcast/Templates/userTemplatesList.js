@@ -40,8 +40,13 @@ export const UserTemplatesList = ({ user, userData, templates, isLoading, onEdit
                         if (!confirmDelete) return;
                         const dbId = userData?.db_id || user?.db_id;
                         const tId = template.template_id;
-                        if (!dbId || !tId) return alert('Cannot delete: Missing ID');
-                        const response = await fetch(`${apiConfig.dbServerConfig.baseURL}/api/templates/${dbId}/templates/${tId}`, { method: 'DELETE' });
+                        const token = localStorage.getItem('authToken');
+                        const response = await fetch(`${apiConfig.dbServerConfig.baseURL}/api/templates/${dbId}/templates/${tId}`, {
+                          method: 'DELETE',
+                          headers: {
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                          }
+                        });
                         if (!response.ok) throw new Error('Delete failed');
                         setTemplates(prev => prev.filter(t => (t.template_id || t.id || t._id) !== tId));
                         alert('Deleted successfully.');

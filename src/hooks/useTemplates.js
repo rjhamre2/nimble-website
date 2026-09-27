@@ -12,8 +12,15 @@ export function useTemplates(userId) {
     if (!userId) return;
     setIsLoading(true);
     setError(null);
+    const token = localStorage.getItem('authToken');
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+
     try {
-      const response = await fetch(`/api/users/${userId}/templates`);
+      const response = await fetch(`/api/users/${userId}/templates`, {
+        headers: {
+          ...authHeader
+        }
+      });
       const result = await response.json();
       if (result.success) {
         setTemplates(result.data);
@@ -36,10 +43,16 @@ export function useTemplates(userId) {
     const formData = new FormData();
     formData.append('file', file);
 
+    const token = localStorage.getItem('authToken');
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+
     try {
       const response = await fetch(`/api/users/${userId}/templates/upload_media`, {
         method: 'POST',
-        body: formData, // Browser sets multipart headers automatically
+        headers: {
+          ...authHeader
+        },
+        body: formData, // Browser sets multipart boundary automatically
       });
       const result = await response.json();
       
@@ -62,10 +75,16 @@ export function useTemplates(userId) {
     setIsSubmitting(true);
     setError(null);
 
+    const token = localStorage.getItem('authToken');
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+
     try {
       const response = await fetch(`/api/users/${userId}/templates/submit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader
+        },
         body: JSON.stringify({ object: templateObject, media_id: mediaId }),
       });
       const result = await response.json();

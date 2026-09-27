@@ -51,7 +51,12 @@ const Broadcast = ({ user, userData, loading }) => {
       if (!dbId) return;
       setIsLoadingUserTemplates(true);
       const url = `${apiConfig.dbServerConfig.baseURL}/api/templates/${dbId}/templates`;
-      const response = await fetch(url);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(url, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       if (!response.ok) throw new Error('Fetch failed');
       const result = await response.json();
       const templates = result.data || result.templates || result || [];

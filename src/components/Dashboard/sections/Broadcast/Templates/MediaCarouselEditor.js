@@ -216,8 +216,14 @@ const MediaCarouselEditor = forwardRef(({
                 const uploadMedia = async (file) => {
                     const uploadUrl = `${dbServerUrl}/api/templates/${dbId}/templates/upload_media`;
                     const formData = new FormData();
-                    formData.append('file', file);
-                    const response = await fetch(uploadUrl, { method: 'POST', body: formData });
+                    const token = localStorage.getItem('authToken');
+                    const response = await fetch(uploadUrl, {
+                        method: 'POST',
+                        headers: {
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
+                        body: formData
+                    });
                     if (!response.ok) throw new Error('Media upload failed');
                     const result = await response.json();
                     let handle = result.data?.uploaded_file_handle || result.uploaded_file_handle || result.handle;
@@ -653,9 +659,14 @@ const MediaCarouselEditor = forwardRef(({
             const uploadUrl = `${dbServerUrl}/api/templates/${dbId}/templates/upload_media`;
 
             const formData = new FormData();
-            formData.append('file', file);
-
-            const response = await fetch(uploadUrl, { method: 'POST', body: formData });
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: formData
+            });
             if (!response.ok) throw new Error('Media upload failed');
 
             const result = await response.json();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { checkWhatsAppStatus, getUserDashboardStatus } from '../../services/firebaseService';
-import {checkShopifyStatus} from '../../services/checkShopifyStatus';
+import { checkShopifyStatus } from '../../services/checkShopifyStatus';
 import { apiConfig } from '../../config/api';
 import LiveChat from '../LiveChat';
 import Sidebar from './Sidebar';
@@ -18,6 +18,7 @@ import { getAuth } from 'firebase/auth';
 import { initializeApp, getApps } from 'firebase/app';
 import { broadcastTemplates, getTemplatesByTag, getAllTags } from '../../data/broadcastTemplates';
 import Broadcast from './sections/Broadcast/Broadcast';
+import DashboardOverview from './sections/Dashboard';
 
 // Fetch pricing subscription status
 const fetchPricingSubscriptionStatus = async () => {
@@ -65,14 +66,14 @@ if (firebaseConfig.apiKey && getApps().length === 0) {
   firebaseApp = getApps()[0];
 }
 
-const Dashboard = ({isMobileMenuOpen, setIsMobileMenuOpen}) => {
+const Dashboard = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const { user, userData, loading } = useAuth();
   const [isEmailVerified, setIsEmailVerified] = useState(null);
   const [isCheckingEmailVerification, setIsCheckingEmailVerification] = useState(false);
   const hasCheckedEmailVerification = useRef(false);
   const lastCheckedUserId = useRef(null);
   console.log("DEBUG: Is setIsMobileMenuOpen a function?", typeof setIsMobileMenuOpen === 'function');
-console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
+  console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   // Tab and view state
   const [activeTab, setActiveTab] = useState('overview');
   const [broadcastView, setBroadcastView] = useState('new-broadcast');
@@ -110,7 +111,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   const [whatsappSignupData, setWhatsappSignupData] = useState(null);
   const [whatsappAuthCode, setWhatsappAuthCode] = useState(null);
   const [isProcessingWhatsapp, setIsProcessingWhatsapp] = useState(false);
-  
+
   // Carousel images
   const carouselImages = [
     require('../../images/carousel-1.png'),
@@ -120,7 +121,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     require('../../images/carousel-6.png'),
     require('../../images/carousel-7.png'),
   ];
-  
+
   // Status state
   const [whatsappStatus, setWhatsappStatus] = useState(null);
   const [shopifyStatus, setShopifyStatus] = useState(null);
@@ -128,7 +129,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   const [trainingStatus, setTrainingStatus] = useState(null);
   const [subscriptionDetails, setSubscriptionDetails] = useState(null);
   const [pricingSubscriptionStatus, setPricingSubscriptionStatus] = useState(null);
-  
+
   // Loading states
   const [isCheckingWhatsapp, setIsCheckingWhatsapp] = useState(false);
   const [isCheckingShopify, setIsCheckingShopify] = useState(false);
@@ -137,7 +138,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(false);
   const [isCheckingWaba, setIsCheckingWaba] = useState(false);
   const isCheckingWabaRef = useRef(false);
-  
+
   // Modal states
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [isWabaModalOpen, setIsWabaModalOpen] = useState(false);
@@ -147,7 +148,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isEditContactModalOpen, setIsEditContactModalOpen] = useState(false);
-  
+
   // Contact form state
   const [contactsSort, setContactsSort] = useState('name');
   const [editingContactId, setEditingContactId] = useState(null);
@@ -168,14 +169,14 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   const [contactBirthday, setContactBirthday] = useState('');
   const [contactLeadStage, setContactLeadStage] = useState('');
   const [contactTeamAssigned, setContactTeamAssigned] = useState('marketing'); // 'marketing' | 'sales' | 'support'
-  
+
   // Contacts data state
   const [contacts, setContacts] = useState([]);
   const [contactsLoading, setContactsLoading] = useState(false);
   const [contactsError, setContactsError] = useState(null);
   const [contactsPagination, setContactsPagination] = useState({ page: 1, limit: 20, total: 0 });
   const [updatingLeadStage, setUpdatingLeadStage] = useState(null);
-  
+
   // Team management state
   const [teamManagementTab, setTeamManagementTab] = useState('users');
   const [isAddTeamModalOpen, setIsAddTeamModalOpen] = useState(false);
@@ -199,17 +200,17 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   const [deletingTeamMember, setDeletingTeamMember] = useState(null);
   const [deletingTeam, setDeletingTeam] = useState(null);
   const [deletingInvitation, setDeletingInvitation] = useState(null);
-  
+
   // Account details state
   const [accountDetailsTab, setAccountDetailsTab] = useState('profile');
-  
+
   // Onboarding form state
   const [companyInput, setCompanyInput] = useState('');
   const [specializationInput, setSpecializationInput] = useState('');
   const [onboardingError, setOnboardingError] = useState('');
   const [onboardingMessage, setOnboardingMessage] = useState('');
   const [isSubmittingOnboarding, setIsSubmittingOnboarding] = useState(false);
-  
+
   // Welcome modal state
   const [welcomeName, setWelcomeName] = useState('');
   const [welcomeEmail, setWelcomeEmail] = useState('');
@@ -222,7 +223,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   const [welcomeBusinessName, setWelcomeBusinessName] = useState('');
   const [welcomeError, setWelcomeError] = useState('');
   const [isSubmittingWelcome, setIsSubmittingWelcome] = useState(false);
-  
+
   // CSV Import state
   const [csvHeaders, setCsvHeaders] = useState([]);
   const [csvRows, setCsvRows] = useState([]);
@@ -232,10 +233,10 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   const [importProgress, setImportProgress] = useState({ success: 0, failed: 0, total: 0 });
   const [importResults, setImportResults] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
-  
+
   // Other state
   const [userName, setUserName] = useState('');
-  
+
   // Lead stages constant
   const LEAD_STAGES = [
     'NEW',
@@ -248,20 +249,20 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   ];
 
   // Border classes for status indicators
-  const whatsappBorderClass = whatsappStatus?.success && whatsappStatus?.isIntegrated 
-    ? 'border-green-500' 
+  const whatsappBorderClass = whatsappStatus?.success && whatsappStatus?.isIntegrated
+    ? 'border-green-500'
     : 'border-gray-300';
-  const shopifyBorderClass = shopifyStatus?.isIntegrated 
-    ? 'border-green-500' 
+  const shopifyBorderClass = shopifyStatus?.isIntegrated
+    ? 'border-green-500'
     : 'border-gray-300';
-  const onboardingBorderClass = onboardingStatus?.status === 'completed' 
-    ? 'border-yellow-500' 
+  const onboardingBorderClass = onboardingStatus?.status === 'completed'
+    ? 'border-yellow-500'
     : 'border-gray-300';
-  const trainingBorderClass = trainingStatus?.status === 'completed' 
-    ? 'border-blue-500' 
+  const trainingBorderClass = trainingStatus?.status === 'completed'
+    ? 'border-blue-500'
     : 'border-gray-300';
   const subscriptionBorderClass = pricingSubscriptionStatus?.status === 'authenticated' || pricingSubscriptionStatus?.status === 'active'
-    ? 'border-purple-500' 
+    ? 'border-purple-500'
     : 'border-gray-300';
 
   // Handler functions
@@ -293,12 +294,12 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   useEffect(() => {
     const handleMessage = (event) => {
       if (!event.origin.endsWith('facebook.com')) return;
-      
+
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'WA_EMBEDDED_SIGNUP') {
           console.log('WhatsApp Embedded Signup message event:', data);
-          
+
           // Handle successful completion
           if (data.event === 'FINISH' || data.event === 'FINISH_ONLY_WABA' || data.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING') {
             console.log('Raw Facebook event data:', data.data);
@@ -336,28 +337,28 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         console.error('Missing phone_number_id in whatsappData:', whatsappSignupData);
         return;
       }
-      
+
       if (!whatsappSignupData.waba_id) {
         console.error('Missing waba_id in whatsappData:', whatsappSignupData);
         return;
       }
-      
+
       setIsProcessingWhatsapp(true);
-      
+
       sendWhatsappCodeToServer(whatsappAuthCode, whatsappSignupData.waba_id, whatsappSignupData.phone_number_id)
         .then(result => {
           console.log('WhatsApp integration completed successfully:', result);
           setWhatsappSignupData(null);
           setWhatsappAuthCode(null);
           setIsProcessingWhatsapp(false);
-          
+
           // Refresh WhatsApp status
           if (user?.uid) {
             checkWhatsAppStatus(user.uid).then(data => {
               setWhatsappStatus(data);
             });
           }
-          
+
           // Close the connect account flow
           setShowConnectAccount(false);
           setConnectAccountStep(0);
@@ -373,11 +374,11 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   useEffect(() => {
     // Use a ref to track if we've already checked for this user
     let isMounted = true;
-    
+
     const checkEmailVerification = async () => {
       // Prevent multiple simultaneous checks
       const currentUserId = user?.uid || user?.email;
-      
+
       // Skip if:
       // - No user or firebase app
       // - Already checking
@@ -389,51 +390,51 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         });
         return;
       }
-      
+
       // If user changed, reset the check flag
       if (lastCheckedUserId.current !== currentUserId) {
         hasCheckedEmailVerification.current = false;
       }
-      
+
       // If we've already checked for this user, skip
       if (hasCheckedEmailVerification.current && lastCheckedUserId.current === currentUserId) {
         return;
       }
-      
+
       // Mark as checking for this user
       hasCheckedEmailVerification.current = true;
       lastCheckedUserId.current = currentUserId;
-      
-      console.log('📧 [Email Verification] Starting check...', { 
-        hasUser: !!user, 
+
+      console.log('📧 [Email Verification] Starting check...', {
+        hasUser: !!user,
         hasFirebaseApp: !!firebaseApp,
-        userId: user?.uid || user?.email 
+        userId: user?.uid || user?.email
       });
-      
+
       setIsCheckingEmailVerification(true);
       try {
         const auth = getAuth(firebaseApp);
         const firebaseUser = auth.currentUser;
-        
+
         console.log('📧 [Email Verification] Firebase Auth state:', {
           hasFirebaseUser: !!firebaseUser,
           firebaseUserEmail: firebaseUser?.email,
           firebaseUserId: firebaseUser?.uid
         });
-        
+
         if (firebaseUser) {
           // CRITICAL STEP: Get the latest data from the Firebase server
           console.log('📧 [Email Verification] Reloading user data from Firebase server...');
           await firebaseUser.reload();
-          
+
           if (!isMounted) return; // Component unmounted, don't update state
-          
+
           console.log('📧 [Email Verification] User data after reload:', {
             email: firebaseUser.email,
             emailVerified: firebaseUser.emailVerified,
             uid: firebaseUser.uid
           });
-          
+
           // Check the updated property
           if (firebaseUser.emailVerified) {
             console.log("✅ [Email Verification] Email Verified: Access Granted!");
@@ -446,12 +447,12 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           // If no Firebase user, we can't check verification via reload
           if (!isMounted) return;
           console.warn("⚠️ [Email Verification] No Firebase user found in auth.currentUser.");
-          
+
           // FALLBACK: Trust the user object or Firestore data if available
-          const isVerifiedInDb = userData?.isEmailVerified === true || 
-                                 user?.emailVerified === true || 
-                                 user?.email_verified === true;
- 
+          const isVerifiedInDb = userData?.isEmailVerified === true ||
+            user?.emailVerified === true ||
+            user?.email_verified === true;
+
           if (isVerifiedInDb) {
             console.log("✅ [Email Verification] Email Verified: Status confirmed via Database/User Object!");
             setIsEmailVerified(true);
@@ -492,7 +493,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         loading
       });
     }
-    
+
     // Cleanup function
     return () => {
       isMounted = false;
@@ -529,10 +530,12 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       const url = `${dbServerUrl}/api/teams/${dbId}`;
       console.log('🌐 [Fetch Teams] Calling API:', url);
 
+      const token = localStorage.getItem('authToken');
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
       });
 
@@ -584,10 +587,12 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       const url = `${dbServerUrl}/api/users/${dbId}/team-members`;
       console.log('🌐 [Fetch Team Members] Calling API:', url);
 
+      const token = localStorage.getItem('authToken');
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
       });
 
@@ -626,10 +631,10 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     // Determine if the current role is a predefined role or custom
     const predefinedRoles = ['Admin / Business Manager', 'Sales Manager', 'Support Manager', 'Marketing Manager'];
     const isPredefinedRole = predefinedRoles.includes(member.role);
-    
-    setEditingMember({ 
-      teamId, 
-      memberIndex, 
+
+    setEditingMember({
+      teamId,
+      memberIndex,
       member,
       selectedRole: isPredefinedRole ? member.role : 'Other',
       customRole: isPredefinedRole ? '' : member.role
@@ -643,7 +648,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     }
 
     setDeletingMember({ teamId, memberIndex });
-    
+
     try {
       const dbServerUrl = apiConfig.dbServerConfig.baseURL;
       if (!dbServerUrl) {
@@ -657,13 +662,15 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       }
 
       const apiUrl = `${dbServerUrl}/api/teams/${teamId}/members/${memberId}`;
-      
+
       console.log('🌐 [Delete Member] Calling API:', apiUrl);
 
+      const token = localStorage.getItem('authToken');
       const response = await fetch(apiUrl, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
       });
 
@@ -682,6 +689,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           },
         });
 
@@ -708,7 +716,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     }
 
     setDeletingInvitation({ teamId, invitationId });
-    
+
     try {
       const dbServerUrl = apiConfig.dbServerConfig.baseURL;
       if (!dbServerUrl) {
@@ -716,13 +724,15 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       }
 
       const apiUrl = `${dbServerUrl}/api/invitations/${invitationId}`;
-      
+
       console.log('🌐 [Delete Invitation] Calling API:', apiUrl);
 
+      const token = localStorage.getItem('authToken');
       const response = await fetch(apiUrl, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
       });
 
@@ -741,6 +751,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           },
         });
 
@@ -782,7 +793,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       }
 
       const apiUrl = `${dbServerUrl}/api/teams/${teamId}/members/${memberId}`;
-      
+
       console.log('🌐 [Edit Member] Calling API:', apiUrl);
       console.log('📤 [Edit Member] Request data:', {
         name: updatedMember.name,
@@ -790,10 +801,12 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         role: updatedMember.role
       });
 
+      const token = localStorage.getItem('authToken');
       const response = await fetch(apiUrl, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           name: updatedMember.name,
@@ -867,7 +880,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
 
       const finalRole = newMemberData.selectedRole === 'Other' ? newMemberData.customRole : newMemberData.selectedRole;
       const apiUrl = `${dbServerUrl}/api/teams/${teamId}/members`;
-      
+
       console.log('🌐 [Add Member] Calling API:', apiUrl);
       console.log('📤 [Add Member] Request data:', {
         name: newMemberData.name,
@@ -875,10 +888,12 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         role: finalRole
       });
 
+      const token = localStorage.getItem('authToken');
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           name: newMemberData.name,
@@ -903,6 +918,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           },
         });
 
@@ -927,7 +943,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     // Determine if the current role is a predefined role or custom
     const predefinedRoles = ['Admin / Business Manager', 'Sales Manager', 'Support Manager', 'Marketing Manager'];
     const isPredefinedRole = predefinedRoles.includes(member.role);
-    
+
     setEditingTeamMember({
       ...member,
       selectedRole: isPredefinedRole ? member.role : 'Other',
@@ -942,7 +958,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     }
 
     setDeletingTeamMember(member.member_id);
-    
+
     try {
       const dbServerUrl = apiConfig.dbServerConfig.baseURL;
       if (!dbServerUrl) {
@@ -950,13 +966,15 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       }
 
       const apiUrl = `${dbServerUrl}/api/teams/${member.team_id}/members/${member.member_id}`;
-      
+
       console.log('🌐 [Delete Team Member] Calling API:', apiUrl);
 
+      const token = localStorage.getItem('authToken');
       const response = await fetch(apiUrl, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
       });
 
@@ -986,7 +1004,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       }
 
       const apiUrl = `${dbServerUrl}/api/teams/${updatedMember.team_id}/members/${updatedMember.member_id}`;
-      
+
       console.log('🌐 [Edit Team Member] Calling API:', apiUrl);
       console.log('📤 [Edit Team Member] Request data:', {
         name: updatedMember.name,
@@ -994,10 +1012,12 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         role: updatedMember.role
       });
 
+      const token = localStorage.getItem('authToken');
       const response = await fetch(apiUrl, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           name: updatedMember.name,
@@ -1030,7 +1050,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     }
 
     setDeletingTeam(teamId);
-    
+
     try {
       const dbServerUrl = apiConfig.dbServerConfig.baseURL;
       if (!dbServerUrl) {
@@ -1038,13 +1058,15 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       }
 
       const apiUrl = `${dbServerUrl}/api/teams/${teamId}`;
-      
+
       console.log('🌐 [Delete Team] Calling API:', apiUrl);
 
+      const token = localStorage.getItem('authToken');
       const response = await fetch(apiUrl, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
       });
 
@@ -1068,23 +1090,23 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   // Function to send WhatsApp code to server
   const sendWhatsappCodeToServer = async (code, wabaId, phoneNumberId) => {
     try {
-      console.log('Sending code to server for token exchange:', { 
-        code: code ? `${code.substring(0, 10)}...` : 'undefined', 
-        wabaId, 
-        phoneNumberId 
+      console.log('Sending code to server for token exchange:', {
+        code: code ? `${code.substring(0, 10)}...` : 'undefined',
+        wabaId,
+        phoneNumberId
       });
-      
+
       if (!phoneNumberId || !wabaId || !code || !user?.uid) {
         throw new Error('Missing required parameters for WhatsApp setup');
       }
-      
+
       const requestBody = {
         code,
         waba_id: wabaId,
         phone_number_id: phoneNumberId,
         user_id: user.uid,
       };
-      
+
       const response = await fetch(apiConfig.endpoints.whatsapp(), {
         method: 'POST',
         headers: {
@@ -1274,7 +1296,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
 </body>
 </html>
     `;
-    
+
     const blob = new Blob([guidelinesHTML], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
@@ -1372,12 +1394,12 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   const updatePhone = (index, field, value) => {
     const newPhones = [...contactPhones];
     newPhones[index] = { ...newPhones[index], [field]: value };
-    
+
     // If country code changes, update dial code
     if (field === 'countryCode') {
       newPhones[index].dialCode = getDialCodeFromCountry(value);
     }
-    
+
     setContactPhones(newPhones);
   };
 
@@ -1435,7 +1457,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     setContactsError(null);
     try {
       const apiUrl = apiConfig.endpoints.contacts.getUserContacts(dbId);
-      
+
       console.log('🌐 [Fetch Contacts] Calling API:', apiUrl);
 
       const token = localStorage.getItem('authToken');
@@ -1489,11 +1511,11 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   // Contact handlers
   const handleAddContact = async (e) => {
     e.preventDefault();
-    
+
     setIsSubmittingContact(true);
     setContactError('');
     setContactSuccess('');
-    
+
     try {
       // Validate required fields
       if (!contactFirstName || !contactPhones[0]?.phone) {
@@ -1536,7 +1558,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       };
 
       const apiUrl = apiConfig.endpoints.contacts.createContact();
-      
+
       console.log('🌐 [Add Contact] Calling API:', apiUrl);
       console.log('📤 [Add Contact] Request data:', {
         user_id: userData?.db_id || user?.db_id,
@@ -1567,7 +1589,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       setContactSuccess('Contact added successfully');
       resetContactForm();
       setIsAddContactModalOpen(false);
-      
+
       // Refresh contacts list
       await fetchContacts();
     } catch (error) {
@@ -1580,13 +1602,13 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
 
   const handleUpdateContact = async (e) => {
     e.preventDefault();
-    
+
     if (!editingContactId) return;
-    
+
     setIsSubmittingContact(true);
     setContactError('');
     setContactSuccess('');
-    
+
     try {
       // Validate required fields
       if (!contactFirstName || !contactPhones[0]?.phone) {
@@ -1629,7 +1651,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       };
 
       const apiUrl = apiConfig.endpoints.contacts.updateContact(editingContactId);
-      
+
       console.log('🌐 [Update Contact] Calling API:', apiUrl);
       console.log('📤 [Update Contact] Request data:', {
         contact_data: contactData
@@ -1658,7 +1680,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       setContactSuccess('Contact updated successfully');
       resetContactForm();
       setIsEditContactModalOpen(false);
-      
+
       // Refresh contacts list
       await fetchContacts();
     } catch (error) {
@@ -1677,14 +1699,14 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     const addresses = contactData.addresses || [];
     const org = contactData.org || {};
     const urls = contactData.urls || [];
-    
+
     // Parse phone numbers to extract country code and dial code
     const parsedPhones = phones.length > 0 ? phones.map(phoneObj => {
       const phoneNumber = phoneObj.phone || '';
       let phone = phoneNumber;
       let countryCode = 'IN';
       let dialCode = '+91';
-      
+
       // Try to extract dial code from phone number
       if (phoneNumber.startsWith('+')) {
         // Find matching dial code
@@ -1696,7 +1718,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           '+886': 'TW', '+64': 'NZ', '+971': 'AE', '+966': 'SA', '+27': 'ZA',
           '+7': 'RU', '+92': 'PK', '+880': 'BD', '+94': 'LK', '+977': 'NP', '+95': 'MM'
         };
-        
+
         // Check for longer dial codes first (like +852, +886, +880, +977)
         const sortedCodes = Object.keys(dialCodes).sort((a, b) => b.length - a.length);
         for (const code of sortedCodes) {
@@ -1708,7 +1730,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           }
         }
       }
-      
+
       return {
         phone: phone,
         type: phoneObj.type || 'MOBILE',
@@ -1716,7 +1738,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         dialCode: dialCode
       };
     }) : [{ phone: '', type: 'MOBILE', countryCode: 'IN', dialCode: '+91' }];
-    
+
     setEditingContactId(contact.contact_id);
     setContactFirstName(name.first_name || '');
     setContactLastName(name.last_name || '');
@@ -1737,7 +1759,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
 
   const handleDeleteContact = async (contactId) => {
     if (!window.confirm('Are you sure you want to delete this contact?')) return;
-    
+
     try {
       const dbServerUrl = apiConfig.dbServerConfig.baseURL;
       if (!dbServerUrl) {
@@ -1745,7 +1767,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       }
 
       const apiUrl = apiConfig.endpoints.contacts.deleteContact(contactId);
-      
+
       console.log('🌐 [Delete Contact] Calling API:', apiUrl);
 
       const token = localStorage.getItem('authToken');
@@ -1793,7 +1815,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       }
 
       const apiUrl = apiConfig.endpoints.contacts.updateContact(contactId);
-      
+
       console.log('🌐 [Update Lead Stage] Calling API:', apiUrl);
 
       const token = localStorage.getItem('authToken');
@@ -1816,9 +1838,9 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       console.log('✅ [Update Lead Stage] Lead stage updated successfully');
 
       // Update local state
-      setContacts(prevContacts => 
-        prevContacts.map(c => 
-          c.contact_id === contactId 
+      setContacts(prevContacts =>
+        prevContacts.map(c =>
+          c.contact_id === contactId
             ? { ...c, contact_data: updatedContactData }
             : c
         )
@@ -1844,7 +1866,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
 
       // Create CSV header
       const headers = ['Name', 'First Name', 'Last Name', 'Phone', 'Email', 'Company', 'Title', 'Lead Stage', 'Team Assigned', 'Source'];
-      
+
       // Create CSV rows
       const rows = contacts.map(contact => {
         const contactData = contact.contact_data || {};
@@ -1855,7 +1877,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         const primaryPhone = phones[0]?.phone || '';
         const primaryEmail = emails[0]?.email || '';
         const displayName = name.formatted_name || `${name.first_name || ''} ${name.last_name || ''}`.trim() || 'No Name';
-        
+
         return [
           displayName,
           name.first_name || '',
@@ -1886,7 +1908,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       console.log('✅ [Export CSV] Contacts exported successfully');
     } catch (error) {
       console.error('❌ [Export CSV] Error:', error);
@@ -1900,7 +1922,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     setIsSubmittingOnboarding(true);
     setOnboardingError('');
     setOnboardingMessage('');
-    
+
     try {
       // Implementation would call API to submit onboarding
       setOnboardingMessage('Onboarding completed successfully');
@@ -1959,7 +1981,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     e.preventDefault();
     setIsSubmittingWelcome(true);
     setWelcomeError('');
-    
+
     try {
       const dbId = userData?.db_id || user?.db_id;
       if (!dbId) {
@@ -1981,14 +2003,16 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       // Call DB Server API to create/update user
       const dbServerUrl = apiConfig.dbServerConfig.baseURL;
       const url = `${dbServerUrl}/api/users`;
-      
+
       console.log('🌐 Calling create/update user API:', url);
       console.log('📤 Request body:', requestBody);
 
+      const token = localStorage.getItem('authToken');
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(requestBody),
       });
@@ -2004,27 +2028,27 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
 
       // Mark that welcome form has been submitted (prevent it from showing again)
       localStorage.setItem('nimble_first_time', '0');
-      
+
       // Close welcome modal immediately
       setIsWelcomeModalOpen(false);
-      
+
       // Navigate to dashboard/overview
       setActiveTab('overview');
-      
+
       // Refresh statuses
       refreshAllStatuses();
-      
+
       // After API returns successfully, check WABA details
       // The API should have created the user with empty waba_details, so we check if modal should show
       console.log('🔍 ========== POST API completed, now checking WABA details ==========');
       console.log('🔍 About to call checkWabaDetails...');
-      console.log('🔍 Current state:', { 
-        hasUser: !!user, 
-        hasUserData: !!userData, 
+      console.log('🔍 Current state:', {
+        hasUser: !!user,
+        hasUserData: !!userData,
         isWelcomeModalOpen: false, // We just set it to false
-        dbId: userData?.db_id || user?.db_id 
+        dbId: userData?.db_id || user?.db_id
       });
-      
+
       // Small delay to ensure modal state is updated, then check WABA
       setTimeout(async () => {
         console.log('🔍 ========== Calling checkWabaDetails after welcome form submission ==========');
@@ -2052,11 +2076,11 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       }
 
       const reader = new FileReader();
-      
+
       reader.onload = (e) => {
         try {
           const text = e.target.result;
-          
+
           // Simple CSV parser - handles quoted fields and commas
           const parseCSV = (csvText) => {
             const lines = csvText.split('\n').filter(line => line.trim());
@@ -2066,7 +2090,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
 
             // Parse first line as headers
             const headers = parseCSVLine(lines[0]);
-            
+
             // Parse remaining lines as data rows
             const rows = lines.slice(1)
               .map(line => parseCSVLine(line))
@@ -2102,15 +2126,15 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                 current += char;
               }
             }
-            
+
             // Add last field
             result.push(current.trim());
-            
+
             return result;
           };
 
           const { headers, rows } = parseCSV(text);
-          
+
           if (headers.length === 0) {
             throw new Error('CSV file appears to be empty or invalid');
           }
@@ -2119,7 +2143,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           setCsvHeaders(headers);
           setCsvRows(rows);
           setCsvParseError('');
-          
+
           // Auto-map known fields if headers match
           const autoMapping = {};
           headers.forEach((header, index) => {
@@ -2184,7 +2208,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       // Generate preview based on mapping
       const preview = csvRows.slice(0, 5).map((row, rowIndex) => {
         const previewItem = {};
-        
+
         // Map each known field to its CSV column value
         knownFields.forEach(field => {
           const csvColumnIndex = mapping[field];
@@ -2219,7 +2243,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     setIsImporting(true);
     setImportProgress({ success: 0, failed: 0, total: csvRows.length });
     setImportResults(null);
-    
+
     try {
       const dbId = userData?.db_id || user?.db_id;
       if (!dbId) {
@@ -2233,7 +2257,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       // Import contacts one by one
       for (let i = 0; i < csvRows.length; i++) {
         const row = csvRows[i];
-        
+
         try {
           // Build contact data from mapped row
           const contactData = {
@@ -2302,7 +2326,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           }
 
           successCount++;
-    } catch (error) {
+        } catch (error) {
           console.error(`❌ [CSV Import] Failed to import row ${i + 1}:`, error);
           failedCount++;
         }
@@ -2365,13 +2389,13 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   // Refresh all statuses
   const refreshAllStatuses = useCallback(async () => {
     if (!user?.uid) return;
-    
+
     setIsCheckingWhatsapp(true);
     setIsCheckingShopify(true);
     setIsLoadingOnboarding(true);
     setIsLoadingTraining(true);
     setIsLoadingSubscription(true);
-    
+
     try {
       const [wa, shopify, ob, pricingSub] = await Promise.all([
         checkWhatsAppStatus(user.uid),
@@ -2379,7 +2403,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         getUserDashboardStatus(user.uid),
         fetchPricingSubscriptionStatus()
       ]);
-      
+
       setWhatsappStatus(wa);
       setShopifyStatus(shopify);
       setOnboardingStatus(ob?.onboarding || null);
@@ -2400,7 +2424,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   // Check welcome modal
   const checkWelcomeModal = useCallback(async () => {
     if (!user || !userData) return;
-    
+
     try {
       const dbId = userData?.db_id || user?.db_id;
       if (!dbId) {
@@ -2414,16 +2438,18 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         console.error('❌ DB Server URL is not configured!');
         return;
       }
-      
+
       const url = `${dbServerUrl}/api/users/${dbId}`;
-      
+
       console.log('🌐 Checking user existence for welcome modal:', url);
       console.log('🌐 dbId:', dbId);
-      
+
+      const token = localStorage.getItem('authToken');
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
       });
 
@@ -2440,7 +2466,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       // BUT skip welcome modal if user came from an invitation link
       const invitationToken = sessionStorage.getItem('invitationToken');
       const shouldShowWelcome = result.success === false && result.error === 'User not found' && !invitationToken;
-      
+
       console.log('🎯 Welcome modal decision:', {
         shouldShowWelcome,
         success: result.success,
@@ -2448,7 +2474,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         error: result.error,
         hasInvitationToken: !!invitationToken
       });
-      
+
       // Only show welcome modal if user not found AND no invitation token AND modal is not already open AND not currently submitting
       if (shouldShowWelcome && !isWelcomeModalOpen && !isSubmittingWelcome) {
         // Set default country and dial code when opening modal
@@ -2458,7 +2484,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         }
         setIsWelcomeModalOpen(true);
       }
-      
+
       // Clear invitation token after checking (whether welcome modal is shown or not)
       // This ensures invited users skip the welcome modal
       if (invitationToken) {
@@ -2477,24 +2503,24 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   // Check WABA details
   const checkWabaDetails = useCallback(async () => {
     console.log('🔍 checkWabaDetails called', { hasUser: !!user, hasUserData: !!userData });
-    
+
     if (!user || !userData) {
       console.log('⚠️ Early return: missing user or userData', { user: !!user, userData: !!userData });
       return;
     }
-    
+
     // Prevent concurrent calls
     if (isCheckingWabaRef.current) {
       console.log('⏸️ WABA check already in progress, skipping...');
       return;
     }
-    
+
     isCheckingWabaRef.current = true;
     setIsCheckingWaba(true);
     try {
       const dbId = userData?.db_id || user?.db_id;
       console.log('🔍 dbId check:', { dbId, userDataDbId: userData?.db_id, userDbId: user?.db_id });
-      
+
       if (!dbId) {
         console.log('⚠️ No db_id found, skipping WABA check');
         setIsCheckingWaba(false);
@@ -2508,22 +2534,24 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         setIsCheckingWaba(false);
         return;
       }
-      
+
       const url = `${dbServerUrl}/api/users/${dbId}`;
-      
+
       console.log('🌐 ========== WABA API CALL START ==========');
       console.log('🌐 Calling WABA check API:', url);
       console.log('🌐 DB Server URL from config:', dbServerUrl);
       console.log('🌐 dbId:', dbId);
       console.log('🌐 Full URL:', url);
-      
+
+      const token = localStorage.getItem('authToken');
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
       });
-      
+
       console.log('🌐 API Response status :', response.status);
 
       if (!response.ok) {
@@ -2536,11 +2564,11 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
 
       if (result.success && result.data) {
         const wabaDetails = result.data.waba_details || {};
-        
+
         // Check if waba_details is an empty object
         const isEmpty = Object.keys(wabaDetails).length === 0;
         setIsWabaDetailsEmpty(isEmpty);
-        
+
         if (isEmpty) {
           console.log('📋 waba_details is empty, navigating to channels and showing WABA modal');
           setUserName(result.data.username || userData?.username || user?.displayName || 'User');
@@ -2611,7 +2639,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       isCheckingWaba,
       isWabaModalOpen
     });
-    
+
     // Only check if:
     // 1. User is authenticated
     // 2. UserData is available (needed for db_id)
@@ -2623,7 +2651,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       // Check if user is first-time
       const storedFirstTime = localStorage.getItem('nimble_first_time');
       const isFirstTime = storedFirstTime === '1';
-      
+
       console.log('🔍 WABA check conditions:', {
         user: !!user,
         loading,
@@ -2633,7 +2661,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         storedFirstTime,
         isFirstTime
       });
-      
+
       // Trigger WABA check if user is NOT first-time (welcome modal won't show)
       // isFirstTime is only true if storedFirstTime === '1'
       // If it's null, '0', or anything else, treat as not first-time
@@ -2649,8 +2677,8 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           userId: user?.uid,
           userDbId: userData?.db_id || user?.db_id
         });
-        
-          checkWabaDetails();
+
+        checkWabaDetails();
       } else {
         console.log('⏸️ Skipping WABA auto-check - user is first-time, welcome modal will show', {
           isFirstTime,
@@ -2675,7 +2703,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       // Small delay to ensure localStorage is updated
       setTimeout(checkWelcomeModal, 200);
     };
-    
+
     const handleStorageChange = (e) => {
       // Check if nimble_first_time was set
       if (e.key === 'nimble_first_time' || e.key === 'userData') {
@@ -2683,16 +2711,16 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         setTimeout(checkWelcomeModal, 100);
       }
     };
-    
+
     const handleFirstTimeSet = (e) => {
       console.log('🎯 firstTime flag was set:', e.detail, 're-checking welcome modal immediately...');
       setTimeout(checkWelcomeModal, 50);
     };
-    
+
     window.addEventListener('authStateChanged', handleAuthChange);
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('firstTimeSet', handleFirstTimeSet);
-    
+
     // Also poll localStorage periodically when user is null (during sign-in)
     const pollInterval = !user && !userData ? setInterval(() => {
       const firstTime = localStorage.getItem('nimble_first_time');
@@ -2701,7 +2729,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         checkWelcomeModal();
       }
     }, 500) : null;
-    
+
     return () => {
       window.removeEventListener('authStateChanged', handleAuthChange);
       window.removeEventListener('storage', handleStorageChange);
@@ -2748,10 +2776,10 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   // Show loading state while authentication is being checked
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <div className="w-10 h-10 rounded-full border-2 border-slate-200 border-t-[#25D366] animate-spin mx-auto mb-4" />
+          <p className="text-sm text-slate-400 font-medium">Loading dashboard…</p>
         </div>
       </div>
     );
@@ -2759,10 +2787,10 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Sign In</h2>
-          <p className="text-gray-600">You need to be signed in to access the dashboard.</p>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Please sign in</h2>
+          <p className="text-sm text-slate-400">You need to be signed in to access the dashboard.</p>
         </div>
       </div>
     );
@@ -2772,12 +2800,12 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     switch (activeTab) {
       case 'team-inbox':
         return <LiveChat />;
-      
+
       case 'broadcast':
         return <Broadcast user={user} userData={userData} loading={loading} />;
       case 'contacts':
         return <Contacts />;
-      
+
       case 'contacts_old':
         return (
           <div className="space-y-6">
@@ -2795,7 +2823,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
               </div>
 
               <div className="flex items-center justify-between mb-4">
-                <button 
+                <button
                   onClick={() => {
                     setIsAddContactModalOpen(true);
                     resetContactForm();
@@ -2875,13 +2903,13 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       const countryCode = phoneNumber ? getCountryCodeFromPhone(phoneNumber) : '';
                       const countryFlag = countryCode ? getCountryFlag(countryCode) : '';
                       const formattedPhone = phoneNumber ? formatPhoneNumber(phoneNumber, countryCode) : 'No phone';
-                      
+
                       // Get contact attributes (excluding nested objects)
                       const attributes = Object.entries(contactData)
                         .filter(([key]) => !['name', 'phones', 'emails', 'addresses', 'org', 'urls', 'birthday'].includes(key))
                         .map(([key, value]) => ({ key, value }));
                       const leadStage = contactData.lead_stage;
-                      
+
                       return (
                         <div key={contact.contact_id} className="p-4 hover:bg-gray-50">
                           <div className="grid grid-cols-5 gap-4 items-center">
@@ -2904,13 +2932,13 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                               </select>
                             </div>
                             <div className="flex items-center gap-2">
-                              <button 
+                              <button
                                 onClick={() => handleEditContact(contact)}
                                 className="px-2 py-1 text-xs text-blue-600 hover:underline"
                               >
                                 Edit
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleDeleteContact(contact.contact_id)}
                                 className="px-2 py-1 text-xs text-red-600 hover:underline"
                               >
@@ -2928,7 +2956,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                   <div className="flex items-center justify-between text-xs text-gray-600">
                     <span>Rows per page:</span>
                     <span>
-                      {contacts.length > 0 
+                      {contacts.length > 0
                         ? `${contactsPagination.offset + 1}–${Math.min(contactsPagination.offset + contacts.length, contactsPagination.total)} of ${contactsPagination.total}`
                         : '0 of 0'
                       }
@@ -2939,7 +2967,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
             </div>
           </div>
         );
-      
+
       case 'automations':
         return (
           <div className="w-full" style={{ height: 'calc(100vh - 64px)' }}>
@@ -2950,63 +2978,57 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                   <div className="flex-1 overflow-y-auto p-6">
                     <h2 className="text-xl font-bold text-gray-900 mb-4">Automations</h2>
                     <div className="space-y-2">
-                      <button 
+                      <button
                         onClick={() => setActiveAutomationView('ai-agents')}
-                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
-                          activeAutomationView === 'ai-agents' 
-                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${activeAutomationView === 'ai-agents'
+                          ? 'bg-blue-50 text-blue-700 border-blue-300'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
                       >
                         AI Agents
                       </button>
-                      <button 
+                      <button
                         onClick={() => setActiveAutomationView('chatbots')}
-                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
-                          activeAutomationView === 'chatbots' 
-                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${activeAutomationView === 'chatbots'
+                          ? 'bg-blue-50 text-blue-700 border-blue-300'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
                       >
                         Chatbots
                       </button>
-                      <button 
+                      <button
                         onClick={() => setActiveAutomationView('sequence')}
-                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
-                          activeAutomationView === 'sequence' 
-                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${activeAutomationView === 'sequence'
+                          ? 'bg-blue-50 text-blue-700 border-blue-300'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
                       >
                         sequence
                       </button>
-                      <button 
+                      <button
                         onClick={() => setActiveAutomationView('whatsapp-flows')}
-                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
-                          activeAutomationView === 'whatsapp-flows' 
-                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${activeAutomationView === 'whatsapp-flows'
+                          ? 'bg-blue-50 text-blue-700 border-blue-300'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
                       >
                         whatsapp flows
                       </button>
-                      <button 
+                      <button
                         onClick={() => setActiveAutomationView('human-routing')}
-                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
-                          activeAutomationView === 'human-routing' 
-                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${activeAutomationView === 'human-routing'
+                          ? 'bg-blue-50 text-blue-700 border-blue-300'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
                       >
                         Human Routing
                       </button>
-                      <button 
+                      <button
                         onClick={() => setActiveAutomationView('reply-material')}
-                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${
-                          activeAutomationView === 'reply-material' 
-                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left ${activeAutomationView === 'reply-material'
+                          ? 'bg-blue-50 text-blue-700 border-blue-300'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
                       >
                         Reply material
                       </button>
@@ -3024,7 +3046,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                           <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">Assign to User</button>
                           <button className="w-full px-3 py-2 text-sm font-medium rounded-lg border text-left bg-white text-gray-700 border-gray-300 hover:bg-gray-50">Assign to Team</button>
                         </div>
-                  <div>
+                        <div>
                           <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Add</button>
                         </div>
                       </div>
@@ -3113,137 +3135,137 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                         </div>
                       </div>
                     ) : (
-                    <div className="space-y-6">
+                      <div className="space-y-6">
 
-              <div className="mb-6">
-                <div className="text-sm font-medium text-gray-900 mb-3">AI Support Agent</div>
-                <div className="p-4 border border-gray-200 rounded-lg mb-4">
-                  <div className="text-sm font-medium text-gray-900 mb-2">AI Support Agent</div>
-                </div>
-              </div>
+                        <div className="mb-6">
+                          <div className="text-sm font-medium text-gray-900 mb-3">AI Support Agent</div>
+                          <div className="p-4 border border-gray-200 rounded-lg mb-4">
+                            <div className="text-sm font-medium text-gray-900 mb-2">AI Support Agent</div>
+                          </div>
+                        </div>
 
-              <div className="mb-6">
-                <div className="text-sm font-medium text-gray-900 mb-3">Actions Library</div>
-                <div className="grid grid-cols-3 gap-3">
-                  <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
-                    <div className="text-sm font-medium text-gray-900">Chatbots</div>
-                  </button>
-                  <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
-                    <div className="text-sm font-medium text-gray-900">Sequence</div>
-                  </button>
-                  <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
-                    <div className="text-sm font-medium text-gray-900">WhatsApp Flows</div>
-                  </button>
-                  <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
-                    <div className="text-sm font-medium text-gray-900">Routing</div>
-                  </button>
-                  <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
-                    <div className="text-sm font-medium text-gray-900">Reply Material</div>
-                  </button>
-                  <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
-                    <div className="text-sm font-medium text-gray-900">Others</div>
-                  </button>
-                </div>
-              </div>
+                        <div className="mb-6">
+                          <div className="text-sm font-medium text-gray-900 mb-3">Actions Library</div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                              <div className="text-sm font-medium text-gray-900">Chatbots</div>
+                            </button>
+                            <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                              <div className="text-sm font-medium text-gray-900">Sequence</div>
+                            </button>
+                            <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                              <div className="text-sm font-medium text-gray-900">WhatsApp Flows</div>
+                            </button>
+                            <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                              <div className="text-sm font-medium text-gray-900">Routing</div>
+                            </button>
+                            <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                              <div className="text-sm font-medium text-gray-900">Reply Material</div>
+                            </button>
+                            <button className="p-3 border border-gray-200 rounded-lg text-left hover:bg-gray-50 transition-colors">
+                              <div className="text-sm font-medium text-gray-900">Others</div>
+                            </button>
+                          </div>
+                        </div>
 
-              <div className="mb-6">
-                <div className="p-3 border border-gray-200 rounded-lg mb-2">
-                  <div className="text-sm font-medium text-gray-900">Default Action</div>
-                  <div className="text-xs text-gray-500 mt-1">Legacy</div>
-                </div>
-                <div className="p-3 border border-gray-200 rounded-lg">
-                  <div className="text-sm font-medium text-gray-900">Keyword Action</div>
-                  <div className="text-xs text-gray-500 mt-1">Legacy</div>
-                </div>
-              </div>
+                        <div className="mb-6">
+                          <div className="p-3 border border-gray-200 rounded-lg mb-2">
+                            <div className="text-sm font-medium text-gray-900">Default Action</div>
+                            <div className="text-xs text-gray-500 mt-1">Legacy</div>
+                          </div>
+                          <div className="p-3 border border-gray-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-900">Keyword Action</div>
+                            <div className="text-xs text-gray-500 mt-1">Legacy</div>
+                          </div>
+                        </div>
 
-              <div className="border-t pt-6">
-                <div className="mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Rules</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Create Rules to trigger automated messages, chat assignments, chatbots and more.
-                  </p>
-                  <div className="flex items-center gap-4 mb-4">
-                    <button className="text-sm text-blue-600 hover:underline">How it works</button>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
-                      + Create Rules
-                    </button>
-                  </div>
-                  </div>
+                        <div className="border-t pt-6">
+                          <div className="mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Rules</h3>
+                            <p className="text-sm text-gray-600 mb-4">
+                              Create Rules to trigger automated messages, chat assignments, chatbots and more.
+                            </p>
+                            <div className="flex items-center gap-4 mb-4">
+                              <button className="text-sm text-blue-600 hover:underline">How it works</button>
+                              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
+                                + Create Rules
+                              </button>
+                            </div>
+                          </div>
 
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50 border-b border-gray-200">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">RULE NAME</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">TRIGGER TYPE</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">ACTION</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">STATUS</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">EXECUTED</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">LAST UPDATED</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">ACTIONS</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-900">WA Out of Office</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">
-                            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">Built-In</span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">New WhatsApp message is received</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">Send message</td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">Off</span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">0</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">31/10/2025</td>
-                          <td className="px-4 py-3 text-sm text-gray-700"></td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-900">WA Welcome message</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">
-                            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">Built-In</span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">New WhatsApp message is received</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">Send message</td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">Off</span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">0</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">31/10/2025</td>
-                          <td className="px-4 py-3 text-sm text-gray-700"></td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-900">Unsubscribe from broadcast</td>
-                          <td className="px-4 py-3 text-sm text-gray-700"></td>
-                          <td className="px-4 py-3 text-sm text-gray-700">New WhatsApp message is received</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">Update contact attribute</td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">Off</span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">0</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">31/10/2025</td>
-                          <td className="px-4 py-3 text-sm text-gray-700"></td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-900">WA Hello keyword sample rule</td>
-                          <td className="px-4 py-3 text-sm text-gray-700"></td>
-                          <td className="px-4 py-3 text-sm text-gray-700">New WhatsApp message is received</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">Send message</td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">On</span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">0</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">31/10/2025</td>
-                          <td className="px-4 py-3 text-sm text-gray-700"></td>
-                        </tr>
-                      </tbody>
-                    </table>
-                </div>
-              </div>
-              </div>
-                    </div>
+                          <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div className="overflow-x-auto">
+                              <table className="w-full">
+                                <thead className="bg-gray-50 border-b border-gray-200">
+                                  <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">RULE NAME</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">TRIGGER TYPE</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">ACTION</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">STATUS</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">EXECUTED</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">LAST UPDATED</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700">ACTIONS</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 text-sm text-gray-900">WA Out of Office</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">
+                                      <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">Built-In</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">New WhatsApp message is received</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">Send message</td>
+                                    <td className="px-4 py-3 text-sm">
+                                      <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">Off</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">0</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">31/10/2025</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700"></td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 text-sm text-gray-900">WA Welcome message</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">
+                                      <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">Built-In</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">New WhatsApp message is received</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">Send message</td>
+                                    <td className="px-4 py-3 text-sm">
+                                      <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">Off</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">0</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">31/10/2025</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700"></td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 text-sm text-gray-900">Unsubscribe from broadcast</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700"></td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">New WhatsApp message is received</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">Update contact attribute</td>
+                                    <td className="px-4 py-3 text-sm">
+                                      <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">Off</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">0</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">31/10/2025</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700"></td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 text-sm text-gray-900">WA Hello keyword sample rule</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700"></td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">New WhatsApp message is received</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">Send message</td>
+                                    <td className="px-4 py-3 text-sm">
+                                      <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">On</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">0</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">31/10/2025</td>
+                                    <td className="px-4 py-3 text-sm text-gray-700"></td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -3251,7 +3273,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
             </div>
           </div>
         );
-      
+
       case 'ads':
         return (
           <div className="space-y-6">
@@ -3267,7 +3289,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Team Inbox Analytics</h2>
               <p className="text-gray-600 mb-4">Get an overview of all your important team, operator and ticket metrics here</p>
-                <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Data shown is for representation purpose only</span>
                 <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Preview with sample data</button>
               </div>
@@ -3311,7 +3333,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
 
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
-                  <div>
+                <div>
                   <div className="text-sm font-medium text-gray-900">Ticket status over time</div>
                   <div className="text-xs text-gray-500">Opened • Pending • Solved • Solved by bot • Solved by operator • Expired • Missed chats</div>
                 </div>
@@ -3358,7 +3380,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                   </thead>
                   <tbody className="divide-y divide-gray-200 text-sm">
                     <tr>
-                      <td className="px-4 py-2 text-gray-900">Samson<br/><span className="text-gray-500">samson@productsupport.com</span></td>
+                      <td className="px-4 py-2 text-gray-900">Samson<br /><span className="text-gray-500">samson@productsupport.com</span></td>
                       <td className="px-4 py-2">10</td>
                       <td className="px-4 py-2">6</td>
                       <td className="px-4 py-2">30</td>
@@ -3369,7 +3391,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       <td className="px-4 py-2">0d 2h 2m 17s</td>
                     </tr>
                     <tr>
-                      <td className="px-4 py-2 text-gray-900">Rahul Verma<br/><span className="text-gray-500">rahul.verma@productsupport.com</span></td>
+                      <td className="px-4 py-2 text-gray-900">Rahul Verma<br /><span className="text-gray-500">rahul.verma@productsupport.com</span></td>
                       <td className="px-4 py-2">6</td>
                       <td className="px-4 py-2">4</td>
                       <td className="px-4 py-2">20</td>
@@ -3380,7 +3402,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       <td className="px-4 py-2">0d 2h 2m 0s</td>
                     </tr>
                     <tr>
-                      <td className="px-4 py-2 text-gray-900">Elliot Wong<br/><span className="text-gray-500">elliot@productsupport.com</span></td>
+                      <td className="px-4 py-2 text-gray-900">Elliot Wong<br /><span className="text-gray-500">elliot@productsupport.com</span></td>
                       <td className="px-4 py-2">5</td>
                       <td className="px-4 py-2">2</td>
                       <td className="px-4 py-2">15</td>
@@ -3391,7 +3413,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       <td className="px-4 py-2">0d 2h 1m 5s</td>
                     </tr>
                     <tr>
-                      <td className="px-4 py-2 text-gray-900">Priyanka Patil<br/><span className="text-gray-500">priyanka.patil@productsupport.com</span></td>
+                      <td className="px-4 py-2 text-gray-900">Priyanka Patil<br /><span className="text-gray-500">priyanka.patil@productsupport.com</span></td>
                       <td className="px-4 py-2">4</td>
                       <td className="px-4 py-2">2</td>
                       <td className="px-4 py-2">10</td>
@@ -3402,7 +3424,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       <td className="px-4 py-2">0d 9h 2m 1s</td>
                     </tr>
                     <tr>
-                      <td className="px-4 py-2 text-gray-900">Jyoti<br/><span className="text-gray-500">jyoti@productsupport.com</span></td>
+                      <td className="px-4 py-2 text-gray-900">Jyoti<br /><span className="text-gray-500">jyoti@productsupport.com</span></td>
                       <td className="px-4 py-2">2</td>
                       <td className="px-4 py-2">0</td>
                       <td className="px-4 py-2">5</td>
@@ -3486,7 +3508,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
             </div>
           </div>
         );
-      
+
       case 'team-management':
         return (
           <div className="space-y-6">
@@ -3499,14 +3521,14 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                   {teamManagementTab === 'users' ? (
                     <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Add User</button>
                   ) : (
-                    <button 
+                    <button
                       onClick={() => setIsAddTeamModalOpen(true)}
                       className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
                     >
                       Add Team
                     </button>
                   )}
-            </div>
+                </div>
               </div>
               {/* Tabs */}
               <div className="mt-6 border-b">
@@ -3554,7 +3576,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                         {teamMembersData.map((member) => {
                           const isEditing = editingTeamMember?.member_id === member.member_id;
                           const isDeleting = deletingTeamMember === member.member_id;
-                          
+
                           if (isEditing) {
                             const editState = editingTeamMember;
                             return (
@@ -3620,19 +3642,19 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                         const email = document.getElementById(`edit-email-${member.member_id}`).value;
                                         const selectedRole = editState.selectedRole;
                                         const customRole = editState.customRole;
-                                        
+
                                         if (!name || !email || !selectedRole) {
                                           alert('Please fill in all required fields');
                                           return;
                                         }
-                                        
+
                                         if (selectedRole === 'Other' && !customRole) {
                                           alert('Please enter a role name');
                                           return;
                                         }
-                                        
+
                                         const finalRole = selectedRole === 'Other' ? customRole : selectedRole;
-                                        
+
                                         handleSaveTeamMember({
                                           ...member,
                                           name,
@@ -3655,7 +3677,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                               </tr>
                             );
                           }
-                          
+
                           return (
                             <tr key={member.member_id}>
                               <td className="px-4 py-2 text-gray-900">{member.name}</td>
@@ -3691,7 +3713,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
             ) : (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Teams</h3>
-                
+
                 {isLoadingTeams ? (
                   <div className="text-center py-8">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -3705,7 +3727,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       const isExpanded = expandedTeams.has(team.team_id);
                       return (
                         <div key={team.team_id} className="border border-gray-200 rounded-lg overflow-hidden">
-                          <div 
+                          <div
                             className="p-4 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
                             onClick={() => {
                               const newExpanded = new Set(expandedTeams);
@@ -3750,10 +3772,10 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                     </svg>
                                   )}
                                 </button>
-                                <svg 
+                                <svg
                                   className={`w-5 h-5 text-gray-500 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`}
-                                  fill="none" 
-                                  stroke="currentColor" 
+                                  fill="none"
+                                  stroke="currentColor"
                                   viewBox="0 0 24 24"
                                 >
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -3761,7 +3783,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                               </div>
                             </div>
                           </div>
-                          
+
                           {isExpanded && (
                             <div className="p-4 bg-white border-t border-gray-200">
                               <div className="flex items-center justify-between mb-3">
@@ -3849,7 +3871,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                 {team.members && team.members.length > 0 && team.members.map((member, index) => {
                                   const isEditing = editingMember?.teamId === team.team_id && editingMember?.memberIndex === index;
                                   const isDeleting = deletingMember?.teamId === team.team_id && deletingMember?.memberIndex === index;
-                                  
+
                                   if (isEditing) {
                                     const editState = editingMember;
                                     return (
@@ -3909,19 +3931,19 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                               const email = document.getElementById(`edit-email-${team.team_id}-${index}`).value;
                                               const selectedRole = editState.selectedRole;
                                               const customRole = editState.customRole;
-                                              
+
                                               if (!name || !email || !selectedRole) {
                                                 alert('Please fill in all required fields');
                                                 return;
                                               }
-                                              
+
                                               if (selectedRole === 'Other' && !customRole) {
                                                 alert('Please enter a role name');
                                                 return;
                                               }
-                                              
+
                                               const finalRole = selectedRole === 'Other' ? customRole : selectedRole;
-                                              
+
                                               handleSaveMember(team.team_id, index, {
                                                 ...member,
                                                 name,
@@ -3943,7 +3965,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                       </div>
                                     );
                                   }
-                                  
+
                                   return (
                                     <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                                       <span className="font-medium text-gray-900 flex-1 min-w-[200px]">{member.name}</span>
@@ -3979,7 +4001,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                     </div>
                                   );
                                 })}
-                                
+
                                 {/* Invited Users Section */}
                                 {team.invitations && team.invitations.length > 0 && (
                                   <>
@@ -3988,19 +4010,19 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                       <div className="space-y-2">
                                         {team.invitations.map((invitation, invIndex) => {
                                           const isExpired = new Date(invitation.expires_at) < new Date();
-                                          const statusColor = invitation.status === 'Accepted' 
-                                            ? 'bg-green-100 text-green-800' 
+                                          const statusColor = invitation.status === 'Accepted'
+                                            ? 'bg-green-100 text-green-800'
                                             : invitation.status === 'Pending' && !isExpired
-                                            ? 'bg-yellow-100 text-yellow-800'
-                                            : 'bg-red-100 text-red-800';
-                                          
+                                              ? 'bg-yellow-100 text-yellow-800'
+                                              : 'bg-red-100 text-red-800';
+
                                           return (
                                             <div key={invitation.invitation_id || invIndex} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                                               <span className="font-medium text-gray-900 flex-1 min-w-[200px]">{invitation.name || invitation.invited_name || 'N/A'}</span>
                                               <span className="text-sm text-gray-600 flex-1 min-w-[200px]">{invitation.invited_email}</span>
                                               <span className="w-[200px] px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm text-center">{invitation.role || invitation.invited_role || 'N/A'}</span>
                                               <span className="text-sm text-gray-600 flex-1 min-w-[200px]">
-                                                {invitation.accepted_at 
+                                                {invitation.accepted_at
                                                   ? `Accepted: ${new Date(invitation.accepted_at).toLocaleDateString()}`
                                                   : `Invited: ${new Date(invitation.created_at).toLocaleDateString()}`
                                                 }
@@ -4009,9 +4031,9 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                                 {invitation.status} {isExpired && invitation.status === 'Pending' ? '(Expired)' : ''}
                                               </span>
                                               <span className="w-[150px] text-xs text-gray-500 text-center">
-                                                {isExpired && invitation.status === 'Pending' 
+                                                {isExpired && invitation.status === 'Pending'
                                                   ? 'Expired'
-                                                  : invitation.expires_at 
+                                                  : invitation.expires_at
                                                     ? `Expires: ${new Date(invitation.expires_at).toLocaleDateString()}`
                                                     : ''
                                                 }
@@ -4052,7 +4074,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
 
             {/* Add Team Modal */}
             {isAddTeamModalOpen && (
-              <div 
+              <div
                 className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
                 onClick={(e) => {
                   if (e.target === e.currentTarget) {
@@ -4090,7 +4112,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       e.preventDefault();
                       setIsSubmittingTeam(true);
                       setTeamError(null);
-                      
+
                       try {
                         // Get owner_id (db_id)
                         const dbId = userData?.db_id || user?.db_id;
@@ -4099,8 +4121,8 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                         }
 
                         // Determine team name
-                        const teamName = teamFormData.teamName === 'Other' 
-                          ? teamFormData.customTeamName 
+                        const teamName = teamFormData.teamName === 'Other'
+                          ? teamFormData.customTeamName
                           : teamFormData.teamName;
 
                         if (!teamName) {
@@ -4127,7 +4149,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                         }
 
                         const apiUrl = `${dbServerUrl}/api/teams`;
-                        
+
                         console.log('🌐 [Create Team] Calling API:', apiUrl);
                         console.log('📤 [Create Team] Request data:', {
                           owner_id: dbId,
@@ -4135,10 +4157,12 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                           members: members
                         });
 
+                        const token = localStorage.getItem('authToken');
                         const response = await fetch(apiUrl, {
                           method: 'POST',
                           headers: {
                             'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                           },
                           body: JSON.stringify({
                             owner_id: dbId,
@@ -4237,7 +4261,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                         <label className="block text-sm font-medium text-gray-700 mb-4">
                           Team Members (up to 5) <span className="text-red-500">*</span>
                         </label>
-                        
+
                         <div className="space-y-3">
                           {teamFormData.members.map((member, index) => (
                             <div key={index} className="grid grid-cols-12 gap-3 items-start">
@@ -4365,10 +4389,10 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
             )}
           </div>
         );
-      
+
       case 'integrations':
         return <IntegrationsPage onWhatsAppSetupComplete={refreshAllStatuses} />;
-      
+
       case 'webhooks':
         return (
           <div className="space-y-6">
@@ -4417,7 +4441,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
             </div>
           </div>
         );
-      
+
       case 'commerce':
         return (
           <div className="space-y-6">
@@ -4450,7 +4474,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                     Subscription
                   </button>
                 </nav>
-            </div>
+              </div>
             </div>
 
             {/* Tab Content */}
@@ -4459,8 +4483,8 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                 <div className="bg-white rounded-lg shadow-sm p-6">
                   <p className="text-sm text-gray-700">
                     You are trialing Pro plan. Select the plan you want to purchase. To disconnect your WhatsApp business number from NimbleAI visit <span className="text-blue-600 hover:underline cursor-pointer">Whatsapp Manager</span>
-                    </p>
-                  </div>
+                  </p>
+                </div>
 
                 {/* Zero subscription card */}
                 <div className="bg-white rounded-lg shadow-sm p-6">
@@ -4479,7 +4503,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       </ul>
                       <div>
                         <button className="mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Buy Now</button>
-                  </div>
+                      </div>
                     </div>
                     <div className="w-full lg:w-64 h-32 border border-dashed border-gray-300 rounded flex items-center justify-center text-xs text-gray-500">payGIllustration</div>
                   </div>
@@ -4503,7 +4527,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       <div className="text-2xl font-bold text-gray-900">₹1,999 <span className="text-base font-medium text-gray-500">/ month</span></div>
                       <div className="text-xs text-gray-500">billed annually</div>
                     </div>
-                    <div className="mt-3 text-sm text-gray-700">3 Users Included<br/>No Additional Users<br/>Additional charges apply for messages</div>
+                    <div className="mt-3 text-sm text-gray-700">3 Users Included<br />No Additional Users<br />Additional charges apply for messages</div>
                     <button className="mt-4 w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Select Plan</button>
                     <div className="mt-4">
                       <div className="text-sm font-medium text-gray-900">Key features</div>
@@ -4518,7 +4542,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       </ul>
                       <div className="mt-3">
                         <div className="text-sm font-medium text-gray-900">Usage</div>
-                        <div className="text-sm text-gray-700">15k Broadcast/mon, Standard rates<br/>1,000 Free Automation triggers/mon<br/>2 select Commerce/CRM integrations<br/>10k API calls/mon, No webhooks</div>
+                        <div className="text-sm text-gray-700">15k Broadcast/mon, Standard rates<br />1,000 Free Automation triggers/mon<br />2 select Commerce/CRM integrations<br />10k API calls/mon, No webhooks</div>
                       </div>
                     </div>
                   </div>
@@ -4533,7 +4557,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       <div className="text-2xl font-bold text-gray-900">₹4,499 <span className="text-base font-medium text-gray-500">/ month</span></div>
                       <div className="text-xs text-gray-500">billed annually</div>
                     </div>
-                    <div className="mt-3 text-sm text-gray-700">5 Users Included<br/>Additional Users @ ₹1299/user/month<br/>Additional charges apply for messages</div>
+                    <div className="mt-3 text-sm text-gray-700">5 Users Included<br />Additional Users @ ₹1299/user/month<br />Additional charges apply for messages</div>
                     <button className="mt-4 w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Select Plan</button>
                     <div className="mt-4">
                       <div className="text-sm font-medium text-gray-900">Everything in Growth, plus:</div>
@@ -4548,7 +4572,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       </ul>
                       <div className="mt-3">
                         <div className="text-sm font-medium text-gray-900">Usage</div>
-                        <div className="text-sm text-gray-700">Unlimited Broadcasts, Standard rates<br/>2,000 Free Automation triggers/mon<br/>5 integrations incl. HubSpot<br/>200k API calls/mon, Limited webhooks<br/>250 Free AI Support Agent replies/mon</div>
+                        <div className="text-sm text-gray-700">Unlimited Broadcasts, Standard rates<br />2,000 Free Automation triggers/mon<br />5 integrations incl. HubSpot<br />200k API calls/mon, Limited webhooks<br />250 Free AI Support Agent replies/mon</div>
                       </div>
                     </div>
                   </div>
@@ -4562,7 +4586,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       <div className="text-2xl font-bold text-gray-900">₹13,499 <span className="text-base font-medium text-gray-500">/ month</span></div>
                       <div className="text-xs text-gray-500">billed annually</div>
                     </div>
-                    <div className="mt-3 text-sm text-gray-700">5 Users Included<br/>Additional Users @ ₹3999/user/month<br/>Additional charges apply for messages</div>
+                    <div className="mt-3 text-sm text-gray-700">5 Users Included<br />Additional Users @ ₹3999/user/month<br />Additional charges apply for messages</div>
                     <button className="mt-4 w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Select Plan</button>
                     <div className="mt-4">
                       <div className="text-sm font-medium text-gray-900">Everything in Pro, plus:</div>
@@ -4577,7 +4601,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                       </ul>
                       <div className="mt-3">
                         <div className="text-sm font-medium text-gray-900">Usage</div>
-                        <div className="text-sm text-gray-700">Unlimited Broadcasts, Volume discounts<br/>5,000 Free Automation triggers/mon<br/>Unlimited integrations incl. Salesforce<br/>20M API calls/mon, Extensive webhooks<br/>1000 Free AI Support Agent replies/mon<br/>Blitz add-on: Send up to 12k messages/min</div>
+                        <div className="text-sm text-gray-700">Unlimited Broadcasts, Volume discounts<br />5,000 Free Automation triggers/mon<br />Unlimited integrations incl. Salesforce<br />20M API calls/mon, Extensive webhooks<br />1000 Free AI Support Agent replies/mon<br />Blitz add-on: Send up to 12k messages/min</div>
                         <div className="text-xs text-gray-500 mt-2">$ - Requires purchase of $4.9/mo Shopify app</div>
                       </div>
                     </div>
@@ -4594,7 +4618,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
             )}
           </div>
         );
-      
+
       case 'channels':
         return (
           <div className="w-full" style={{ height: 'calc(100vh - 64px)' }}>
@@ -4605,7 +4629,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                   <div className="pr-0 pl-0 pt-4 pb-4 border-b flex-shrink-0 border-gray-200">
                     <h2 className="text-lg font-semibold text-gray-900 px-4 mb-4">Channels</h2>
                     <div className="flex flex-col gap-2 px-4">
-                    <button
+                      <button
                         onClick={() => {
                           setActiveChannel('whatsapp');
                           // Check and show WABA modal if waba_details is empty
@@ -4613,15 +4637,14 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                             checkWabaDetails();
                           }
                         }}
-                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left transition-colors ${
-                          activeChannel === 'whatsapp' 
-                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
-                            : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      WhatsApp
-                    </button>
-                    <button
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left transition-colors ${activeChannel === 'whatsapp'
+                          ? 'bg-blue-50 text-blue-700 border-blue-300'
+                          : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                          }`}
+                      >
+                        WhatsApp
+                      </button>
+                      <button
                         onClick={() => {
                           setActiveChannel('instagram');
                           // Close WABA modal when switching to Instagram
@@ -4629,50 +4652,49 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                             setIsWabaModalOpen(false);
                           }
                         }}
-                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left transition-colors ${
-                          activeChannel === 'instagram' 
-                            ? 'bg-blue-50 text-blue-700 border-blue-300' 
-                            : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      Instagram
-                    </button>
+                        className={`w-full px-3 py-2 text-sm font-medium rounded-lg border text-left transition-colors ${activeChannel === 'instagram'
+                          ? 'bg-blue-50 text-blue-700 border-blue-300'
+                          : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                          }`}
+                      >
+                        Instagram
+                      </button>
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Right Panel - Channel Content (6 columns) */}
                 <div className="lg:col-span-6 bg-white rounded-lg shadow-lg overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
                   <div className="h-full overflow-y-auto p-6">
-                  {showConnectAccount && activeChannel === 'whatsapp' && connectAccountStep === 1 ? (
-                    // Step 1/2: Connect Account In-Process Form
-                    <div className="space-y-6">
-                      {/* Header */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => setConnectAccountStep(0)}
-                            className="mr-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            aria-label="Go back"
-                          >
-                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
-                          </button>
-                          <h1 className="text-2xl font-bold text-gray-900">Connect Account</h1>
-                          <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">In-Process</span>
+                    {showConnectAccount && activeChannel === 'whatsapp' && connectAccountStep === 1 ? (
+                      // Step 1/2: Connect Account In-Process Form
+                      <div className="space-y-6">
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => setConnectAccountStep(0)}
+                              className="mr-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                              aria-label="Go back"
+                            >
+                              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                            <h1 className="text-2xl font-bold text-gray-900">Connect Account</h1>
+                            <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">In-Process</span>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Form Card */}
-                      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                        {/* Step Indicator */}
-                        <div className="text-sm text-gray-500 mb-6">Step 1/2</div>
+                        {/* Form Card */}
+                        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                          {/* Step Indicator */}
+                          <div className="text-sm text-gray-500 mb-6">Step 1/2</div>
 
                           {/* Connect your WhatsApp Phone Number */}
                           <div className="space-y-4 mb-8">
                             <h2 className="text-lg font-semibold text-gray-900">Connect your WhatsApp Phone Number</h2>
-                            
+
                             <ul className="space-y-2 text-sm text-gray-700">
                               <li className="flex items-start">
                                 <span className="mr-2">•</span>
@@ -4752,9 +4774,8 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                   </div>
                                   <input
                                     type="tel"
-                                    className={`flex-1 px-4 py-3 text-sm focus:outline-none ${
-                                      formErrors.phoneNumber ? 'border-red-500' : ''
-                                    }`}
+                                    className={`flex-1 px-4 py-3 text-sm focus:outline-none ${formErrors.phoneNumber ? 'border-red-500' : ''
+                                      }`}
                                     value={connectPhoneNumber}
                                     onChange={(e) => {
                                       setConnectPhoneNumber(e.target.value);
@@ -4778,7 +4799,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                             <h2 className="text-lg font-semibold text-gray-900">Choose your WhatsApp Business Display Name</h2>
                             <p className="text-sm text-gray-700">
                               This is what customers will see as your WhatsApp business account name. It must align with your legal business name, match your external branding, and follow these{' '}
-                    <button
+                              <button
                                 className="text-blue-600 hover:text-blue-700 underline"
                                 onClick={handleOpenWhatsAppGuidelines}
                               >
@@ -4787,11 +4808,10 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                             </p>
                             <input
                               type="text"
-                              className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 ${
-                                formErrors.displayName 
-                                  ? 'border-red-500 focus:ring-red-400' 
-                                  : 'border-gray-300 focus:ring-green-400'
-                              }`}
+                              className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 ${formErrors.displayName
+                                ? 'border-red-500 focus:ring-red-400'
+                                : 'border-gray-300 focus:ring-green-400'
+                                }`}
                               value={displayName}
                               onChange={(e) => {
                                 setDisplayName(e.target.value);
@@ -4810,7 +4830,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                           {/* Your business website URL */}
                           <div className="space-y-4 mb-6">
                             <h2 className="text-lg font-semibold text-gray-900">Your business website URL</h2>
-                            
+
                             <ul className="space-y-2 text-sm text-gray-700">
                               <li className="flex items-start">
                                 <span className="mr-2">•</span>
@@ -4841,11 +4861,10 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                             {hasWebsiteUrl && (
                               <input
                                 type="url"
-                                className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 mt-2 ${
-                                  formErrors.websiteUrl 
-                                    ? 'border-red-500 focus:ring-red-400' 
-                                    : 'border-gray-300 focus:ring-green-400'
-                                }`}
+                                className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 mt-2 ${formErrors.websiteUrl
+                                  ? 'border-red-500 focus:ring-red-400'
+                                  : 'border-gray-300 focus:ring-green-400'
+                                  }`}
                                 value={websiteUrl}
                                 onChange={(e) => {
                                   setWebsiteUrl(e.target.value);
@@ -4889,24 +4908,24 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                               onClick={() => {
                                 // Validate form
                                 const errors = {};
-                                
+
                                 // Validate display name (mandatory)
                                 if (!displayName || displayName.trim() === '') {
                                   errors.displayName = 'Display name is required';
                                 }
-                                
+
                                 // Validate phone number if official number is selected
                                 if (hasOfficialNumber && (!connectPhoneNumber || connectPhoneNumber.trim() === '')) {
                                   errors.phoneNumber = 'Phone number is required when using an official number';
                                 }
-                                
+
                                 // Validate website URL if checkbox is checked
                                 if (hasWebsiteUrl && (!websiteUrl || websiteUrl.trim() === '')) {
                                   errors.websiteUrl = 'Website URL is required when you have an official website';
                                 }
-                                
+
                                 setFormErrors(errors);
-                                
+
                                 // If no errors, create setup object and proceed
                                 if (Object.keys(errors).length === 0) {
                                   // Create setup object
@@ -4934,16 +4953,16 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                       timezone: ''
                                     }
                                   };
-                                  
+
                                   setSetupData(setup);
-                                setConnectAccountStep(2);
+                                  setConnectAccountStep(2);
                                 }
                               }}
                             >
                               Next
-                    </button>
-                  </div>
-                </div>
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ) : showConnectAccount && activeChannel === 'whatsapp' && connectAccountStep === 2 ? (
                       // Step 2: Carousel with Connect with Facebook button
@@ -4962,7 +4981,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                           <h1 className="text-2xl font-bold text-gray-900">Connect Account</h1>
                           <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">In-Process</span>
                         </div>
-                        
+
                         {/* Carousel Section */}
                         <div className="relative w-full max-w-4xl mx-auto">
                           <div className="flex gap-8">
@@ -5050,67 +5069,66 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                 </div>
                               )}
                             </div>
-                            
+
                             {/* Carousel Container */}
                             <div className="flex-1 relative">
                               <div className="relative overflow-hidden rounded-lg bg-white" style={{ height: '500px' }}>
-                            {/* Carousel Images */}
-                            <div 
-                              className="flex transition-transform duration-500 ease-in-out h-full"
-                              style={{ transform: `translateX(-${carouselIndex * 100}%)` }}
-                            >
-                              {carouselImages.map((image, index) => (
-                                <div key={index} className="min-w-full h-full relative flex items-center justify-center bg-white">
-                                  <img 
-                                    src={image} 
-                                    alt={`Carousel image ${index + 1}`}
-                                    className="max-w-full max-h-full object-contain border-2 border-black"
-                                  />
+                                {/* Carousel Images */}
+                                <div
+                                  className="flex transition-transform duration-500 ease-in-out h-full"
+                                  style={{ transform: `translateX(-${carouselIndex * 100}%)` }}
+                                >
+                                  {carouselImages.map((image, index) => (
+                                    <div key={index} className="min-w-full h-full relative flex items-center justify-center bg-white">
+                                      <img
+                                        src={image}
+                                        alt={`Carousel image ${index + 1}`}
+                                        className="max-w-full max-h-full object-contain border-2 border-black"
+                                      />
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
 
-                            {/* Left Navigation Button */}
-                            {carouselIndex > 0 && (
-                              <button
-                                onClick={() => setCarouselIndex((prev) => prev - 1)}
-                                className="absolute top-1/2 transform -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full p-2.5 shadow-lg transition-all duration-200 hover:scale-110 z-10"
-                                style={{ left: '15px' }}
-                                aria-label="Previous image"
-                              >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                </svg>
-                              </button>
-                            )}
+                                {/* Left Navigation Button */}
+                                {carouselIndex > 0 && (
+                                  <button
+                                    onClick={() => setCarouselIndex((prev) => prev - 1)}
+                                    className="absolute top-1/2 transform -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full p-2.5 shadow-lg transition-all duration-200 hover:scale-110 z-10"
+                                    style={{ left: '15px' }}
+                                    aria-label="Previous image"
+                                  >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                  </button>
+                                )}
 
-                            {/* Right Navigation Button */}
-                            {carouselIndex < carouselImages.length - 1 && (
-                              <button
-                                onClick={() => setCarouselIndex((prev) => prev + 1)}
-                                className="absolute top-1/2 transform -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full p-2.5 shadow-lg transition-all duration-200 hover:scale-110 z-10"
-                                style={{ right: '15px' }}
-                                aria-label="Next image"
-                              >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                              </button>
-                            )}
+                                {/* Right Navigation Button */}
+                                {carouselIndex < carouselImages.length - 1 && (
+                                  <button
+                                    onClick={() => setCarouselIndex((prev) => prev + 1)}
+                                    className="absolute top-1/2 transform -translate-y-1/2 bg-gray-500 hover:bg-gray-600 text-white rounded-full p-2.5 shadow-lg transition-all duration-200 hover:scale-110 z-10"
+                                    style={{ right: '15px' }}
+                                    aria-label="Next image"
+                                  >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </button>
+                                )}
 
-                            {/* Carousel Indicators */}
-                            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
-                              {carouselImages.map((_, index) => (
-                                <button
-                                  key={index}
-                                  onClick={() => setCarouselIndex(index)}
-                                  className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                                    carouselIndex === index ? 'bg-white w-8' : 'bg-white/50'
-                                  }`}
-                                  aria-label={`Go to slide ${index + 1}`}
-                                />
-                              ))}
-                            </div>
+                                {/* Carousel Indicators */}
+                                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
+                                  {carouselImages.map((_, index) => (
+                                    <button
+                                      key={index}
+                                      onClick={() => setCarouselIndex(index)}
+                                      className={`w-2 h-2 rounded-full transition-all duration-200 ${carouselIndex === index ? 'bg-white w-8' : 'bg-white/50'
+                                        }`}
+                                      aria-label={`Go to slide ${index + 1}`}
+                                    />
+                                  ))}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -5125,18 +5143,18 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                 alert('Facebook SDK is not loaded. Please refresh the page.');
                                 return;
                               }
-                              
+
                               // Launch WhatsApp Embedded Signup with setup data
                               const CONFIGURATION_ID = '1464707537999245'; // Same as in WhatsAppEmbeddedSignup
-                              
+
                               // Facebook login callback
                               const fbLoginCallback = (response) => {
                                 console.log('Facebook login callback received:', response);
-                                
+
                                 if (response.authResponse) {
                                   const code = response.authResponse.code;
                                   console.log('WhatsApp Embedded Signup response code:', code);
-                                  
+
                                   // Store the auth code - the useEffect will handle processing when both code and data are available
                                   setWhatsappAuthCode(code);
                                 } else {
@@ -5144,7 +5162,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                                   setWhatsappAuthCode(null);
                                 }
                               };
-                              
+
                               // Launch WhatsApp Embedded Signup
                               window.FB.login(fbLoginCallback, {
                                 config_id: CONFIGURATION_ID,
@@ -5160,305 +5178,305 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                             className="flex items-center gap-3 px-8 py-4 bg-[#0084FF] hover:bg-[#0066CC] text-white rounded-lg font-semibold text-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
                           >
                             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                             </svg>
                             Connect with Facebook
                           </button>
                         </div>
                       </div>
                     ) : showConnectAccount && activeChannel === 'whatsapp' && connectAccountStep === 0 ? (
-                    // Connect Account initial page (before clicking Connect)
-                    <div className="space-y-6">
-                      {/* Header */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => setShowConnectAccount(false)}
-                            className="mr-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            aria-label="Go back"
-                          >
-                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
-                          </button>
-                          <h1 className="text-2xl font-bold text-gray-900">Connect Account</h1>
-                          <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">Not Started</span>
+                      // Connect Account initial page (before clicking Connect)
+                      <div className="space-y-6">
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => setShowConnectAccount(false)}
+                              className="mr-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                              aria-label="Go back"
+                            >
+                              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                            <h1 className="text-2xl font-bold text-gray-900">Connect Account</h1>
+                            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">Not Started</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <button className="flex items-center gap-2 text-gray-700 hover:text-gray-900">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                              </svg>
+                              <span className="text-sm font-medium">Help Guide</span>
+                            </button>
+                            <button className="flex items-center gap-2 text-gray-700 hover:text-gray-900">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span className="text-sm font-medium">Watch Tutorial</span>
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <button className="flex items-center gap-2 text-gray-700 hover:text-gray-900">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                            </svg>
-                            <span className="text-sm font-medium">Help Guide</span>
-                          </button>
-                          <button className="flex items-center gap-2 text-gray-700 hover:text-gray-900">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="text-sm font-medium">Watch Tutorial</span>
-                          </button>
+
+                        {/* Main Content - Two Column Layout */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Left Panel - Benefits */}
+                          <div className="space-y-4">
+                            <h2 className="text-lg font-semibold text-gray-900">Benefits of connecting your own number</h2>
+                            <ul className="space-y-3">
+                              <li className="flex items-start gap-3">
+                                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span className="text-gray-700">Sending messages from your brand name</span>
+                              </li>
+                              <li className="flex items-start gap-3">
+                                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span className="text-gray-700">Free 100 INR credits</span>
+                              </li>
+                              <li className="flex items-start gap-3">
+                                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span className="text-gray-700">Respond to unlimited customer initiated conversations</span>
+                              </li>
+                            </ul>
+                            <div className="mt-6 pt-6 border-t border-gray-200">
+                              <p className="text-sm text-gray-600">
+                                If you are not the Admin of your business, please{' '}
+                                <button className="text-blue-600 hover:text-blue-700 underline">invite your team</button>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Right Panel - Connect Card */}
+                          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                            {/* Icons */}
+                            <div className="flex items-center justify-center gap-4 mb-6">
+                              <svg className="w-12 h-12" fill="#264A36" viewBox="0 0 24 24">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
+                              </svg>
+                              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                              </svg>
+                              <svg className="w-12 h-12" fill="#0084FF" viewBox="0 0 24 24">
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                              </svg>
+                            </div>
+
+                            {/* Heading */}
+                            <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
+                              To experience messaging, connect your WhatsApp number
+                            </h3>
+                            <p className="text-sm text-gray-600 text-center mb-6">
+                              Once connected, you can start messaging contacts or receive messages from them
+                            </p>
+
+                            {/* Key Detail Box */}
+                            <div className="mb-6">
+                              <h4 className="text-sm font-semibold text-gray-900 mb-3">Key detail to check before you connect</h4>
+                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                <div className="flex items-start gap-3">
+                                  <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                  <div>
+                                    <p className="text-sm font-semibold text-gray-900">Meta Business Manager</p>
+                                    <p className="text-xs text-gray-600 mt-1">You must have Admin access to your Meta Business manager</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Connect Button */}
+                            <button
+                              className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-base font-medium transition-colors duration-200"
+                              onClick={() => {
+                                // Show Step 1 of the connect form
+                                setShowConnectAccount(true);
+                                setConnectAccountStep(1);
+                              }}
+                            >
+                              Connect
+                            </button>
+                          </div>
                         </div>
                       </div>
+                    ) : activeChannel === 'whatsapp' && isWabaDetailsEmpty ? (
+                      // WABA content as page content
+                      <div className="h-full flex flex-col">
+                        <div className="flex-1 flex flex-col justify-between">
+                          <div className="space-y-6">
+                            <div className="space-y-2">
+                              <h1 className="text-2xl font-semibold text-gray-900">
+                                Hello {userName}
+                              </h1>
+                              <h2 className="text-xl font-semibold text-gray-900">
+                                Welcome to NimbleAI
+                              </h2>
+                            </div>
 
-                      {/* Main Content - Two Column Layout */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Left Panel - Benefits */}
-                        <div className="space-y-4">
-                          <h2 className="text-lg font-semibold text-gray-900">Benefits of connecting your own number</h2>
-                          <ul className="space-y-3">
-                            <li className="flex items-start gap-3">
-                              <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span className="text-gray-700">Sending messages from your brand name</span>
-                            </li>
-                            <li className="flex items-start gap-3">
-                              <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span className="text-gray-700">Free 100 INR credits</span>
-                            </li>
-                            <li className="flex items-start gap-3">
-                              <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span className="text-gray-700">Respond to unlimited customer initiated conversations</span>
-                            </li>
-                          </ul>
-                          <div className="mt-6 pt-6 border-t border-gray-200">
-                            <p className="text-sm text-gray-600">
-                              If you are not the Admin of your business, please{' '}
-                              <button className="text-blue-600 hover:text-blue-700 underline">invite your team</button>
-                            </p>
-                          </div>
-                        </div>
+                            <div className="space-y-4">
+                              <p className="text-base text-gray-700">
+                                Ready to start using your Live Trial Account?
+                              </p>
 
-                        {/* Right Panel - Connect Card */}
-                        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                          {/* Icons */}
-                          <div className="flex items-center justify-center gap-4 mb-6">
-                            <svg className="w-12 h-12" fill="#264A36" viewBox="0 0 24 24">
-                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
-                            </svg>
-                            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                            </svg>
-                            <svg className="w-12 h-12" fill="#0084FF" viewBox="0 0 24 24">
-                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                            </svg>
-                          </div>
-
-                          {/* Heading */}
-                          <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
-                            To experience messaging, connect your WhatsApp number
-                          </h3>
-                          <p className="text-sm text-gray-600 text-center mb-6">
-                            Once connected, you can start messaging contacts or receive messages from them
-                          </p>
-
-                          {/* Key Detail Box */}
-                          <div className="mb-6">
-                            <h4 className="text-sm font-semibold text-gray-900 mb-3">Key detail to check before you connect</h4>
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                              <div className="flex items-start gap-3">
-                                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <div>
-                                  <p className="text-sm font-semibold text-gray-900">Meta Business Manager</p>
-                                  <p className="text-xs text-gray-600 mt-1">You must have Admin access to your Meta Business manager</p>
-                                </div>
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left space-y-3">
+                                <p className="text-sm font-medium text-gray-900">
+                                  Connect your number now to unlock the full potential of NimbleAI and enjoy exclusive benefits such as:
+                                </p>
+                                <ul className="space-y-2 text-sm text-gray-700">
+                                  <li className="flex items-start">
+                                    <span className="mr-2">•</span>
+                                    <span>Sending messages with your brand name</span>
+                                  </li>
+                                  <li className="flex items-start">
+                                    <span className="mr-2">•</span>
+                                    <span>₹100 free credits</span>
+                                  </li>
+                                  <li className="flex items-start">
+                                    <span className="mr-2">•</span>
+                                    <span>Unlimited responses to customer-initiated conversations</span>
+                                  </li>
+                                </ul>
                               </div>
                             </div>
                           </div>
 
-                          {/* Connect Button */}
-                          <button
-                            className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-base font-medium transition-colors duration-200"
-                            onClick={() => {
-                              // Show Step 1 of the connect form
-                              setShowConnectAccount(true);
-                              setConnectAccountStep(1);
-                            }}
-                          >
-                            Connect
-                          </button>
+                          {/* Button positioned at bottom */}
+                          <div className="mt-auto pt-4" style={{ marginBottom: '120px' }}>
+                            <button
+                              className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-base font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                              onClick={() => {
+                                // Show Connect Account page
+                                setShowConnectAccount(true);
+                              }}
+                            >
+                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
+                              </svg>
+                              Create Whatsapp Business Account
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ) : activeChannel === 'whatsapp' && isWabaDetailsEmpty ? (
-                    // WABA content as page content
-                    <div className="h-full flex flex-col">
-                      <div className="flex-1 flex flex-col justify-between">
-                        <div className="space-y-6">
-                          <div className="space-y-2">
-                            <h1 className="text-2xl font-semibold text-gray-900">
-                              Hello {userName}
-                            </h1>
-                            <h2 className="text-xl font-semibold text-gray-900">
-                              Welcome to NimbleAI
-                            </h2>
+                    ) : activeChannel === 'whatsapp' ? (
+                      <div className="space-y-6">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">Channel Status</h3>
+                          <p className="text-sm text-gray-600">View and manage your connections</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm text-gray-500 mb-1">WhatsappSvg</div>
+                            <div className="text-sm font-medium text-gray-900">WhatsApp</div>
                           </div>
-
-                          <div className="space-y-4">
-                            <p className="text-base text-gray-700">
-                              Ready to start using your Live Trial Account?
-                            </p>
-
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left space-y-3">
-                              <p className="text-sm font-medium text-gray-900">
-                                Connect your number now to unlock the full potential of NimbleAI and enjoy exclusive benefits such as:
-                              </p>
-                              <ul className="space-y-2 text-sm text-gray-700">
-                                <li className="flex items-start">
-                                  <span className="mr-2">•</span>
-                                  <span>Sending messages with your brand name</span>
-                                </li>
-                                <li className="flex items-start">
-                                  <span className="mr-2">•</span>
-                                  <span>₹100 free credits</span>
-                                </li>
-                                <li className="flex items-start">
-                                  <span className="mr-2">•</span>
-                                  <span>Unlimited responses to customer-initiated conversations</span>
-                                </li>
-                              </ul>
-                            </div>
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm text-gray-500 mb-1">InstagramSvg</div>
+                            <div className="text-sm font-medium text-gray-900">Instagram</div>
                           </div>
                         </div>
 
-                        {/* Button positioned at bottom */}
-                        <div className="mt-auto pt-4" style={{ marginBottom: '120px' }}>
-                          <button
-                            className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-base font-medium transition-colors duration-200 flex items-center justify-center gap-2"
-                            onClick={() => {
-                              // Show Connect Account page
-                              setShowConnectAccount(true);
-                            }}
-                          >
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
-                            </svg>
-                            Create Whatsapp Business Account
-                          </button>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="px-2 py-1 rounded bg-green-100 text-green-700">Messenger</span>
+                          <span className="px-2 py-1 rounded bg-blue-100 text-blue-700">New</span>
                         </div>
-                      </div>
-                    </div>
-                  ) : activeChannel === 'whatsapp' ? (
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Channel Status</h3>
-                        <p className="text-sm text-gray-600">View and manage your connections</p>
-                      </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm text-gray-500 mb-1">WhatsappSvg</div>
-                          <div className="text-sm font-medium text-gray-900">WhatsApp</div>
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-gray-900">15558316639</div>
+                          <div className="flex items-center gap-2">
+                            <button className="px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Add</button>
+                            <span className="text-xs text-gray-500">Mandatory</span>
+                          </div>
                         </div>
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm text-gray-500 mb-1">InstagramSvg</div>
-                          <div className="text-sm font-medium text-gray-900">Instagram</div>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="px-2 py-1 rounded bg-green-100 text-green-700">Messenger</span>
-                        <span className="px-2 py-1 rounded bg-blue-100 text-blue-700">New</span>
-                      </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-900">Connect Account</div>
+                            <div className="text-xs text-gray-500">Link your Business Manager & Number</div>
+                          </div>
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-900">Business Verification(Action Required)</div>
+                            <div className="text-xs text-gray-500">Verify your Meta Business Manager</div>
+                          </div>
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-900">Others</div>
+                            <div className="text-xs text-gray-500">Messaging limit</div>
+                            <div className="text-xs text-gray-500">Know your Messaging Limits</div>
+                          </div>
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-900">WhatsApp Approval Status</div>
+                            <div className="text-xs text-gray-500">Check WhatsApp Account Approval status</div>
+                          </div>
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-900">WhatsApp Display Name</div>
+                            <div className="text-xs text-gray-500">Know your WhatsApp Display Name Status</div>
+                          </div>
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-900">Phone Number Status</div>
+                            <div className="text-xs text-gray-500">Check Number Connection Status</div>
+                          </div>
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-900">Quality Rating</div>
+                            <div className="text-xs text-gray-500">Know phone number's quality rating</div>
+                          </div>
+                        </div>
 
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium text-gray-900">15558316639</div>
-                        <div className="flex items-center gap-2">
-                          <button className="px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Add</button>
-                          <span className="text-xs text-gray-500">Mandatory</span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-900">Connect Account</div>
+                            <div className="text-xs text-green-600">Completed</div>
+                          </div>
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-900">Help Guide</div>
+                            <button className="mt-2 px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Watch Tutorial</button>
+                          </div>
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-xs text-gray-500">Last Updated : Nov 4, 2025 5:22 PM</div>
+                            <div className="text-sm text-gray-700 mt-1">Your account is connected.</div>
+                            <div className="text-sm text-gray-700">You are ready to engage your customers!</div>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm font-medium text-gray-900">Connect Account</div>
-                          <div className="text-xs text-gray-500">Link your Business Manager & Number</div>
-                        </div>
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm font-medium text-gray-900">Business Verification(Action Required)</div>
-                          <div className="text-xs text-gray-500">Verify your Meta Business Manager</div>
-                        </div>
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm font-medium text-gray-900">Others</div>
-                          <div className="text-xs text-gray-500">Messaging limit</div>
-                          <div className="text-xs text-gray-500">Know your Messaging Limits</div>
-                        </div>
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm font-medium text-gray-900">WhatsApp Approval Status</div>
-                          <div className="text-xs text-gray-500">Check WhatsApp Account Approval status</div>
-                        </div>
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm font-medium text-gray-900">WhatsApp Display Name</div>
-                          <div className="text-xs text-gray-500">Know your WhatsApp Display Name Status</div>
-                        </div>
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm font-medium text-gray-900">Phone Number Status</div>
-                          <div className="text-xs text-gray-500">Check Number Connection Status</div>
-                        </div>
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm font-medium text-gray-900">Quality Rating</div>
-                          <div className="text-xs text-gray-500">Know phone number's quality rating</div>
+                        <div className="space-y-3">
+                          <div className="text-sm font-medium text-gray-900">As next steps, we suggest the following:</div>
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-900">Upload your contacts</div>
+                            <div className="text-xs text-gray-500">You can upload your contacts and easily interact with them</div>
+                            <button className="mt-2 px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Contacts</button>
+                          </div>
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <div className="text-sm font-medium text-gray-900">Prepare broadcast templates</div>
+                            <div className="text-xs text-gray-500">You can create a broadcast template to engage your customers</div>
+                            <button className="mt-2 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">Create Template message</button>
+                          </div>
+                          <div className="p-4 border border-gray-200 rounded-lg">
+                            <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Change Account/Number</button>
+                          </div>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm font-medium text-gray-900">Connect Account</div>
-                          <div className="text-xs text-green-600">Completed</div>
+                    ) : activeChannel === 'instagram' ? (
+                      <div className="space-y-6">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">Instagram Channel</h3>
+                          <p className="text-sm text-gray-600">Manage your Instagram integration</p>
                         </div>
                         <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm font-medium text-gray-900">Help Guide</div>
-                          <button className="mt-2 px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Watch Tutorial</button>
-                        </div>
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-xs text-gray-500">Last Updated : Nov 4, 2025 5:22 PM</div>
-                          <div className="text-sm text-gray-700 mt-1">Your account is connected.</div>
-                          <div className="text-sm text-gray-700">You are ready to engage your customers!</div>
+                          <p className="text-sm text-gray-600">Instagram channel configuration coming soon.</p>
                         </div>
                       </div>
-
-                      <div className="space-y-3">
-                        <div className="text-sm font-medium text-gray-900">As next steps, we suggest the following:</div>
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm font-medium text-gray-900">Upload your contacts</div>
-                          <div className="text-xs text-gray-500">You can upload your contacts and easily interact with them</div>
-                          <button className="mt-2 px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Contacts</button>
-                        </div>
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <div className="text-sm font-medium text-gray-900">Prepare broadcast templates</div>
-                          <div className="text-xs text-gray-500">You can create a broadcast template to engage your customers</div>
-                          <button className="mt-2 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">Create Template message</button>
-                        </div>
-                        <div className="p-4 border border-gray-200 rounded-lg">
-                          <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Change Account/Number</button>
-                        </div>
+                    ) : (
+                      <div className="h-full w-full border border-gray-200 rounded-lg p-4 text-sm text-gray-500">
+                        Select a channel on the left to configure details.
                       </div>
-                    </div>
-                  ) : activeChannel === 'instagram' ? (
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Instagram Channel</h3>
-                        <p className="text-sm text-gray-600">Manage your Instagram integration</p>
-                      </div>
-                      <div className="p-4 border border-gray-200 rounded-lg">
-                        <p className="text-sm text-gray-600">Instagram channel configuration coming soon.</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-full w-full border border-gray-200 rounded-lg p-4 text-sm text-gray-500">
-                      Select a channel on the left to configure details.
-                    </div>
-                  )}
+                    )}
                   </div>
                 </div>
               </div>
@@ -5466,34 +5484,19 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           </div>
         );
       case 'dashboard':
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to NimbleAI Dashboard</h2>
-              {/* Desktop View: Shows "sidebar" */}
-              <p className="hidden md:block text-gray-600">
-               Select a section from the sidebar to get started.
-              </p>
-  
-              {/* Mobile View: Shows "menu" */}
-              <p className="md:hidden text-gray-600">
-              Select a section from the Menu to get started.
-              </p>
-            </div>
-          </div>
-        );
+        return <DashboardOverview user={user} userData={userData} />;
       case 'knowledge':
       case 'live-chat':
       case 'billing':
       case 'subscriptions':
       case 'settings':
       case 'setup':
-                return (
+        return (
           <div className="space-y-6">
             {/* Status Indicators Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
               {/* WhatsApp Status */}
-              <div 
+              <div
                 className={`bg-white rounded-xl shadow-sm border-2 ${whatsappBorderClass} hover:border-gray-400 p-6 cursor-pointer hover:shadow-md transition`}
                 onClick={handleWhatsAppClick}
               >
@@ -5518,9 +5521,9 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                   </p>
                 </div>
               </div>
-              
+
               {/* 2. Shopify Status */}
-              <div 
+              <div
                 className={`bg-white rounded-xl shadow-sm border-2 ${shopifyBorderClass || 'border-gray-300'} hover:border-gray-400 p-6 cursor-pointer hover:shadow-md transition`}
                 onClick={handleShopifyClick}
               >
@@ -5644,37 +5647,30 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
         // Keep existing cases for backward compatibility
         switch (activeTab) {
           case 'dashboard':
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to NimbleAI Dashboard</h2>
-              <p className="text-gray-600">Select a section from the sidebar to get started.</p>
-            </div>
-          </div>
-        );
-        case 'knowledge':
-          return <KnowledgeBase onTrainingComplete={refreshAllStatuses} />;
-        case 'live-chat':
-          return <LiveChat />;
-        case 'billing':
-          return <PlanBilling onSubscriptionActivated={refreshAllStatuses} />;
-        case 'subscriptions':
-          return <PlanBilling onSubscriptionActivated={refreshAllStatuses} />;
-        case 'settings':
-          return <Settings />;
+            return (
+              <div className="space-y-6">
+                <div className="text-center py-12">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to NimbleAI Dashboard</h2>
+                  <p className="text-gray-600">Select a section from the sidebar to get started.</p>
+                </div>
+              </div>
+            );
+          case 'knowledge':
+            return <KnowledgeBase onTrainingComplete={refreshAllStatuses} />;
+          case 'live-chat':
+            return <LiveChat />;
+          case 'billing':
+            return <PlanBilling onSubscriptionActivated={refreshAllStatuses} />;
+          case 'subscriptions':
+            return <PlanBilling onSubscriptionActivated={refreshAllStatuses} />;
+          case 'settings':
+            return <Settings />;
           default:
             break;
         }
         break;
       default:
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to NimbleAI Dashboard</h2>
-              <p className="text-gray-600">Select a section from the sidebar to get started.</p>
-            </div>
-          </div>
-        );
+        return <DashboardOverview user={user} userData={userData} />;
     }
   };
 
@@ -5682,9 +5678,9 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
     <div className="flex flex-col bg-gray-50 overflow-hidden w-full" style={{ height: 'calc(100vh - 75px)' }}>
       {/* Email Verification Banner - Show when email is not verified */}
       {/* Debug: Current verification status */}
-      {console.log('🔍 [Email Verification Banner] Current state:', { 
-        isEmailVerified, 
-        isCheckingEmailVerification, 
+      {console.log('🔍 [Email Verification Banner] Current state:', {
+        isEmailVerified,
+        isCheckingEmailVerification,
         hasUser: !!user,
         shouldShow: isEmailVerified === false,
         type: typeof isEmailVerified
@@ -5709,7 +5705,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
               <button
                 onClick={async () => {
                   if (isCheckingEmailVerification || !firebaseApp) return;
-                  
+
                   setIsCheckingEmailVerification(true);
                   try {
                     const auth = getAuth(firebaseApp);
@@ -5733,7 +5729,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           </div>
         </div>
       )}
-      
+
       {isOnboardingModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
@@ -5838,20 +5834,20 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           </div>
         </div>
       )}
-      
+
       {/* First-time Welcome Modal */}
       {isWelcomeModalOpen && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <div className="w-full h-full flex flex-col">
             {/* Logo at top */}
             <div className="container mx-auto px-4 py-4 flex justify-center items-center border-b border-gray-200">
-              <img 
-                src={require('../../logo.png')} 
-                alt='Nimble AI Logo' 
-                className="h-12 w-auto object-contain" 
+              <img
+                src={require('../../logo.png')}
+                alt='Nimble AI Logo'
+                className="h-12 w-auto object-contain"
               />
             </div>
-            
+
             <div className="flex flex-col lg:flex-row flex-1">
               {/* Left Side - Features */}
               <div className="w-full lg:w-1/2 p-6 sm:p-8 lg:p-12 flex flex-col">
@@ -5859,193 +5855,193 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                   <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900">Transform your business growth with WhatsApp</h2>
                 </div>
 
-              <div className="space-y-3 text-base text-gray-700 flex-1">
-                <div className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>Launch personalized campaigns that drive conversions</span>
-                </div>
-                <div className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>Send updates and reminders with ready-to-use templates</span>
-                </div>
-                <div className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>Engage customers 24/7 with intelligent, no-code chatbots</span>
-                </div>
-                <div className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>Automate workflows to resolve customer issues instantly</span>
+                <div className="space-y-3 text-base text-gray-700 flex-1">
+                  <div className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Launch personalized campaigns that drive conversions</span>
+                  </div>
+                  <div className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Send updates and reminders with ready-to-use templates</span>
+                  </div>
+                  <div className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Engage customers 24/7 with intelligent, no-code chatbots</span>
+                  </div>
+                  <div className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Automate workflows to resolve customer issues instantly</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Right Side - Form */}
-            <div className="w-full lg:w-1/2 p-6 sm:p-8 lg:p-12 bg-gray-50 lg:bg-white border-t lg:border-t-0 lg:border-l border-gray-200">
-              <div className="max-w-lg mx-auto space-y-6">
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-base text-blue-800">
-                  Get started with a demo account on NimbleAI
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-base font-medium text-gray-700 mb-2">Name & Email</label>
-                    <div className="flex border rounded-lg overflow-hidden">
-                      <div className="flex-1 px-4 py-3 bg-gray-50 border-r border-gray-300">
-                        <span className="text-base text-gray-700">
-                          {welcomeName || userData?.displayName || user?.displayName || ''}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 min-w-[200px]">
-                        {(userData?.photoURL || user?.photoURL) && (
-                          <img 
-                            src={userData?.photoURL || user?.photoURL} 
-                            alt="User avatar" 
-                            className="w-10 h-10 rounded-full object-cover" 
-                          />
-                        )}
-                        <span className="text-base text-gray-700 flex-1">
-                          {welcomeEmail || userData?.email || user?.email || ''}
-                        </span>
-                      </div>
-                    </div>
+              {/* Right Side - Form */}
+              <div className="w-full lg:w-1/2 p-6 sm:p-8 lg:p-12 bg-gray-50 lg:bg-white border-t lg:border-t-0 lg:border-l border-gray-200">
+                <div className="max-w-lg mx-auto space-y-6">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-base text-blue-800">
+                    Get started with a demo account on NimbleAI
                   </div>
 
-                  <div>
-                    <label className="block text-base font-medium text-gray-700 mb-2">Phone</label>
-                    <div className="flex border rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-400">
-                      <select
-                        className="border-r border-gray-300 px-3 py-3 text-base focus:outline-none bg-white"
-                        value={welcomeCountry}
-                        onChange={(e) => handleWelcomeCountryChange(e.target.value)}
-                        style={{ appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23374151\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
-                      >
-                        <option value="IN">🇮🇳 IN</option>
-                        <option value="US">🇺🇸 US</option>
-                        <option value="GB">🇬🇧 GB</option>
-                        <option value="CA">🇨🇦 CA</option>
-                        <option value="AU">🇦🇺 AU</option>
-                        <option value="DE">🇩🇪 DE</option>
-                        <option value="FR">🇫🇷 FR</option>
-                        <option value="IT">🇮🇹 IT</option>
-                        <option value="ES">🇪🇸 ES</option>
-                        <option value="BR">🇧🇷 BR</option>
-                        <option value="MX">🇲🇽 MX</option>
-                        <option value="JP">🇯🇵 JP</option>
-                        <option value="CN">🇨🇳 CN</option>
-                        <option value="KR">🇰🇷 KR</option>
-                        <option value="SG">🇸🇬 SG</option>
-                        <option value="MY">🇲🇾 MY</option>
-                        <option value="TH">🇹🇭 TH</option>
-                        <option value="ID">🇮🇩 ID</option>
-                        <option value="PH">🇵🇭 PH</option>
-                        <option value="VN">🇻🇳 VN</option>
-                        <option value="HK">🇭🇰 HK</option>
-                        <option value="TW">🇹🇼 TW</option>
-                        <option value="NZ">🇳🇿 NZ</option>
-                        <option value="AE">🇦🇪 AE</option>
-                        <option value="SA">🇸🇦 SA</option>
-                        <option value="ZA">🇿🇦 ZA</option>
-                        <option value="RU">🇷🇺 RU</option>
-                        <option value="PK">🇵🇰 PK</option>
-                        <option value="BD">🇧🇩 BD</option>
-                        <option value="LK">🇱🇰 LK</option>
-                        <option value="NP">🇳🇵 NP</option>
-                        <option value="MM">🇲🇲 MM</option>
-                      </select>
-                      <div className="flex items-center px-3 bg-gray-50 border-r border-gray-300 text-gray-700 text-base font-medium min-w-[60px]">
-                        {welcomeDialCode || '+91'}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-base font-medium text-gray-700 mb-2">Name & Email</label>
+                      <div className="flex border rounded-lg overflow-hidden">
+                        <div className="flex-1 px-4 py-3 bg-gray-50 border-r border-gray-300">
+                          <span className="text-base text-gray-700">
+                            {welcomeName || userData?.displayName || user?.displayName || ''}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 min-w-[200px]">
+                          {(userData?.photoURL || user?.photoURL) && (
+                            <img
+                              src={userData?.photoURL || user?.photoURL}
+                              alt="User avatar"
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          )}
+                          <span className="text-base text-gray-700 flex-1">
+                            {welcomeEmail || userData?.email || user?.email || ''}
+                          </span>
+                        </div>
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-base font-medium text-gray-700 mb-2">Phone</label>
+                      <div className="flex border rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-400">
+                        <select
+                          className="border-r border-gray-300 px-3 py-3 text-base focus:outline-none bg-white"
+                          value={welcomeCountry}
+                          onChange={(e) => handleWelcomeCountryChange(e.target.value)}
+                          style={{ appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23374151\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
+                        >
+                          <option value="IN">🇮🇳 IN</option>
+                          <option value="US">🇺🇸 US</option>
+                          <option value="GB">🇬🇧 GB</option>
+                          <option value="CA">🇨🇦 CA</option>
+                          <option value="AU">🇦🇺 AU</option>
+                          <option value="DE">🇩🇪 DE</option>
+                          <option value="FR">🇫🇷 FR</option>
+                          <option value="IT">🇮🇹 IT</option>
+                          <option value="ES">🇪🇸 ES</option>
+                          <option value="BR">🇧🇷 BR</option>
+                          <option value="MX">🇲🇽 MX</option>
+                          <option value="JP">🇯🇵 JP</option>
+                          <option value="CN">🇨🇳 CN</option>
+                          <option value="KR">🇰🇷 KR</option>
+                          <option value="SG">🇸🇬 SG</option>
+                          <option value="MY">🇲🇾 MY</option>
+                          <option value="TH">🇹🇭 TH</option>
+                          <option value="ID">🇮🇩 ID</option>
+                          <option value="PH">🇵🇭 PH</option>
+                          <option value="VN">🇻🇳 VN</option>
+                          <option value="HK">🇭🇰 HK</option>
+                          <option value="TW">🇹🇼 TW</option>
+                          <option value="NZ">🇳🇿 NZ</option>
+                          <option value="AE">🇦🇪 AE</option>
+                          <option value="SA">🇸🇦 SA</option>
+                          <option value="ZA">🇿🇦 ZA</option>
+                          <option value="RU">🇷🇺 RU</option>
+                          <option value="PK">🇵🇰 PK</option>
+                          <option value="BD">🇧🇩 BD</option>
+                          <option value="LK">🇱🇰 LK</option>
+                          <option value="NP">🇳🇵 NP</option>
+                          <option value="MM">🇲🇲 MM</option>
+                        </select>
+                        <div className="flex items-center px-3 bg-gray-50 border-r border-gray-300 text-gray-700 text-base font-medium min-w-[60px]">
+                          {welcomeDialCode || '+91'}
+                        </div>
+                        <input
+                          type="tel"
+                          className="flex-1 px-4 py-3 text-base focus:outline-none"
+                          value={welcomePhoneNumber}
+                          onChange={(e) => {
+                            const phoneNumber = e.target.value;
+                            setWelcomePhoneNumber(phoneNumber);
+                            setWelcomePhone(phoneNumber ? `${welcomeDialCode || '+91'} ${phoneNumber}` : '');
+                          }}
+                          placeholder="Enter phone number"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-base font-medium text-gray-700 mb-2">Business Type</label>
+                      <select
+                        className="w-full border rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                        value={welcomeBusinessType}
+                        onChange={(e) => setWelcomeBusinessType(e.target.value)}
+                        style={{ appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23374151\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
+                      >
+                        <option value="">Select business type</option>
+                        <option value="Automotive">Automotive</option>
+                        <option value="Beauty, spa and salon">Beauty, spa and salon</option>
+                        <option value="Clothing">Clothing</option>
+                        <option value="Education">Education</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Online gambling and gaming">Online gambling and gaming</option>
+                        <option value="Non-online gambling and gaming(e.g. brick and mortar)">Non-online gambling and gaming(e.g. brick and mortar)</option>
+                        <option value="Event planning and service">Event planning and service</option>
+                        <option value="Finance and banking">Finance and banking</option>
+                        <option value="Food and groceries">Food and groceries</option>
+                        <option value="Alcoholic drinks">Alcoholic drinks</option>
+                        <option value="Public service">Public service</option>
+                        <option value="Hotel and lodging">Hotel and lodging</option>
+                        <option value="Medical and health">Medical and health</option>
+                        <option value="Over-the-counter medicine">Over-the-counter medicine</option>
+                        <option value="Charity">Charity</option>
+                        <option value="Professional services">Professional services</option>
+                        <option value="Shopping and retail">Shopping and retail</option>
+                        <option value="Travel and transportation">Travel and transportation</option>
+                        <option value="Restaurant">Restaurant</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-base font-medium text-gray-700 mb-2">Business Name</label>
                       <input
-                        type="tel"
-                        className="flex-1 px-4 py-3 text-base focus:outline-none"
-                        value={welcomePhoneNumber}
-                        onChange={(e) => {
-                          const phoneNumber = e.target.value;
-                          setWelcomePhoneNumber(phoneNumber);
-                          setWelcomePhone(phoneNumber ? `${welcomeDialCode || '+91'} ${phoneNumber}` : '');
-                        }}
-                        placeholder="Enter phone number"
+                        type="text"
+                        className="w-full border rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        value={welcomeBusinessName}
+                        onChange={(e) => setWelcomeBusinessName(e.target.value)}
+                        placeholder="Enter your business name"
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-base font-medium text-gray-700 mb-2">Business Type</label>
-                    <select
-                      className="w-full border rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-                      value={welcomeBusinessType}
-                      onChange={(e) => setWelcomeBusinessType(e.target.value)}
-                      style={{ appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23374151\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
+                  <div className="text-sm text-gray-500">
+                    By signing up, you agree to the Terms & Conditions and Privacy Policy, and consent to receive marketing communications from NimbleAI and our service partners. Your information will also be shared with NimbleAI's Service Partners to facilitate your NimbleAI signup, product inquiries and enable your use of the NimbleAI service.
+                  </div>
+
+                  {welcomeError && (
+                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                      {welcomeError}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-4">
+                    <button
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleWelcomeSubmit}
+                      disabled={isSubmittingWelcome}
                     >
-                      <option value="">Select business type</option>
-                      <option value="Automotive">Automotive</option>
-                      <option value="Beauty, spa and salon">Beauty, spa and salon</option>
-                      <option value="Clothing">Clothing</option>
-                      <option value="Education">Education</option>
-                      <option value="Entertainment">Entertainment</option>
-                      <option value="Online gambling and gaming">Online gambling and gaming</option>
-                      <option value="Non-online gambling and gaming(e.g. brick and mortar)">Non-online gambling and gaming(e.g. brick and mortar)</option>
-                      <option value="Event planning and service">Event planning and service</option>
-                      <option value="Finance and banking">Finance and banking</option>
-                      <option value="Food and groceries">Food and groceries</option>
-                      <option value="Alcoholic drinks">Alcoholic drinks</option>
-                      <option value="Public service">Public service</option>
-                      <option value="Hotel and lodging">Hotel and lodging</option>
-                      <option value="Medical and health">Medical and health</option>
-                      <option value="Over-the-counter medicine">Over-the-counter medicine</option>
-                      <option value="Charity">Charity</option>
-                      <option value="Professional services">Professional services</option>
-                      <option value="Shopping and retail">Shopping and retail</option>
-                      <option value="Travel and transportation">Travel and transportation</option>
-                      <option value="Restaurant">Restaurant</option>
-                      <option value="other">Other</option>
-                    </select>
+                      {isSubmittingWelcome ? 'Submitting...' : 'Start my trial'}
+                    </button>
+                    <button
+                      className="text-base text-gray-600 hover:underline"
+                      onClick={() => {
+                        const key = `nimble_welcome_shown_${userData?.uid || user?.uid || 'anon'}`;
+                        localStorage.setItem(key, '1');
+                        localStorage.removeItem('nimble_first_time');
+                        setIsWelcomeModalOpen(false);
+                      }}
+                    >
+                      Already have an account? Sign in
+                    </button>
                   </div>
-
-                  <div>
-                    <label className="block text-base font-medium text-gray-700 mb-2">Business Name</label>
-                    <input
-                      type="text"
-                      className="w-full border rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      value={welcomeBusinessName}
-                      onChange={(e) => setWelcomeBusinessName(e.target.value)}
-                      placeholder="Enter your business name"
-                    />
-                  </div>
-                </div>
-
-                <div className="text-sm text-gray-500">
-                  By signing up, you agree to the Terms & Conditions and Privacy Policy, and consent to receive marketing communications from NimbleAI and our service partners. Your information will also be shared with NimbleAI's Service Partners to facilitate your NimbleAI signup, product inquiries and enable your use of the NimbleAI service.
-                </div>
-
-                {welcomeError && (
-                  <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
-                    {welcomeError}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between pt-4">
-                  <button
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={handleWelcomeSubmit}
-                    disabled={isSubmittingWelcome}
-                  >
-                    {isSubmittingWelcome ? 'Submitting...' : 'Start my trial'}
-                  </button>
-                  <button
-                    className="text-base text-gray-600 hover:underline"
-                    onClick={() => {
-                      const key = `nimble_welcome_shown_${userData?.uid || user?.uid || 'anon'}`;
-                      localStorage.setItem(key, '1');
-                      localStorage.removeItem('nimble_first_time');
-                      setIsWelcomeModalOpen(false);
-                    }}
-                  >
-                    Already have an account? Sign in
-                  </button>
                 </div>
               </div>
-            </div>
             </div>
           </div>
         </div>
@@ -6072,7 +6068,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                   <p className="text-sm text-green-600">✅ Active</p>
                 </div>
               </div>
-              
+
               {whatsappStatus?.phoneNumberId && (
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h4 className="font-medium text-gray-900 mb-2">Phone Number ID</h4>
@@ -6092,7 +6088,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                   </div>
                 </div>
               )}
-              
+
               <div className="flex justify-end space-x-3">
                 <button
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
@@ -6111,7 +6107,7 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
           </div>
         </div>
       )}
-      
+
       {isAddContactModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
@@ -6243,15 +6239,15 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                           <div className="flex items-center px-2 bg-gray-50 border-r border-gray-300 text-gray-700 text-sm font-medium min-w-[50px]">
                             {phoneObj.dialCode || '+91'}
                           </div>
-                        <input
-                          type="tel"
+                          <input
+                            type="tel"
                             className="flex-1 px-3 py-2 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          value={phoneObj.phone}
-                          onChange={(e) => updatePhone(index, 'phone', e.target.value)}
-                          required={index === 0}
-                          disabled={isSubmittingContact}
+                            value={phoneObj.phone}
+                            onChange={(e) => updatePhone(index, 'phone', e.target.value)}
+                            required={index === 0}
+                            disabled={isSubmittingContact}
                             placeholder="Enter phone number"
-                        />
+                          />
                         </div>
                       </div>
                       <div>
@@ -6703,11 +6699,10 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
 
               {/* Import Results/Confirmation */}
               {importResults && (
-                <div className={`p-4 rounded-lg border ${
-                  importResults.success 
-                    ? 'bg-green-50 border-green-200' 
-                    : 'bg-red-50 border-red-200'
-                }`}>
+                <div className={`p-4 rounded-lg border ${importResults.success
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-red-50 border-red-200'
+                  }`}>
                   {importResults.success ? (
                     <div className="flex items-start space-x-3">
                       <span className="text-green-600 text-xl">✅</span>
@@ -6770,20 +6765,20 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                     {importResults ? 'Close' : 'Cancel'}
                   </button>
                   {!importResults && (
-                  <button
-                    type="button"
-                    className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2"
-                    disabled={isImporting || csvRows.length === 0}
-                    onClick={handleStartImport}
-                  >
-                    {isImporting && (
-                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    )}
-                    {isImporting ? 'Importing...' : 'Start Import'}
-                  </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2"
+                      disabled={isImporting || csvRows.length === 0}
+                      onClick={handleStartImport}
+                    >
+                      {isImporting && (
+                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
+                      {isImporting ? 'Importing...' : 'Start Import'}
+                    </button>
                   )}
                 </div>
               </div>
@@ -6795,151 +6790,195 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
       {/* Block dashboard until welcome form is submitted */}
       {!isWelcomeModalOpen && (
         <>
-      
-      {/* Edit Contact Modal */}
-      {isEditContactModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Edit Contact</h2>
-              <button
-                className="text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => {
-                  setIsEditContactModalOpen(false);
-                  resetContactForm();
-                  setEditingContactId(null);
-                }}
-                aria-label="Close"
-                disabled={isSubmittingContact}
-              >
-                ✕
-              </button>
-            </div>
 
-            <form className={`space-y-6 ${isSubmittingContact ? 'opacity-60' : ''}`} onSubmit={handleUpdateContact}>
-              {/* Reuse all the form fields from Add Contact Modal - they're already in the same state variables */}
-              {/* Basic Information */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Basic Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      First Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={contactFirstName}
-                      onChange={(e) => setContactFirstName(e.target.value)}
-                      disabled={isSubmittingContact}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={contactLastName}
-                      onChange={(e) => setContactLastName(e.target.value)}
-                      disabled={isSubmittingContact}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Birthday (Optional)
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    value={contactBirthday}
-                    onChange={(e) => setContactBirthday(e.target.value)}
+          {/* Edit Contact Modal */}
+          {isEditContactModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+              <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Edit Contact</h2>
+                  <button
+                    className="text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      setIsEditContactModalOpen(false);
+                      resetContactForm();
+                      setEditingContactId(null);
+                    }}
+                    aria-label="Close"
                     disabled={isSubmittingContact}
-                  />
+                  >
+                    ✕
+                  </button>
                 </div>
-              </div>
 
-              {/* Phone Information */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <h3 className="text-sm font-semibold text-gray-900">Phone Information</h3>
-                </div>
-                {contactPhones.map((phoneObj, index) => (
-                  <div key={index} className="space-y-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-gray-600">Phone {index + 1}</span>
-                      {contactPhones.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removePhone(index)}
-                          className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                <form className={`space-y-6 ${isSubmittingContact ? 'opacity-60' : ''}`} onSubmit={handleUpdateContact}>
+                  {/* Reuse all the form fields from Add Contact Modal - they're already in the same state variables */}
+                  {/* Basic Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Basic Information</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          First Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          value={contactFirstName}
+                          onChange={(e) => setContactFirstName(e.target.value)}
                           disabled={isSubmittingContact}
-                        >
-                          Remove
-                        </button>
-                      )}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Last Name
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          value={contactLastName}
+                          onChange={(e) => setContactLastName(e.target.value)}
+                          disabled={isSubmittingContact}
+                        />
+                      </div>
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Birthday (Optional)
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        value={contactBirthday}
+                        onChange={(e) => setContactBirthday(e.target.value)}
+                        disabled={isSubmittingContact}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Phone Information */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <h3 className="text-sm font-semibold text-gray-900">Phone Information</h3>
+                    </div>
+                    {contactPhones.map((phoneObj, index) => (
+                      <div key={index} className="space-y-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium text-gray-600">Phone {index + 1}</span>
+                          {contactPhones.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removePhone(index)}
+                              className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                              disabled={isSubmittingContact}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Phone Number {index === 0 && <span className="text-red-500">*</span>}
+                            </label>
+                            <div className="flex border rounded overflow-hidden focus-within:ring-2 focus-within:ring-blue-400">
+                              <select
+                                className="border-r border-gray-300 px-2 py-2 text-sm focus:outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                value={phoneObj.countryCode || 'IN'}
+                                onChange={(e) => updatePhone(index, 'countryCode', e.target.value)}
+                                disabled={isSubmittingContact}
+                                style={{ appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23374151\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1em 1em', paddingRight: '1.75rem' }}
+                              >
+                                <option value="IN">🇮🇳 IN</option>
+                                <option value="US">🇺🇸 US</option>
+                                <option value="GB">🇬🇧 GB</option>
+                                <option value="CA">🇨🇦 CA</option>
+                                <option value="AU">🇦🇺 AU</option>
+                                <option value="DE">🇩🇪 DE</option>
+                                <option value="FR">🇫🇷 FR</option>
+                                <option value="IT">🇮🇹 IT</option>
+                                <option value="ES">🇪🇸 ES</option>
+                                <option value="BR">🇧🇷 BR</option>
+                                <option value="MX">🇲🇽 MX</option>
+                                <option value="JP">🇯🇵 JP</option>
+                                <option value="CN">🇨🇳 CN</option>
+                                <option value="KR">🇰🇷 KR</option>
+                                <option value="SG">🇸🇬 SG</option>
+                                <option value="MY">🇲🇾 MY</option>
+                                <option value="TH">🇹🇭 TH</option>
+                                <option value="ID">🇮🇩 ID</option>
+                                <option value="PH">🇵🇭 PH</option>
+                                <option value="VN">🇻🇳 VN</option>
+                                <option value="HK">🇭🇰 HK</option>
+                                <option value="TW">🇹🇼 TW</option>
+                                <option value="NZ">🇳🇿 NZ</option>
+                                <option value="AE">🇦🇪 AE</option>
+                                <option value="SA">🇸🇦 SA</option>
+                                <option value="ZA">🇿🇦 ZA</option>
+                                <option value="RU">🇷🇺 RU</option>
+                                <option value="PK">🇵🇰 PK</option>
+                                <option value="BD">🇧🇩 BD</option>
+                                <option value="LK">🇱🇰 LK</option>
+                                <option value="NP">🇳🇵 NP</option>
+                                <option value="MM">🇲🇲 MM</option>
+                              </select>
+                              <div className="flex items-center px-2 bg-gray-50 border-r border-gray-300 text-gray-700 text-sm font-medium min-w-[50px]">
+                                {phoneObj.dialCode || '+91'}
+                              </div>
+                              <input
+                                type="tel"
+                                className="flex-1 px-3 py-2 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                value={phoneObj.phone}
+                                onChange={(e) => updatePhone(index, 'phone', e.target.value)}
+                                required={index === 0}
+                                disabled={isSubmittingContact}
+                                placeholder="Enter phone number"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Type
+                            </label>
+                            <select
+                              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              value={phoneObj.type}
+                              onChange={(e) => updatePhone(index, 'type', e.target.value)}
+                              disabled={isSubmittingContact}
+                            >
+                              <option value="MOBILE">Mobile</option>
+                              <option value="HOME">Home</option>
+                              <option value="WORK">Work</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addPhone}
+                      className="w-full px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={isSubmittingContact}
+                    >
+                      + Add Another Phone
+                    </button>
+                  </div>
+
+                  {/* Email Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Email Information (Optional)</h3>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Phone Number {index === 0 && <span className="text-red-500">*</span>}
+                          Email
                         </label>
-                        <div className="flex border rounded overflow-hidden focus-within:ring-2 focus-within:ring-blue-400">
-                          <select
-                            className="border-r border-gray-300 px-2 py-2 text-sm focus:outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-                            value={phoneObj.countryCode || 'IN'}
-                            onChange={(e) => updatePhone(index, 'countryCode', e.target.value)}
-                            disabled={isSubmittingContact}
-                            style={{ appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23374151\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1em 1em', paddingRight: '1.75rem' }}
-                          >
-                            <option value="IN">🇮🇳 IN</option>
-                            <option value="US">🇺🇸 US</option>
-                            <option value="GB">🇬🇧 GB</option>
-                            <option value="CA">🇨🇦 CA</option>
-                            <option value="AU">🇦🇺 AU</option>
-                            <option value="DE">🇩🇪 DE</option>
-                            <option value="FR">🇫🇷 FR</option>
-                            <option value="IT">🇮🇹 IT</option>
-                            <option value="ES">🇪🇸 ES</option>
-                            <option value="BR">🇧🇷 BR</option>
-                            <option value="MX">🇲🇽 MX</option>
-                            <option value="JP">🇯🇵 JP</option>
-                            <option value="CN">🇨🇳 CN</option>
-                            <option value="KR">🇰🇷 KR</option>
-                            <option value="SG">🇸🇬 SG</option>
-                            <option value="MY">🇲🇾 MY</option>
-                            <option value="TH">🇹🇭 TH</option>
-                            <option value="ID">🇮🇩 ID</option>
-                            <option value="PH">🇵🇭 PH</option>
-                            <option value="VN">🇻🇳 VN</option>
-                            <option value="HK">🇭🇰 HK</option>
-                            <option value="TW">🇹🇼 TW</option>
-                            <option value="NZ">🇳🇿 NZ</option>
-                            <option value="AE">🇦🇪 AE</option>
-                            <option value="SA">🇸🇦 SA</option>
-                            <option value="ZA">🇿🇦 ZA</option>
-                            <option value="RU">🇷🇺 RU</option>
-                            <option value="PK">🇵🇰 PK</option>
-                            <option value="BD">🇧🇩 BD</option>
-                            <option value="LK">🇱🇰 LK</option>
-                            <option value="NP">🇳🇵 NP</option>
-                            <option value="MM">🇲🇲 MM</option>
-                          </select>
-                          <div className="flex items-center px-2 bg-gray-50 border-r border-gray-300 text-gray-700 text-sm font-medium min-w-[50px]">
-                            {phoneObj.dialCode || '+91'}
-                          </div>
                         <input
-                          type="tel"
-                            className="flex-1 px-3 py-2 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          value={phoneObj.phone}
-                          onChange={(e) => updatePhone(index, 'phone', e.target.value)}
-                          required={index === 0}
+                          type="email"
+                          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          value={contactEmail}
+                          onChange={(e) => setContactEmail(e.target.value)}
                           disabled={isSubmittingContact}
-                            placeholder="Enter phone number"
                         />
-                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -6947,357 +6986,313 @@ console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
                         </label>
                         <select
                           className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          value={phoneObj.type}
-                          onChange={(e) => updatePhone(index, 'type', e.target.value)}
+                          value={contactEmailType}
+                          onChange={(e) => setContactEmailType(e.target.value)}
                           disabled={isSubmittingContact}
                         >
-                          <option value="MOBILE">Mobile</option>
-                          <option value="HOME">Home</option>
                           <option value="WORK">Work</option>
+                          <option value="HOME">Home</option>
+                          <option value="OTHER">Other</option>
                         </select>
                       </div>
                     </div>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addPhone}
-                  className="w-full px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={isSubmittingContact}
-                >
-                  + Add Another Phone
-                </button>
-              </div>
 
-              {/* Email Information */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Email Information (Optional)</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
-                      disabled={isSubmittingContact}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Type
-                    </label>
-                    <select
-                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={contactEmailType}
-                      onChange={(e) => setContactEmailType(e.target.value)}
+                  {/* Address Information */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <h3 className="text-sm font-semibold text-gray-900">Address Information (Optional)</h3>
+                    </div>
+                    {contactAddresses.map((address, index) => (
+                      <div key={index} className="space-y-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium text-gray-600">Address {index + 1}</span>
+                          {contactAddresses.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeAddress(index)}
+                              className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                              disabled={isSubmittingContact}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Street
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            value={address.street}
+                            onChange={(e) => updateAddress(index, 'street', e.target.value)}
+                            disabled={isSubmittingContact}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              City
+                            </label>
+                            <input
+                              type="text"
+                              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              value={address.city}
+                              onChange={(e) => updateAddress(index, 'city', e.target.value)}
+                              disabled={isSubmittingContact}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              State
+                            </label>
+                            <input
+                              type="text"
+                              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              value={address.state}
+                              onChange={(e) => updateAddress(index, 'state', e.target.value)}
+                              disabled={isSubmittingContact}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              ZIP Code
+                            </label>
+                            <input
+                              type="text"
+                              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              value={address.zip}
+                              onChange={(e) => updateAddress(index, 'zip', e.target.value)}
+                              disabled={isSubmittingContact}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Country
+                            </label>
+                            <input
+                              type="text"
+                              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              value={address.country}
+                              onChange={(e) => updateAddress(index, 'country', e.target.value)}
+                              disabled={isSubmittingContact}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Country Code
+                            </label>
+                            <input
+                              type="text"
+                              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              value={address.country_code}
+                              onChange={(e) => updateAddress(index, 'country_code', e.target.value)}
+                              maxLength={2}
+                              disabled={isSubmittingContact}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Address Type
+                          </label>
+                          <select
+                            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            value={address.type}
+                            onChange={(e) => updateAddress(index, 'type', e.target.value)}
+                            disabled={isSubmittingContact}
+                          >
+                            <option value="HOME">Home</option>
+                            <option value="WORK">Work</option>
+                            <option value="OTHER">Other</option>
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addAddress}
+                      className="w-full px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={isSubmittingContact}
                     >
-                      <option value="WORK">Work</option>
-                      <option value="HOME">Home</option>
-                      <option value="OTHER">Other</option>
-                    </select>
+                      + Add Another Address
+                    </button>
                   </div>
-                </div>
-              </div>
 
-              {/* Address Information */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <h3 className="text-sm font-semibold text-gray-900">Address Information (Optional)</h3>
-                </div>
-                {contactAddresses.map((address, index) => (
-                  <div key={index} className="space-y-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-gray-600">Address {index + 1}</span>
-                      {contactAddresses.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeAddress(index)}
-                          className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={isSubmittingContact}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Street
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                        value={address.street}
-                        onChange={(e) => updateAddress(index, 'street', e.target.value)}
-                        disabled={isSubmittingContact}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          City
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          value={address.city}
-                          onChange={(e) => updateAddress(index, 'city', e.target.value)}
-                          disabled={isSubmittingContact}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          State
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          value={address.state}
-                          onChange={(e) => updateAddress(index, 'state', e.target.value)}
-                          disabled={isSubmittingContact}
-                        />
-                      </div>
-                    </div>
+                  {/* Organization Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Organization Information (Optional)</h3>
                     <div className="grid grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          ZIP Code
+                          Company
                         </label>
                         <input
                           type="text"
                           className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          value={address.zip}
-                          onChange={(e) => updateAddress(index, 'zip', e.target.value)}
+                          value={contactCompany}
+                          onChange={(e) => setContactCompany(e.target.value)}
                           disabled={isSubmittingContact}
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Country
+                          Department
                         </label>
                         <input
                           type="text"
                           className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          value={address.country}
-                          onChange={(e) => updateAddress(index, 'country', e.target.value)}
+                          value={contactDepartment}
+                          onChange={(e) => setContactDepartment(e.target.value)}
                           disabled={isSubmittingContact}
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Country Code
+                          Title
                         </label>
                         <input
                           type="text"
                           className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          value={address.country_code}
-                          onChange={(e) => updateAddress(index, 'country_code', e.target.value)}
-                          maxLength={2}
+                          value={contactTitle}
+                          onChange={(e) => setContactTitle(e.target.value)}
                           disabled={isSubmittingContact}
                         />
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Address Type
-                      </label>
-                      <select
-                        className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                        value={address.type}
-                        onChange={(e) => updateAddress(index, 'type', e.target.value)}
-                        disabled={isSubmittingContact}
-                      >
-                        <option value="HOME">Home</option>
-                        <option value="WORK">Work</option>
-                        <option value="OTHER">Other</option>
-                      </select>
+                  </div>
+
+                  {/* URL Information */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Team assigned <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          value={contactTeamAssigned}
+                          onChange={(e) => setContactTeamAssigned(e.target.value)}
+                          disabled={isSubmittingContact}
+                        >
+                          <option value="marketing">Marketing</option>
+                          <option value="sales">Sales</option>
+                          <option value="support">Support</option>
+                        </select>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Used to route this contact to the right team.
+                        </p>
+                      </div>
+                    </div>
+
+                    <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">URL Information (Optional)</h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          URL
+                        </label>
+                        <input
+                          type="url"
+                          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          value={contactUrl}
+                          onChange={(e) => setContactUrl(e.target.value)}
+                          disabled={isSubmittingContact}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Type
+                        </label>
+                        <select
+                          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          value={contactUrlType}
+                          onChange={(e) => setContactUrlType(e.target.value)}
+                          disabled={isSubmittingContact}
+                        >
+                          <option value="WORK">Work</option>
+                          <option value="HOME">Home</option>
+                          <option value="OTHER">Other</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addAddress}
-                  className="w-full px-4 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={isSubmittingContact}
-                >
-                  + Add Another Address
-                </button>
-              </div>
 
-              {/* Organization Information */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Organization Information (Optional)</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Company
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={contactCompany}
-                      onChange={(e) => setContactCompany(e.target.value)}
-                      disabled={isSubmittingContact}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Department
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={contactDepartment}
-                      onChange={(e) => setContactDepartment(e.target.value)}
-                      disabled={isSubmittingContact}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Title
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={contactTitle}
-                      onChange={(e) => setContactTitle(e.target.value)}
-                      disabled={isSubmittingContact}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* URL Information */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Team assigned <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={contactTeamAssigned}
-                      onChange={(e) => setContactTeamAssigned(e.target.value)}
-                      disabled={isSubmittingContact}
-                    >
-                      <option value="marketing">Marketing</option>
-                      <option value="sales">Sales</option>
-                      <option value="support">Support</option>
-                    </select>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Used to route this contact to the right team.
-                    </p>
-                  </div>
-                </div>
-
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">URL Information (Optional)</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      URL
-                    </label>
-                    <input
-                      type="url"
-                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={contactUrl}
-                      onChange={(e) => setContactUrl(e.target.value)}
-                      disabled={isSubmittingContact}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Type
-                    </label>
-                    <select
-                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={contactUrlType}
-                      onChange={(e) => setContactUrlType(e.target.value)}
-                      disabled={isSubmittingContact}
-                    >
-                      <option value="WORK">Work</option>
-                      <option value="HOME">Home</option>
-                      <option value="OTHER">Other</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {contactError && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-4 rounded-lg flex items-start space-x-2">
-                  <span className="text-red-500 text-lg">⚠️</span>
-                  <span>{contactError}</span>
-                </div>
-              )}
-              {contactSuccess && (
-                <div className="text-sm text-green-700 bg-green-50 border border-green-200 p-4 rounded-lg flex items-start space-x-2">
-                  <span className="text-green-600 text-lg">✅</span>
-                  <div className="flex-1">
-                    <p className="font-semibold text-green-800">{contactSuccess}</p>
-                    <p className="text-xs text-green-600 mt-1">The contact has been updated in your contact list.</p>
-                  </div>
-                </div>
-              )}
-              <div className="flex justify-end space-x-3 pt-4 border-t">
-                <button
-                  type="button"
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-                  onClick={() => {
-                    setIsEditContactModalOpen(false);
-                    resetContactForm();
-                    setEditingContactId(null);
-                  }}
-                  disabled={isSubmittingContact}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center space-x-2"
-                  disabled={isSubmittingContact}
-                >
-                  {isSubmittingContact && (
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                  {contactError && (
+                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-4 rounded-lg flex items-start space-x-2">
+                      <span className="text-red-500 text-lg">⚠️</span>
+                      <span>{contactError}</span>
+                    </div>
                   )}
-                  <span>{isSubmittingContact ? 'Updating Contact...' : 'Update Contact'}</span>
-                </button>
+                  {contactSuccess && (
+                    <div className="text-sm text-green-700 bg-green-50 border border-green-200 p-4 rounded-lg flex items-start space-x-2">
+                      <span className="text-green-600 text-lg">✅</span>
+                      <div className="flex-1">
+                        <p className="font-semibold text-green-800">{contactSuccess}</p>
+                        <p className="text-xs text-green-600 mt-1">The contact has been updated in your contact list.</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-end space-x-3 pt-4 border-t">
+                    <button
+                      type="button"
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+                      onClick={() => {
+                        setIsEditContactModalOpen(false);
+                        resetContactForm();
+                        setEditingContactId(null);
+                      }}
+                      disabled={isSubmittingContact}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center space-x-2"
+                      disabled={isSubmittingContact}
+                    >
+                      {isSubmittingContact && (
+                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
+                      <span>{isSubmittingContact ? 'Updating Contact...' : 'Update Contact'}</span>
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-      
-      {/* Onboarding Summary Banner - Commented out
+            </div>
+          )}
+
+          {/* Onboarding Summary Banner - Commented out
       <OnboardingBanner userData={userData} />
       */}
-      
 
-      <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full">
-        {/* Left Sidebar */}
-        <Sidebar 
-          activeTab={activeTab} 
-          setActiveTab={handleTabChange}
-          whatsappStatus={whatsappStatus}
-          onboardingStatus={onboardingStatus}
-          trainingStatus={trainingStatus}
-          pricingSubscriptionStatus={pricingSubscriptionStatus}
-          isWabaDetailsEmpty={isWabaDetailsEmpty}
-          isMobileMenuOpen={isMobileMenuOpen}
-          setIsMobileMenuOpen={setIsMobileMenuOpen}
-        />
-        {/* Main Content */}
-<div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'p-0 overflow-hidden' : 'p-4 lg:p-6 overflow-y-auto'}`}>
-          <div className={`flex flex-col flex-1 min-h-0 ${activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'w-full h-full' : 'max-w-7xl mx-auto w-full'}`}>
-           {renderMainContent()}
+
+          <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full">
+            {/* Left Sidebar */}
+            <Sidebar
+              activeTab={activeTab}
+              setActiveTab={handleTabChange}
+              whatsappStatus={whatsappStatus}
+              onboardingStatus={onboardingStatus}
+              trainingStatus={trainingStatus}
+              pricingSubscriptionStatus={pricingSubscriptionStatus}
+              isWabaDetailsEmpty={isWabaDetailsEmpty}
+              isMobileMenuOpen={isMobileMenuOpen}
+              setIsMobileMenuOpen={setIsMobileMenuOpen}
+            />
+            {/* Main Content */}
+            <div className={`flex-1 flex flex-col min-h-0 scrollbar-thin ${activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'p-0 overflow-hidden' : 'overflow-y-auto bg-slate-50'}`}>
+              <div className={`flex flex-col flex-1 min-h-0 ${activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'w-full h-full' : 'w-full'}`}>
+                {renderMainContent()}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      </>
+        </>
       )}
     </div>
   );
