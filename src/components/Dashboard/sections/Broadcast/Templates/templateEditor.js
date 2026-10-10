@@ -934,7 +934,9 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
                                                             </div>
                                                         )}
                                                     </div>
-                                                                                   {['image', 'video', 'document'].includes(broadcastTitleType) && (
+                                                )}
+
+                                                {['image', 'video', 'document'].includes(broadcastTitleType) && (
                                                     <div className="space-y-3 mt-4 border border-gray-200 rounded-xl p-4 bg-gray-50/80">
                                                         <div className="flex items-center justify-between mb-1">
                                                             <span className="text-xs font-semibold text-gray-700 capitalize">
@@ -1034,7 +1036,7 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
                                                             </div>
                                                         )}
                                                     </div>
-                                                )}              )}
+                                                )}
                                             </div>
                                             {broadcastTitleType === 'location' && (
                                                 <div className="grid grid-cols-2 gap-3">
