@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { apiConfig } from '../../../../../config/api';
+import { MediaLibraryModal } from './MediaLibraryModal';
 
 const MediaCarouselEditor = forwardRef(({
     user,
@@ -23,6 +24,8 @@ const MediaCarouselEditor = forwardRef(({
     const [showAddBodyVariable, setShowAddBodyVariable] = useState(false);
     const [newBodyVariableName, setNewBodyVariableName] = useState('');
     const [newBodyVariableValue, setNewBodyVariableValue] = useState('');
+    const [allowAIEnhancement, setAllowAIEnhancement] = useState(true);
+    const [activeCardIdForMedia, setActiveCardIdForMedia] = useState(null);
     // Add these near your other states
     const [isAutoSaving, setIsAutoSaving] = useState(false);
     const [lastSavedTime, setLastSavedTime] = useState(null);
@@ -119,6 +122,9 @@ const MediaCarouselEditor = forwardRef(({
             language: languageMap[templateLanguage] || 'en_US',
             parameter_format: "named",
             template_type: "media_carousel",
+            ai_enhancement: allowAIEnhancement,
+            allow_category_change: allowAIEnhancement,
+            creative_enhancement: { enabled: allowAIEnhancement },
             components: components
         };
     };
@@ -339,6 +345,9 @@ const MediaCarouselEditor = forwardRef(({
             }
         }
         setTemplateName(initialTemplate.name);
+        setAllowAIEnhancement(templateData.ai_enhancement !== undefined 
+            ? Boolean(templateData.ai_enhancement) 
+            : (templateData.creative_enhancement?.enabled !== undefined ? Boolean(templateData.creative_enhancement.enabled) : true));
         const components = templateData.components || [];
 
         // 1. Parse Root Body & Variables
@@ -567,7 +576,7 @@ const MediaCarouselEditor = forwardRef(({
 
         return () => clearTimeout(timerId);
 
-    }, [templateName, templateLanguage, templateBody, bodyVariables, cards, activeTemplateId, user, userData, onSaveStatusChange]);
+    }, [templateName, templateLanguage, allowAIEnhancement, templateBody, bodyVariables, cards, activeTemplateId, user, userData, onSaveStatusChange]);
 
     const renderHighlightedText = () => {
         if (!templateBody) return <span className="text-gray-400">Add the Carousels body text here</span>;
@@ -780,6 +789,39 @@ const MediaCarouselEditor = forwardRef(({
                     </div>
                 </div>
 
+                {/* Meta AI Enhancement Option for Carousel Marketing Templates */}
+                <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-purple-50/90 border border-blue-200/80 rounded-xl p-4 transition-all duration-200 shadow-xs">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="text-base">✨</span>
+                                <h4 className="text-sm font-semibold text-gray-900">Meta AI Creative Enhancement</h4>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                    Recommended by Meta
+                                </span>
+                            </div>
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                                Let Meta's AI optimize carousel card sequencing, dynamic card highlight, and action buttons to improve click-throughs and buyer conversions.
+                            </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                            <input
+                                type="checkbox"
+                                checked={allowAIEnhancement}
+                                onChange={(e) => setAllowAIEnhancement(e.target.checked)}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                    <div className="mt-2.5 pt-2 border-t border-blue-100/80 flex items-center justify-between text-[11px]">
+                        <span className={allowAIEnhancement ? "text-blue-700 font-medium flex items-center gap-1.5" : "text-gray-500 flex items-center gap-1.5"}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${allowAIEnhancement ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                            {allowAIEnhancement ? 'AI Enhancement Enabled' : 'AI Enhancement Disabled (Cards will be sent exactly as configured)'}
+                        </span>
+                    </div>
+                </div>
+
                 <div className="border-t border-gray-300 my-6"></div>
 
                 {/* Message Body */}
@@ -895,21 +937,30 @@ const MediaCarouselEditor = forwardRef(({
                                 <div className="mb-4">
                                     {card.mediaPreviewUrl ? (
                                         <div className="relative h-32 w-full bg-gray-200 rounded-lg overflow-hidden border border-gray-300 group">
-                                            {card.mediaFile?.type?.includes('video') ? (
+                                            {(card.mediaType === 'video' || card.mediaFile?.type?.includes('video') || card.mediaPreviewUrl?.match(/\.(mp4|mov|3gpp|webm)/i)) ? (
                                                 <video src={card.mediaPreviewUrl} className="w-full h-full object-cover" />
                                             ) : (
                                                 <img src={card.mediaPreviewUrl} alt="Card media" className="w-full h-full object-cover" />
                                             )}
-                                            <label className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                                <span className="text-white text-xs font-medium">Change Media</span>
-                                                <input type="file" className="hidden" accept="image/*,video/mp4" onChange={(e) => handleMediaUpload(card.id, e.target.files[0])} />
-                                            </label>
+                                            <div 
+                                                onClick={() => setActiveCardIdForMedia(card.id)}
+                                                className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                            >
+                                                <span className="text-white text-xs font-semibold px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-xs">
+                                                    Change Media
+                                                </span>
+                                            </div>
                                         </div>
                                     ) : (
-                                        <label className="flex flex-col items-center justify-center h-32 w-full border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 hover:border-blue-400 transition-colors bg-white">
-                                            <span className="text-sm text-gray-500 font-medium">+ Upload Photo/Video</span>
-                                            <input type="file" className="hidden" accept="image/*,video/mp4" onChange={(e) => handleMediaUpload(card.id, e.target.files[0])} />
-                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveCardIdForMedia(card.id)}
+                                            className="flex flex-col items-center justify-center h-32 w-full border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-100 hover:border-blue-400 transition-colors bg-white text-center p-3"
+                                        >
+                                            <span className="text-2xl mb-1">🖼️</span>
+                                            <span className="text-xs text-blue-600 font-semibold">+ Choose / Upload Media</span>
+                                            <span className="text-[10px] text-gray-400 mt-0.5">Image or Video</span>
+                                        </button>
                                     )}
                                 </div>
 
@@ -1008,7 +1059,15 @@ const MediaCarouselEditor = forwardRef(({
                     <div className="flex justify-center">
 
                         <div className="relative w-[300px] h-[520px] bg-gray-900 rounded-[2.5rem] p-2 shadow-2xl flex items-center justify-center">
-                            <div className="w-full h-full bg-[#ece5dd] rounded-[2rem] overflow-hidden flex flex-col pt-12 pb-4 text-black relative" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='grid' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='%23d4d4d4' stroke-width='0.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grid)' opacity='0.1'/%3E%3C/svg%3E")` }}>
+                            <div className="w-full h-full bg-[#ece5dd] rounded-[2rem] overflow-hidden flex flex-col pt-10 pb-4 text-black relative" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='grid' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='%23d4d4d4' stroke-width='0.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grid)' opacity='0.1'/%3E%3C/svg%3E")` }}>
+
+                                {/* Meta AI Enhancement Active Indicator */}
+                                {allowAIEnhancement && (
+                                    <div className="mb-2 self-center inline-flex items-center gap-1 px-2.5 py-0.5 bg-gradient-to-r from-blue-600/10 to-indigo-600/10 border border-blue-400/40 rounded-full text-[9px] text-blue-800 font-semibold shadow-xs">
+                                        <span>✨</span>
+                                        <span>Meta AI Enhancement Active</span>
+                                    </div>
+                                )}
 
                                 <div className="flex-1 overflow-y-auto px-2 pb-4 custom-scrollbar">
 
@@ -1024,7 +1083,7 @@ const MediaCarouselEditor = forwardRef(({
 
                                                 <div className="h-[120px] bg-gray-200 w-full flex items-center justify-center text-gray-400 overflow-hidden relative">
                                                     {card.mediaPreviewUrl ? (
-                                                        card.mediaFile?.type?.includes('video') ? (
+                                                        (card.mediaType === 'video' || card.mediaFile?.type?.includes('video') || card.mediaPreviewUrl?.match(/\.(mp4|mov|3gpp|webm)/i)) ? (
                                                             <video src={card.mediaPreviewUrl} className="w-full h-full object-cover" />
                                                         ) : (
                                                             <img src={card.mediaPreviewUrl} alt="Preview" className="w-full h-full object-cover" />
@@ -1058,6 +1117,28 @@ const MediaCarouselEditor = forwardRef(({
                     </div>
                 </div>
             </div>
+            {/* MEDIA LIBRARY MODAL FOR CAROUSEL CARDS */}
+            <MediaLibraryModal
+                isOpen={activeCardIdForMedia !== null}
+                onClose={() => setActiveCardIdForMedia(null)}
+                user={user}
+                userData={userData}
+                allowedType="all"
+                title="Select Carousel Card Media"
+                onSelectMedia={(media) => {
+                    if (activeCardIdForMedia !== null) {
+                        setCards(prevCards => prevCards.map(c => 
+                            c.id === activeCardIdForMedia ? {
+                                ...c,
+                                mediaPreviewUrl: media.s3_url || media.url,
+                                mediaHandle: media.handle || media.media_handle || '',
+                                mediaType: media.file_type || (media.file_name?.match(/\.(mp4|3gpp|mov|webm)$/i) ? 'video' : 'image'),
+                                mediaFile: null
+                            } : c
+                        ));
+                    }
+                }}
+            />
         </div>
     );
 });

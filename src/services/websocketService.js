@@ -15,24 +15,20 @@ class WebSocketService {
     this.serverUrl = null;
   }
 
-  async initialize() {
-    // Use environment variable for Socket.IO server endpoint
+  initialize() {
+    // Use environment variable for Socket.IO server endpoint, prioritizing gateway, server url, or db server url
     this.serverUrl = process.env.REACT_APP_WEBSOCKET_API_GATEWAY || 
-                     process.env.REACT_APP_WEBSOCKET_SERVER_URL;
-    
-    if (!this.serverUrl) {
-      console.warn('⚠️ REACT_APP_WEBSOCKET_API_GATEWAY or REACT_APP_WEBSOCKET_SERVER_URL not set, using fallback URL');
-      // Fallback for development
-      this.serverUrl = 'http://localhost:3001';
-    }
+                     process.env.REACT_APP_WEBSOCKET_SERVER_URL ||
+                     process.env.REACT_APP_DB_SERVER_URL ||
+                     'http://localhost:3003';
     
     console.log('🔌 Socket.IO server endpoint:', this.serverUrl);
   }
 
-  async connect(userId) {
+  connect(userId) {
     // Ensure serverUrl is initialized
     if (!this.serverUrl) {
-      await this.initialize();
+      this.initialize();
     }
 
     // Convert userId to integer (db_id only - must be a number)
@@ -83,7 +79,9 @@ class WebSocketService {
     // Create new Socket.IO connection
     if (!this.socket) {
       const serverUrl = this.serverUrl || process.env.REACT_APP_WEBSOCKET_API_GATEWAY || 
-                        process.env.REACT_APP_WEBSOCKET_SERVER_URL || 'http://localhost:3001';
+                        process.env.REACT_APP_WEBSOCKET_SERVER_URL ||
+                        process.env.REACT_APP_DB_SERVER_URL ||
+                        'http://localhost:3003';
       
       console.log('🔌 Creating new Socket.IO connection to:', serverUrl);
 
@@ -381,4 +379,7 @@ class WebSocketService {
 
 // Create a singleton instance
 const websocketService = new WebSocketService();
+if (typeof window !== 'undefined') {
+  window.__WS = websocketService;
+}
 export default websocketService; 

@@ -191,7 +191,10 @@ export const parseTemplateForForm = (template) => {
     templateBody, 
     bodyVariables, 
     templateFooter, 
-    templateButtons
+    templateButtons,
+    ai_enhancement: templateData.ai_enhancement !== undefined 
+      ? templateData.ai_enhancement 
+      : (templateData.creative_enhancement?.enabled !== undefined ? templateData.creative_enhancement.enabled : true)
   };
 };
 

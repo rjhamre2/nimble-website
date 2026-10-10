@@ -3,6 +3,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { apiConfig } from '../../../../../config/api';
 import { parseTemplateForForm, validateTemplateClientSide, validateFileExtension, getMetaErrorSolution } from './templateUtils';
 import MediaCarouselEditor from './MediaCarouselEditor';
+import { MediaLibraryModal } from './MediaLibraryModal';
 
 export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSuccess }) => {
     // --- Tab State ---
@@ -12,6 +13,7 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
     const [templateName, setTemplateName] = useState('');
     const [templateCategory, setTemplateCategory] = useState('');
     const [templateLanguage, setTemplateLanguage] = useState('English(US)');
+    const [allowAIEnhancement, setAllowAIEnhancement] = useState(true);
     const [templateBody, setTemplateBody] = useState('');
     const [templateFooter, setTemplateFooter] = useState('');
     const [templateSampleContent, setTemplateSampleContent] = useState('');
@@ -37,6 +39,9 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
     const [broadcastTitleLocationAddress, setBroadcastTitleLocationAddress] = useState('');
     const [broadcastTitleError, setBroadcastTitleError] = useState('');
     const [showJSONModal, setShowJSONModal] = useState(false);
+    const [showMediaLibraryModal, setShowMediaLibraryModal] = useState(false);
+    const [mediaFileName, setMediaFileName] = useState('');
+    const [broadcastTitleMediaPreviewUrl, setBroadcastTitleMediaPreviewUrl] = useState('');
 
     const [broadcastTitleVariables, setBroadcastTitleVariables] = useState([]);
     const [showAddVariable, setShowAddVariable] = useState(false);
@@ -69,6 +74,8 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
     const [activeTemplateId, setActiveTemplateId] = useState(initialTemplate?.template_id || null);
     const [isInitializing, setIsInitializing] = useState(false);
     const [draftStatus, setDraftStatus] = useState({ status: 'idle', time: null });
+
+    const isNewTemplate = !initialTemplate || Object.keys(initialTemplate).length === 0;
 
     // Ref to trigger save functions inside MediaCarouselEditor
     const carouselRef = useRef(null);
@@ -119,6 +126,7 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
         setTemplateName(parsedTemplate.templateName);
         setTemplateCategory(parsedTemplate.templateCategory);
         setTemplateLanguage(parsedTemplate.templateLanguage);
+        setAllowAIEnhancement(parsedTemplate.ai_enhancement !== undefined ? Boolean(parsedTemplate.ai_enhancement) : true);
         setBroadcastTitleType(parsedTemplate.broadcastTileType);
         setBroadcastTitleText(parsedTemplate.headerText);
         setBroadcastTitleImageHandle(parsedTemplate.broadcastTitleImageHandle);
@@ -192,6 +200,7 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
                 setTemplateName('');
                 setTemplateCategory('');
                 setTemplateLanguage('English(US)');
+                setAllowAIEnhancement(true);
                 setTemplateBody('');
                 setTemplateFooter('');
                 setTemplateSampleContent('');
@@ -467,17 +476,26 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
 
         const categoryMap = { 'Authentication': 'authentication', 'Marketing': 'marketing', 'Utility': 'utility' };
         const languageMap = { 'English(US)': 'en_US', 'Spanish': 'es', 'French': 'fr', 'German': 'de', 'Hindi': 'hi', 'Other': 'en_US' };
+        const finalCategory = categoryMap[templateCategory] || templateCategory.toLowerCase();
 
-        return {
+        const payload = {
             name: templateName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
-            category: categoryMap[templateCategory] || templateCategory.toLowerCase(),
+            category: finalCategory,
             language: languageMap[templateLanguage] || 'en_US',
             parameter_format: "named",
             components: components
         };
 
+        if (finalCategory === 'marketing') {
+            payload.ai_enhancement = allowAIEnhancement;
+            payload.allow_category_change = allowAIEnhancement;
+            payload.creative_enhancement = { enabled: allowAIEnhancement };
+        }
+
+        return payload;
+
         // Notice that broadcastTitleMediaKey is added to this dependency array below!
-    }, [templateName, templateCategory, templateLanguage, broadcastTitleType, broadcastTitleText, broadcastTitleImageLink, broadcastTitleImageHandle, broadcastTitleVideoLink, broadcastTitleVideoHandle, broadcastTitleDocumentLink, broadcastTitleDocumentHandle, broadcastTitleLocationLatitude, broadcastTitleLocationLongitude, broadcastTitleLocationName, broadcastTitleLocationAddress, broadcastTitleVariables, templateBody, bodyVariables, templateFooter, templateButtons, broadcastTitleMediaKey]);
+    }, [templateName, templateCategory, templateLanguage, allowAIEnhancement, broadcastTitleType, broadcastTitleText, broadcastTitleImageLink, broadcastTitleImageHandle, broadcastTitleVideoLink, broadcastTitleVideoHandle, broadcastTitleDocumentLink, broadcastTitleDocumentHandle, broadcastTitleLocationLatitude, broadcastTitleLocationLongitude, broadcastTitleLocationName, broadcastTitleLocationAddress, broadcastTitleVariables, templateBody, bodyVariables, templateFooter, templateButtons, broadcastTitleMediaKey]);
 
     // --- DEBOUNCED AUTO-SAVE FOR CUSTOM TAB ---
     useEffect(() => {
@@ -533,7 +551,7 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
         return () => clearTimeout(timerId);
 
     // Watch all Custom tab form fields
-    }, [templateName, templateCategory, templateLanguage, templateBody, templateFooter, templateButtons, broadcastTitleType, broadcastTitleText, broadcastTitleVariables, bodyVariables, activeTemplateId, activeTab, broadcastTitleMediaKey, isMediaUploading, user, userData, generateTemplateJSON, broadcastTitleImageHandle, broadcastTitleVideoHandle, broadcastTitleDocumentHandle, broadcastTitleImageMediaId]);
+    }, [templateName, templateCategory, templateLanguage, allowAIEnhancement, templateBody, templateFooter, templateButtons, broadcastTitleType, broadcastTitleText, broadcastTitleVariables, bodyVariables, activeTemplateId, activeTab, broadcastTitleMediaKey, isMediaUploading, user, userData, generateTemplateJSON, broadcastTitleImageHandle, broadcastTitleVideoHandle, broadcastTitleDocumentHandle, broadcastTitleImageMediaId]);
 
 
     const handleFinalSubmit = async (isDraft = false) => {
@@ -690,9 +708,9 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
 
             {/* Top Action Bar - STAYS FIXED AT THE TOP */}
             <div className="flex items-center justify-between shrink-0 mb-2">
-                <button onClick={onCancel} className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+                <button onClick={onCancel} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium text-sm">
                     <ArrowLeftIcon className="h-5 w-5" />
-                    <span>New Templates</span>
+                    <span>{isNewTemplate ? 'New Template' : 'Back to Templates'}</span>
                 </button>
 
                 <div className="flex justify-end space-x-3 items-center">
@@ -721,27 +739,29 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
             {/* 2. Scrollable container wrapper for all items below the Top Action Bar */}
             <div className="flex-1 overflow-y-auto pr-1 space-y-4">
                 
-                {/* TABS NAVIGATION */}
-                <div className="flex space-x-6 border-b border-gray-200 sticky top-0 bg-white z-20">
-                    <button
-                        onClick={() => setActiveTab('custom')}
-                        className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'custom'
-                            ? 'border-blue-600 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                            }`}
-                    >
-                        Custom
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('carousel')}
-                        className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'carousel'
-                            ? 'border-blue-600 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                            }`}
-                    >
-                        Media Carousel
-                    </button>
-                </div>
+                {/* TABS NAVIGATION - Only visible when creating a new template from scratch */}
+                {isNewTemplate && (
+                    <div className="flex space-x-6 border-b border-gray-200 sticky top-0 bg-white z-20">
+                        <button
+                            onClick={() => setActiveTab('custom')}
+                            className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'custom'
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                        >
+                            Custom
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('carousel')}
+                            className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'carousel'
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                        >
+                            Media Carousel
+                        </button>
+                    </div>
+                )}
 
                 {/* TAB CONTENT RENDERER */}
                 {activeTab === 'custom' ? (
@@ -784,6 +804,41 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
                                     </select>
                                 </div>
                             </div>
+
+                            {/* Meta AI Enhancement Option for Marketing Templates */}
+                            {templateCategory === 'Marketing' && (
+                                <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-purple-50/90 border border-blue-200/80 rounded-xl p-4 transition-all duration-200 shadow-xs">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-base">✨</span>
+                                                <h4 className="text-sm font-semibold text-gray-900">Meta AI Creative Enhancement</h4>
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                                    Recommended by Meta
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-600 leading-relaxed">
+                                                Let Meta's AI optimize message formatting, emphasize key offers, and tailor CTA buttons to maximize recipient response and conversions.
+                                            </p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                                            <input
+                                                type="checkbox"
+                                                checked={allowAIEnhancement}
+                                                onChange={(e) => setAllowAIEnhancement(e.target.checked)}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                        </label>
+                                    </div>
+                                    <div className="mt-2.5 pt-2 border-t border-blue-100/80 flex items-center justify-between text-[11px]">
+                                        <span className={allowAIEnhancement ? "text-blue-700 font-medium flex items-center gap-1.5" : "text-gray-500 flex items-center gap-1.5"}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${allowAIEnhancement ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                                            {allowAIEnhancement ? 'AI Enhancement Enabled' : 'AI Enhancement Disabled (Template will be sent exactly as crafted)'}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className={`transition-all duration-300 ${isBuilderDisabled ? 'opacity-40 grayscale pointer-events-none select-none' : 'opacity-100'}`}>
                                 {isBuilderDisabled && (
@@ -879,94 +934,107 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
                                                             </div>
                                                         )}
                                                     </div>
-                                                )}
-                                                {['image', 'video', 'document'].includes(broadcastTitleType) && (
-                                                    <div className="space-y-3 mt-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                                        <div className="flex items-center gap-2 mb-3 bg-white p-1 rounded-md border border-gray-300 w-fit shadow-sm">
-                                                            <button type="button" onClick={() => setHeaderMediaSource('upload')} className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${headerMediaSource === 'upload' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>Upload File</button>
-                                                            <button type="button" onClick={() => setHeaderMediaSource('link')} className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${headerMediaSource === 'link' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>Paste Link</button>
+                                                                                   {['image', 'video', 'document'].includes(broadcastTitleType) && (
+                                                    <div className="space-y-3 mt-4 border border-gray-200 rounded-xl p-4 bg-gray-50/80">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-xs font-semibold text-gray-700 capitalize">
+                                                                Header {broadcastTitleType}
+                                                            </span>
+                                                            <span className="text-[11px] text-gray-500">
+                                                                {broadcastTitleType === 'image' && 'JPG, PNG (Max 5MB)'}
+                                                                {broadcastTitleType === 'video' && 'MP4 (Max 16MB)'}
+                                                                {broadcastTitleType === 'document' && 'PDF (Max 100MB)'}
+                                                            </span>
                                                         </div>
-                                                        {headerMediaSource === 'link' ? (
-                                                            <input type="text" placeholder={`Paste ${broadcastTitleType} link here...`} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white" value={broadcastTitleType === 'image' ? broadcastTitleImageLink : broadcastTitleType === 'video' ? broadcastTitleVideoLink : broadcastTitleDocumentLink} onChange={(e) => {
-                                                                if (broadcastTitleType === 'image') setBroadcastTitleImageLink(e.target.value);
-                                                                if (broadcastTitleType === 'video') setBroadcastTitleVideoLink(e.target.value);
-                                                                if (broadcastTitleType === 'document') setBroadcastTitleDocumentLink(e.target.value);
-                                                            }} />
-                                                        ) : (
-                                                            <div className="flex flex-col gap-2">
-                                                                <div className="flex items-center gap-4">
-                                                                    {isMediaUploading ? (
-                                                                        <div className="px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs font-medium text-blue-600 flex items-center gap-2 shadow-sm">
-                                                                            <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                                            </svg>
-                                                                            Uploading {broadcastTitleType}...
-                                                                        </div>
-                                                                    ) : (
-                                                                        <label className="cursor-pointer px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium hover:bg-gray-50 text-blue-600 shadow-sm transition-colors">
-                                                                            <span>+ Choose {broadcastTitleType}</span>
-                                                                            <input
-                                                                                type="file"
-                                                                                className="hidden"
-                                                                                accept={broadcastTitleType === 'image' ? 'image/*' : broadcastTitleType === 'video' ? 'video/mp4' : '.pdf'}
-                                                                                onChange={async (e) => {
-                                                                                    const file = e.target.files[0];
-                                                                                    if (!file) return;
-                                                                                    if (broadcastTitleType === 'image') setBroadcastTitleImageFile(file);
-                                                                                    if (broadcastTitleType === 'video') setBroadcastTitleVideoFile(file);
-                                                                                    if (broadcastTitleType === 'document') setBroadcastTitleDocumentFile(file);
-                                                                                    setIsMediaUploading(true);
-                                                                                    try {
-                                                                                        if (file) {
-                                                                                            const isValid = validateFileExtension(file);
-                                                                                            if (!isValid) {
-                                                                                                                                                                                        alert('Invalid file type. Please upload a PDF, JPEG, PNG, or MP4 file.');
-                                                                                                setIsMediaUploading(false);
-                                                                                                if (broadcastTitleType === 'image') setBroadcastTitleImageFile(null);
-                                                                                                if (broadcastTitleType === 'video') setBroadcastTitleVideoFile(null);
-                                                                                                if (broadcastTitleType === 'document') setBroadcastTitleDocumentFile(null);
-                                                                                                return;
-                                                                                            }
-                                                                                        }
-                                                                                        const uploadResult = await uploadImageToAPI(file);
-                                                                                        if (broadcastTitleType === 'image') {
-                                                                                            setBroadcastTitleImageHandle(uploadResult.handle);
-                                                                                            setBroadcastTitleImageMediaId(uploadResult.mediaId);
-                                                                                            setBroadcastTitleMediaKey(uploadResult.s3_key);
-                                                                                        } else if (broadcastTitleType === 'video') {
-                                                                                            setBroadcastTitleVideoHandle(uploadResult.handle);
-                                                                                            setBroadcastTitleMediaKey(uploadResult.s3_key);
-                                                                                        } else if (broadcastTitleType === 'document') {
-                                                                                            setBroadcastTitleDocumentHandle(uploadResult.handle);
-                                                                                            setBroadcastTitleMediaKey(uploadResult.s3_key);
-                                                                                        }
-                                                                                    } catch (error) {
-                                                                                        console.error("Immediate upload failed:", error);
-                                                                                        alert("Failed to upload the file. Please try again.");
-                                                                                        if (broadcastTitleType === 'image') setBroadcastTitleImageFile(null);
-                                                                                        if (broadcastTitleType === 'video') setBroadcastTitleVideoFile(null);
-                                                                                        if (broadcastTitleType === 'document') setBroadcastTitleDocumentFile(null);
-                                                                                    } finally {
-                                                                                        setIsMediaUploading(false);
-                                                                                    }
-                                                                                }}
+
+                                                        {/* Selected Media Display or Empty Trigger */}
+                                                        {(broadcastTitleMediaKey || broadcastTitleImageHandle || broadcastTitleVideoHandle || broadcastTitleDocumentHandle || broadcastTitleImageFile || broadcastTitleVideoFile || broadcastTitleDocumentFile) ? (
+                                                            <div className="bg-white border border-gray-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs">
+                                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                                    {/* Thumbnail Preview */}
+                                                                    <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center border border-gray-200">
+                                                                        {broadcastTitleType === 'image' ? (
+                                                                            <img 
+                                                                                src={broadcastTitleMediaPreviewUrl || (broadcastTitleMediaKey ? `${process.env.REACT_APP_S3_MEDIA_BUCKET_URL || ''}${broadcastTitleMediaKey}` : (broadcastTitleImageFile ? URL.createObjectURL(broadcastTitleImageFile) : ''))} 
+                                                                                alt="Header preview" 
+                                                                                className="w-full h-full object-cover" 
                                                                             />
-                                                                        </label>
-                                                                    )}
-                                                                    {!isMediaUploading && (broadcastTitleImageHandle || broadcastTitleVideoHandle || broadcastTitleDocumentHandle) && (
-                                                                        <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-                                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                                                                            </svg>
-                                                                            Uploaded successfully
+                                                                        ) : broadcastTitleType === 'video' ? (
+                                                                            <div className="w-full h-full bg-slate-900 flex items-center justify-center text-white">
+                                                                                <span className="text-lg">▶️</span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="w-full h-full bg-red-50 text-red-600 font-bold flex items-center justify-center text-xs">
+                                                                                PDF
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Details */}
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="text-xs font-medium text-gray-900 truncate">
+                                                                            {mediaFileName || (broadcastTitleMediaKey ? broadcastTitleMediaKey.split('/').pop() : `${broadcastTitleType} asset attached`)}
+                                                                        </p>
+                                                                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 font-medium px-2 py-0.5 rounded-full mt-1 border border-emerald-200">
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                                            Attached & Synced
                                                                         </span>
-                                                                    )}
+                                                                    </div>
                                                                 </div>
+
+                                                                {/* Actions */}
+                                                                <div className="flex items-center gap-2 shrink-0">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setShowMediaLibraryModal(true)}
+                                                                        className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                                                    >
+                                                                        Change Media
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setBroadcastTitleMediaKey('');
+                                                                            setBroadcastTitleMediaPreviewUrl('');
+                                                                            setBroadcastTitleImageHandle('');
+                                                                            setBroadcastTitleVideoHandle('');
+                                                                            setBroadcastTitleDocumentHandle('');
+                                                                            setBroadcastTitleImageMediaId('');
+                                                                            setBroadcastTitleImageFile(null);
+                                                                            setBroadcastTitleVideoFile(null);
+                                                                            setBroadcastTitleDocumentFile(null);
+                                                                            setMediaFileName('');
+                                                                        }}
+                                                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                                        title="Remove media"
+                                                                    >
+                                                                        ✕
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex flex-col items-center justify-center p-6 bg-white border-2 border-dashed border-gray-300 rounded-xl text-center hover:border-blue-400 transition-colors">
+                                                                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl mb-2">
+                                                                    {broadcastTitleType === 'image' ? '🖼️' : broadcastTitleType === 'video' ? '🎥' : '📄'}
+                                                                </div>
+                                                                <h5 className="text-xs font-semibold text-gray-800 mb-1">
+                                                                    No header {broadcastTitleType} attached
+                                                                </h5>
+                                                                <p className="text-[11px] text-gray-500 mb-3 max-w-xs">
+                                                                    Choose an existing asset from your media library or upload a new one.
+                                                                </p>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setShowMediaLibraryModal(true)}
+                                                                    className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-2 shadow-xs"
+                                                                >
+                                                                    <span>📁</span>
+                                                                    <span>Choose from Media Library</span>
+                                                                </button>
                                                             </div>
                                                         )}
                                                     </div>
-                                                )}
+                                                )}              )}
                                             </div>
                                             {broadcastTitleType === 'location' && (
                                                 <div className="grid grid-cols-2 gap-3">
@@ -1269,7 +1337,16 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Preview</h3>
                                 <div className="flex justify-center">
                                     <div className="relative w-[260px] h-[520px] bg-gray-900 rounded-[2.5rem] p-1.5 shadow-2xl flex items-center justify-center text-gray-400 text-xs italic">
-                                        <div className="w-full h-full bg-[#ece5dd] rounded-[2rem] overflow-hidden flex flex-col pt-12 pb-4 px-2 text-black not-italic" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='grid' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='%23d4d4d4' stroke-width='0.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grid)' opacity='0.1'/%3E%3C/svg%3E")` }}>
+                                        <div className="w-full h-full bg-[#ece5dd] rounded-[2rem] overflow-hidden flex flex-col pt-10 pb-4 px-2 text-black not-italic" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='grid' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='%23d4d4d4' stroke-width='0.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grid)' opacity='0.1'/%3E%3C/svg%3E")` }}>
+                                            
+                                            {/* Meta AI Enhancement Active Indicator */}
+                                            {templateCategory === 'Marketing' && allowAIEnhancement && (
+                                                <div className="mb-2 self-center inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-blue-600/10 to-indigo-600/10 border border-blue-400/40 rounded-full text-[9px] text-blue-800 font-semibold shadow-xs">
+                                                    <span>✨</span>
+                                                    <span>Meta AI Enhancement Active</span>
+                                                </div>
+                                            )}
+
                                             {(templateBody || broadcastTitleType !== 'none') ? (
                                                 <div className="bg-white rounded-lg p-2 text-xs shadow-sm self-start max-w-[90%]">
                                                     {broadcastTitleType === 'text' && <div className="font-bold mb-1">
@@ -1279,7 +1356,9 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
                                                         <div className="mb-1 rounded overflow-hidden">
                                                             {(() => {
                                                                 let sourceUrl = '';
-                                                                if (broadcastTitleMediaKey) {
+                                                                if (broadcastTitleMediaPreviewUrl) {
+                                                                    sourceUrl = broadcastTitleMediaPreviewUrl;
+                                                                } else if (broadcastTitleMediaKey) {
                                                                     const baseUrl = process.env.REACT_APP_S3_MEDIA_BUCKET_URL?.replace(/\/$/, '') + '/';
                                                                     sourceUrl = baseUrl + broadcastTitleMediaKey;
                                                                 } else if (headerMediaSource === 'link') {
@@ -1361,6 +1440,32 @@ export const TemplateEditor = ({ user, userData, initialTemplate, onCancel, onSu
                     </div>
                 </div>
             )}
+            {/* MEDIA LIBRARY MODAL */}
+            <MediaLibraryModal
+                isOpen={showMediaLibraryModal}
+                onClose={() => setShowMediaLibraryModal(false)}
+                user={user}
+                userData={userData}
+                allowedType={broadcastTitleType}
+                title={`Select Header ${broadcastTitleType.toUpperCase()}`}
+                onSelectMedia={(media) => {
+                    setBroadcastTitleMediaKey(media.s3_key || '');
+                    setBroadcastTitleMediaPreviewUrl(media.s3_url || media.url || '');
+                    setBroadcastTitleImageMediaId(media.mediaId || media.id || media.media_id || '');
+                    setMediaFileName(media.fileName || media.file_name || '');
+
+                    if (broadcastTitleType === 'image') {
+                        setBroadcastTitleImageHandle(media.handle || media.media_handle || '');
+                    } else if (broadcastTitleType === 'video') {
+                        setBroadcastTitleVideoHandle(media.handle || media.media_handle || '');
+                    } else if (broadcastTitleType === 'document') {
+                        setBroadcastTitleDocumentHandle(media.handle || media.media_handle || '');
+                    }
+                    setBroadcastTitleImageFile(null);
+                    setBroadcastTitleVideoFile(null);
+                    setBroadcastTitleDocumentFile(null);
+                }}
+            />
         </div>
     );
 };

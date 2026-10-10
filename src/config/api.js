@@ -335,6 +335,12 @@ export const apiConfig = {
       getUserAudiences: (dbId) => buildDbServerUrl(`/api/audience/user/${dbId}`),
       preview: () => buildDbServerUrl('/api/audience/preview'),
       save: () => buildDbServerUrl('/api/audience/save')
+    },
+    // Shopify endpoints
+    shopify: {
+      status: () => buildDbServerUrl('/api/shopify/status'),
+      connect: () => buildDbServerUrl('/api/shopify/connect'),
+      syncCustomers: () => buildDbServerUrl('/api/shopify/sync-customers'),
     }
   }
 };

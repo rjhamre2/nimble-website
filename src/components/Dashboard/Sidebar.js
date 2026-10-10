@@ -7,6 +7,7 @@ import {
   ChartPieIcon,
   IdentificationIcon,
   ExclamationTriangleIcon,
+  PhotoIcon,
 } from '@heroicons/react/24/outline';
 
 const menuItems = [
@@ -14,6 +15,7 @@ const menuItems = [
   { id: 'setup',            name: 'Setup',            icon: ClipboardDocumentCheckIcon },
   { id: 'team-inbox',       name: 'Inbox',            icon: InboxIcon },
   { id: 'broadcast',        name: 'Broadcast',        icon: MegaphoneIcon },
+  { id: 'media-library',    name: 'Media Library',    icon: PhotoIcon },
   { id: 'contacts',         name: 'Customers',        icon: UserGroupIcon },
   { id: 'account-details',  name: 'Account Details',  icon: IdentificationIcon },
 ];
@@ -24,6 +26,7 @@ const Sidebar = ({
   isWabaDetailsEmpty,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
+  inboxUnreadCount = 0,
 }) => {
   /* Prevent body scroll when mobile drawer is open */
   useEffect(() => {
@@ -95,7 +98,12 @@ const Sidebar = ({
                   {item.name}
                 </span>
 
-                {active && (
+                {item.id === 'team-inbox' && inboxUnreadCount > 0 && (
+                  <span className="ml-auto bg-[#25D366] text-white text-[9px] font-bold px-1.5 min-w-[18px] h-4 rounded-full flex items-center justify-center flex-shrink-0">
+                    {inboxUnreadCount > 99 ? '99+' : inboxUnreadCount}
+                  </span>
+                )}
+                {item.id !== 'team-inbox' && active && (
                   <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#25D366] flex-shrink-0" />
                 )}
                 {warn && !active && (

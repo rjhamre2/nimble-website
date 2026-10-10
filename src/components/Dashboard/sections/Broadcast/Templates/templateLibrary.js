@@ -1,25 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { apiConfig } from '../../../../../config/api'; // Adjust this path if needed
+import React, { useState, useEffect, useMemo } from 'react';
+import { apiConfig } from '../../../../../config/api';
+import { WhatsAppPhonePreview } from './WhatsAppPhonePreview';
+import { 
+  MagnifyingGlassIcon, 
+  SparklesIcon, 
+  PlusIcon,
+  TagIcon
+} from '@heroicons/react/24/outline';
 
 export const TemplateLibrary = ({ onSelectTemplate }) => {
   const [selectedTemplateTag, setSelectedTemplateTag] = useState('All');
   const [templateSearchQuery, setTemplateSearchQuery] = useState('');
   
-  // New API-driven states
+  // API-driven states
   const [libraryTemplates, setLibraryTemplates] = useState([]);
   const [availableTags, setAvailableTags] = useState(['All']);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch templates from the backend on mount
+  // Fetch default templates on mount
   useEffect(() => {
     const fetchDefaultTemplates = async () => {
       try {
         setIsLoading(true);
         const dbServerUrl = apiConfig.dbServerConfig.baseURL;
-        
-        // Fetching from the endpoint you created earlier
         const response = await fetch(`${dbServerUrl}/api/templates/defaults`);
         
         if (!response.ok) {
@@ -27,39 +31,37 @@ export const TemplateLibrary = ({ onSelectTemplate }) => {
         }
         
         const result = await response.json();
-        
-        // Handle variations in how your API might wrap the response
         const fetchedTemplates = result.data || result || [];
         
-        // Map the backend data to ensure the UI has easy access to name, content, and tags
         const mappedTemplates = fetchedTemplates.map(item => {
-           const tmplObj = item.object || item;
-           const components = tmplObj.components || [];
-           const bodyComp = components.find(c => c.type === 'body' || c.type === 'BODY');
-           
-           // Ensure tags exist (falling back to the 'industry' field you set up in the backend)
-           const itemTags = item.tags || (item.industry ? [item.industry] : []) || [];
-           
-           // EXTRACT TEMPLATE TYPE (Fallback to 'custom' if missing)
-           const templateType = item.template_type || tmplObj.template_type || 'custom';
-           console.log(`Template "${tmplObj.name}" has type: ${templateType}`);
-           
-           return {
-             ...item,
-             name: tmplObj.name || item.name || 'Unnamed Template',
-             content: bodyComp ? bodyComp.text : '',
-             tags: itemTags,
-             template_type: templateType // Explicitly add this for the editor to use
-           };
+          const tmplObj = item.object || item;
+          const components = tmplObj.components || [];
+          const bodyComp = components.find(c => c.type === 'body' || c.type === 'BODY');
+          
+          const itemTags = item.tags || (item.industry ? [item.industry] : []) || [];
+          if (item.template_grouping) itemTags.push(item.template_grouping);
+          if (item.template_type === 'media_carousel') itemTags.push('Carousel');
+
+          const templateType = item.template_type || tmplObj.template_type || 'custom';
+          
+          return {
+            ...item,
+            name: tmplObj.name || item.name || 'Unnamed Template',
+            content: bodyComp ? bodyComp.text : '',
+            tags: Array.from(new Set(itemTags)),
+            template_type: templateType
+          };
         });
 
         setLibraryTemplates(mappedTemplates);
 
-        // Dynamically generate the list of unique tags based on what the API returned
+        // Unique tags list
         const uniqueTags = new Set(['All']);
         mappedTemplates.forEach(t => {
           if (Array.isArray(t.tags)) {
-            t.tags.forEach(tag => uniqueTags.add(tag));
+            t.tags.forEach(tag => {
+              if (tag) uniqueTags.add(tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase());
+            });
           }
         });
         setAvailableTags(Array.from(uniqueTags));
@@ -75,114 +77,191 @@ export const TemplateLibrary = ({ onSelectTemplate }) => {
     fetchDefaultTemplates();
   }, []);
 
-  // Filter the dynamically fetched templates
-  let filteredTemplates = libraryTemplates;
-  
-  if (selectedTemplateTag !== 'All') {
-    filteredTemplates = filteredTemplates.filter(template => 
-      template.tags?.includes(selectedTemplateTag)
-    );
-  }
+  // Filter templates
+  const filteredTemplates = useMemo(() => {
+    let list = libraryTemplates;
 
-  if (templateSearchQuery.trim()) {
-    const query = templateSearchQuery.toLowerCase().trim();
-    filteredTemplates = filteredTemplates.filter(template => {
-      return template.name?.toLowerCase().includes(query) || 
-             template.tags?.some(tag => tag.toLowerCase().includes(query)) || 
-             template.content?.toLowerCase().includes(query);
-    });
-  }
+    if (selectedTemplateTag !== 'All') {
+      const selectedLower = selectedTemplateTag.toLowerCase();
+      list = list.filter(template => 
+        template.tags?.some(tag => tag.toLowerCase() === selectedLower)
+      );
+    }
+
+    if (templateSearchQuery.trim()) {
+      const q = templateSearchQuery.toLowerCase().trim();
+      list = list.filter(template => {
+        return (
+          template.name?.toLowerCase().includes(q) || 
+          template.tags?.some(tag => tag.toLowerCase().includes(q)) || 
+          template.content?.toLowerCase().includes(q)
+        );
+      });
+    }
+
+    return list;
+  }, [libraryTemplates, selectedTemplateTag, templateSearchQuery]);
 
   return (
-    <>
-      <div className="flex items-start justify-between mb-4">
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Template Library</h2>
-          <p className="text-sm text-gray-600">Select or create your template and submit it for WhatsApp approval.</p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-900">Pre-Built Template Library</h2>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <SparklesIcon className="w-3 h-3 text-emerald-500" />
+              WhatsApp Verified Layouts
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Choose from industry-tested, high-converting WhatsApp templates rendered in realistic phone previews.
+          </p>
         </div>
-        {/* Sending an empty object sets initialTemplate to null-like, defaulting to 'custom' tab */}
-        <button onClick={() => onSelectTemplate({})} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm">
-          New Template Message
+        
+        <button 
+          onClick={() => onSelectTemplate({})} 
+          className="btn-primary text-xs py-2 px-3.5 gap-1.5 self-start sm:self-auto"
+        >
+          <PlusIcon className="w-4 h-4" />
+          Create Custom Template
         </button>
       </div>
 
-      {/* Show Error State if API Fails */}
+      {/* Error Alert */}
       {error && (
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-4 border border-red-200">
-          <p className="text-sm font-medium">Failed to load templates: {error}</p>
+        <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 text-xs">
+          <p className="font-semibold">Failed to load templates: {error}</p>
         </div>
       )}
 
-      {/* Dynamic Tag Filter Buttons */}
-      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
-        {availableTags.map((tag) => {
-          const count = tag === 'All' 
-            ? libraryTemplates.length 
-            : libraryTemplates.filter(t => t.tags?.includes(tag)).length;
+      {/* Dynamic Tag Filter Buttons & Search */}
+      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+          {availableTags.map((tag) => {
+            const isAll = tag === 'All';
+            const count = isAll 
+              ? libraryTemplates.length 
+              : libraryTemplates.filter(t => t.tags?.some(itemTag => itemTag.toLowerCase() === tag.toLowerCase())).length;
+              
+            if (count === 0 && !isAll) return null;
             
-          if (count === 0 && tag !== 'All') return null;
-          
-          return (
-            <button 
-              key={tag} 
-              onClick={() => setSelectedTemplateTag(tag)} 
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                selectedTemplateTag === tag 
-                  ? 'bg-blue-100 text-blue-700' 
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {tag} <span className="text-gray-500">({count})</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mb-6 relative">
-        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-        <input 
-          type="text" 
-          placeholder="Search templates by name, tag, or content..." 
-          value={templateSearchQuery} 
-          onChange={(e) => setTemplateSearchQuery(e.target.value)} 
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" 
-        />
-      </div>
-
-      {/* Loading Skeleton / Grid */}
-      {isLoading ? (
-        <div className="py-12 text-center">
-          <div className="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-sm text-gray-500 font-medium">Loading templates...</p>
+            return (
+              <button 
+                key={tag} 
+                onClick={() => setSelectedTemplateTag(tag)} 
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                  selectedTemplateTag === tag 
+                    ? 'bg-slate-900 text-white shadow-xs' 
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span>{tag}</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedTemplateTag === tag ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-500'}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
-      ) : (
+
+        {/* Search */}
+        <div className="relative w-full md:w-72 flex-shrink-0">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input 
+            type="text" 
+            placeholder="Search library templates..." 
+            value={templateSearchQuery} 
+            onChange={(e) => setTemplateSearchQuery(e.target.value)} 
+            className="input pl-9 text-xs py-2" 
+          />
+        </div>
+      </div>
+
+      {/* Loading Skeleton */}
+      {isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="card p-4 animate-pulse bg-white space-y-4">
+              <div className="h-5 bg-slate-200 rounded w-1/2"></div>
+              <div className="h-[400px] bg-slate-100 rounded-2xl"></div>
+              <div className="h-8 bg-slate-200 rounded"></div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Templates Grid with WhatsApp Phone Screen Render */}
+      {!isLoading && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredTemplates.map((template) => (
-              <div key={template.id || template.name} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow flex flex-col bg-white">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 mb-1 truncate">{template.name}</h3>
-                    <span className="text-xs text-gray-500">{template.tags ? template.tags.join(', ') : ''}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredTemplates.map((template, idx) => {
+              const tmplObj = template.object || template;
+              const tName = tmplObj.name || template.name || `Template ${idx + 1}`;
+              const tCategory = tmplObj.category || template.category || 'MARKETING';
+
+              return (
+                <div 
+                  key={template.id || template.name || idx} 
+                  className="card p-4 bg-white border border-slate-200/90 shadow-xs hover:border-slate-300 hover:shadow-md transition-all flex flex-col justify-between group"
+                >
+                  {/* Template Info Header */}
+                  <div className="pb-3 mb-3 border-b border-slate-100">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-slate-900 text-sm truncate leading-tight mb-1" title={tName}>
+                          {tName}
+                        </h3>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded uppercase tracking-wider">
+                            {tCategory}
+                          </span>
+                          {template.tags?.map((tg, tagIdx) => (
+                            <span key={tagIdx} className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded capitalize">
+                              {tg}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  {/* Passes the fully mapped object including template_type */}
-                  <button onClick={() => onSelectTemplate(template)} className="px-3 py-1 text-xs font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 ml-2 transition-colors">
-                    Use sample
-                  </button>
+
+                  {/* WhatsApp Phone Screen Mockup */}
+                  <div className="py-2 flex-1 flex items-center justify-center">
+                    <WhatsAppPhonePreview 
+                      template={template} 
+                      storeName="Nimble Store" 
+                    />
+                  </div>
+
+                  {/* Card Bottom CTA */}
+                  <div className="pt-3 mt-3 border-t border-slate-100">
+                    <button 
+                      onClick={() => onSelectTemplate(template)} 
+                      className="w-full btn-primary text-xs py-2 px-3 gap-1.5 justify-center font-semibold shadow-xs"
+                    >
+                      <SparklesIcon className="w-3.5 h-3.5" />
+                      Use This Template
+                    </button>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2 flex-1 overflow-y-auto max-h-48">
-                  {template.content}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
+
           {filteredTemplates.length === 0 && !error && (
-            <div className="col-span-full text-center py-12">
-              <p className="text-gray-500 text-sm">No templates found matching your criteria.</p>
+            <div className="card flex flex-col items-center justify-center py-16 text-center border-dashed border-2 border-slate-200 bg-white">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mb-3 text-slate-400">
+                <TagIcon className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-semibold text-slate-700 mb-1">No templates found</p>
+              <p className="text-xs text-slate-400 max-w-xs">No template library matches "{templateSearchQuery || selectedTemplateTag}". Try clearing your search.</p>
             </div>
           )}
         </>
       )}
-    </>
+    </div>
   );
 };
+
+export default TemplateLibrary;

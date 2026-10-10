@@ -1,4 +1,2 @@
-// Check WhatsApp integration status for a user
-export const checkShopifyStatus = async (userId) => {
-
-};
+// Re-export from the canonical shopifyService for backwards compatibility.
+export { checkShopifyStatus } from './shopifyService';

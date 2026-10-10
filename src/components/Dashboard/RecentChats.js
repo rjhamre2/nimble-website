@@ -37,13 +37,18 @@ const RecentChats = ({ onNavigateToLiveChat }) => {
         if (data.messages && data.messages.length > 0) {
           // Group by sender and derive last message info
           const groupedBySender = data.messages.reduce((acc, msg) => {
-            const senderKey = msg.sender_number || msg.sender_name || 'Unknown';
+            const cleanPhone = msg.sender_number ? String(msg.sender_number).replace(/\D/g, '') : '';
+            const senderKey = (cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone) || msg.sender_name || 'Unknown';
             if (!acc[senderKey]) {
               acc[senderKey] = {
                 sender_name: msg.sender_name || 'Unknown',
-                sender_number: msg.sender_number || '',
+                sender_number: cleanPhone || msg.sender_number || '',
                 messages: []
               };
+            }
+            // Update sender_name if a better human name is present
+            if (msg.sender_name && msg.sender_name !== msg.sender_number && acc[senderKey].sender_name === 'Unknown') {
+              acc[senderKey].sender_name = msg.sender_name;
             }
             acc[senderKey].messages.push(msg);
             return acc;

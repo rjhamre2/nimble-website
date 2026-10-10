@@ -1,8 +1,86 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiConfig } from '../../../../config/api'; 
 import AudienceBuilder from './AudienceBuilder';
 import BroadcastAnalytics from './BroadcastAnalytics';
 import { extractVariablesFromTemplate, TemplateEditor, TemplateLibrary, UserTemplatesList } from './Templates';
+
+// ─── Timezone Definitions ───────────────────────────────────────────────────
+const TIMEZONE_OPTIONS = [
+  { value: 'Asia/Kolkata', label: 'India (IST - UTC+5:30)' },
+  { value: 'America/New_York', label: 'Eastern Time (US / Canada - UTC-5/4)' },
+  { value: 'America/Chicago', label: 'Central Time (US / Canada - UTC-6/5)' },
+  { value: 'America/Denver', label: 'Mountain Time (US / Canada - UTC-7/6)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (US / Canada - UTC-8/7)' },
+  { value: 'Europe/London', label: 'London (GMT / BST - UTC+0/1)' },
+  { value: 'Europe/Paris', label: 'Central Europe (CET / CEST - UTC+1/2)' },
+  { value: 'Asia/Dubai', label: 'Gulf Standard Time (GST - UTC+4)' },
+  { value: 'Asia/Singapore', label: 'Singapore / Malaysia (SGT - UTC+8)' },
+  { value: 'Australia/Sydney', label: 'Sydney (AEST / AEDT - UTC+10/11)' },
+  { value: 'UTC', label: 'Coordinated Universal Time (UTC)' },
+];
+
+/**
+ * Calculates exact UTC ISO-8601 string for a wall date/time in a specific IANA timezone
+ */
+function computeUtcIsoString(dateStr, hourStr, minStr, period, tz) {
+  if (!dateStr) return null;
+  let hour = parseInt(hourStr, 10);
+  if (period === 'PM' && hour < 12) hour += 12;
+  if (period === 'AM' && hour === 12) hour = 0;
+  
+  const pad = (n) => String(n).padStart(2, '0');
+  const timeStr = `${pad(hour)}:${pad(minStr)}:00`;
+
+  const targetUtcAnchor = new Date(`${dateStr}T${timeStr}Z`);
+  if (isNaN(targetUtcAnchor.getTime())) return null;
+
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+
+    const parts = formatter.formatToParts(targetUtcAnchor);
+    const partMap = {};
+    parts.forEach(p => { partMap[p.type] = p.value; });
+
+    const inTzDate = new Date(`${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour}:${partMap.minute}:${partMap.second}Z`);
+    const diffMs = inTzDate.getTime() - targetUtcAnchor.getTime();
+    
+    return new Date(targetUtcAnchor.getTime() - diffMs).toISOString();
+  } catch (e) {
+    return new Date(`${dateStr}T${timeStr}`).toISOString();
+  }
+}
+
+/**
+ * Formats a relative countdown string (e.g., "in 2 hours", "in 3 days")
+ */
+function formatTimeRemaining(isoDateStr) {
+  if (!isoDateStr) return '';
+  const diffMs = new Date(isoDateStr).getTime() - Date.now();
+  if (diffMs <= 0) return 'Due now';
+  
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 0) {
+    const remHours = diffHours % 24;
+    return `in ${diffDays}d ${remHours > 0 ? `${remHours}h` : ''}`;
+  }
+  if (diffHours > 0) {
+    const remMins = diffMinutes % 60;
+    return `in ${diffHours}h ${remMins > 0 ? `${remMins}m` : ''}`;
+  }
+  return `in ${diffMinutes}m`;
+}
 
 // ─── Tab button helper ────────────────────────────────────────────────────────
 const TabBtn = ({ active, onClick, children }) => (
@@ -19,6 +97,7 @@ const TabBtn = ({ active, onClick, children }) => (
     {children}
   </button>
 );
+
 
 
 const Broadcast = ({ user, userData, loading }) => {
@@ -51,12 +130,36 @@ const Broadcast = ({ user, userData, loading }) => {
   const [broadcastStatus, setBroadcastStatus] = useState({ type: '', message: '' });
 
   // Scheduling State
-  const [scheduledTimezone, setScheduledTimezone] = useState('IST');
-  const [scheduledHour, setScheduledHour] = useState('12');
+  const [scheduledTimezone, setScheduledTimezone] = useState(() => {
+    try {
+      const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      return TIMEZONE_OPTIONS.some(t => t.value === userTz) ? userTz : 'Asia/Kolkata';
+    } catch (e) {
+      return 'Asia/Kolkata';
+    }
+  });
+  const [scheduledHour, setScheduledHour] = useState('10');
   const [scheduledMinute, setScheduledMinute] = useState('00');
   const [scheduledPeriod, setScheduledPeriod] = useState('AM');
-  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledDate, setScheduledDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  });
   const [sendTimeMode, setSendTimeMode] = useState('now');
+
+  // Scheduled Broadcasts Management State
+  const [scheduledList, setScheduledList] = useState([]);
+  const [isLoadingScheduled, setIsLoadingScheduled] = useState(false);
+  const [cancellingBroadcastId, setCancellingBroadcastId] = useState(null);
+  const [confirmCancelId, setConfirmCancelId] = useState(null);
+  const [scheduledActionMsg, setScheduledActionMsg] = useState({ type: '', message: '' });
+
+  // Calculated UTC scheduled timestamp
+  const calculatedScheduledUtc = useMemo(() => {
+    if (sendTimeMode !== 'schedule' || !scheduledDate) return null;
+    return computeUtcIsoString(scheduledDate, scheduledHour, scheduledMinute, scheduledPeriod, scheduledTimezone);
+  }, [sendTimeMode, scheduledDate, scheduledHour, scheduledMinute, scheduledPeriod, scheduledTimezone]);
 
   // ==========================================
   // API FETCH FUNCTIONS
@@ -102,7 +205,57 @@ const Broadcast = ({ user, userData, loading }) => {
     }
   }, [user, userData]);
 
-const handleSendBroadcast = async () => {
+  const fetchScheduledBroadcasts = useCallback(async () => {
+    const dbId = userData?.db_id || user?.db_id || user?.uid;
+    if (!dbId) return;
+    setIsLoadingScheduled(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${apiConfig.dbServerConfig.baseURL}/api/broadcasts/user/${dbId}/scheduled`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setScheduledList(data.data || []);
+      } else {
+        throw new Error(data.error || 'Failed to fetch scheduled broadcasts');
+      }
+    } catch (error) {
+      console.error('Error loading scheduled broadcasts:', error);
+    } finally {
+      setIsLoadingScheduled(false);
+    }
+  }, [user, userData]);
+
+  const handleCancelScheduledBroadcast = async (broadcastId) => {
+    setCancellingBroadcastId(broadcastId);
+    setScheduledActionMsg({ type: '', message: '' });
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${apiConfig.dbServerConfig.baseURL}/api/broadcasts/${broadcastId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to cancel broadcast');
+
+      setScheduledList(prev => prev.filter(b => b.broadcast_id !== broadcastId));
+      setConfirmCancelId(null);
+      setScheduledActionMsg({ type: 'success', message: 'Broadcast cancelled successfully. It will not be sent.' });
+      setTimeout(() => setScheduledActionMsg({ type: '', message: '' }), 4000);
+    } catch (error) {
+      setScheduledActionMsg({ type: 'error', message: error.message || 'Failed to cancel broadcast' });
+    } finally {
+      setCancellingBroadcastId(null);
+    }
+  };
+
+  const handleSendBroadcast = async () => {
     if (!broadcastName.trim() || !broadcastSelectedTemplate || !selectedAudienceId) {
       setBroadcastStatus({ type: 'error', message: 'Please provide a broadcast name, select a template, and choose an audience.' });
       return;
@@ -152,10 +305,27 @@ const handleSendBroadcast = async () => {
       });
     }
 
-    // Halt execution if any validation failed
+    // Halt execution if any mapping validation failed
     if (!isMappingValid) {
       setBroadcastStatus({ type: 'error', message: mappingErrorMsg });
       return;
+    }
+
+    // 3. Validate Scheduling if schedule mode is active
+    if (sendTimeMode === 'schedule') {
+      if (!scheduledDate) {
+        setBroadcastStatus({ type: 'error', message: 'Please select a date for scheduled delivery.' });
+        return;
+      }
+      if (!calculatedScheduledUtc) {
+        setBroadcastStatus({ type: 'error', message: 'Invalid scheduled date or time.' });
+        return;
+      }
+      const scheduleTimeMs = new Date(calculatedScheduledUtc).getTime();
+      if (scheduleTimeMs <= Date.now() + 60000) {
+        setBroadcastStatus({ type: 'error', message: 'Scheduled time must be at least 1 minute in the future.' });
+        return;
+      }
     }
 
     setIsSendingBroadcast(true);
@@ -164,30 +334,50 @@ const handleSendBroadcast = async () => {
     try {
       const dbId = userData?.db_id || user?.db_id;
       const templateId = broadcastSelectedTemplate.template_id || broadcastSelectedTemplate.id || broadcastSelectedTemplate._id;
+      
+      const payload = { 
+        userId: dbId, 
+        name: broadcastName, 
+        templateId: templateId, 
+        audienceListId: selectedAudienceId, 
+        variableMapping: broadcastVariableMapping,
+        sendTimeMode: sendTimeMode,
+        scheduledAt: sendTimeMode === 'schedule' ? calculatedScheduledUtc : null,
+        timezone: scheduledTimezone
+      };
+
       const response = await fetch(`${apiConfig.dbServerConfig.baseURL}/api/broadcasts/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` },
-        body: JSON.stringify({ 
-          userId: dbId, 
-          name: broadcastName, 
-          templateId: templateId, 
-          audienceListId: selectedAudienceId, 
-          variableMapping: broadcastVariableMapping 
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to initiate broadcast');
 
-      setBroadcastStatus({ type: 'success', message: `Success! ${data.queuedCount} messages have been queued for delivery.` });
-      setBroadcastName(''); 
-      setBroadcastSelectedTemplate(null); 
-      setSelectedAudienceId(null);
-      
-      setTimeout(() => { 
-        setBroadcastView('analytics'); 
-        setBroadcastStatus({ type: '', message: '' }); 
-      }, 2000);
+      if (sendTimeMode === 'schedule') {
+        setBroadcastStatus({ 
+          type: 'success', 
+          message: `Campaign "${broadcastName}" scheduled successfully! It will dispatch automatically at the specified time.` 
+        });
+        setBroadcastName(''); 
+        setBroadcastSelectedTemplate(null); 
+        setSelectedAudienceId(null);
+        fetchScheduledBroadcasts();
+        setTimeout(() => { 
+          setBroadcastView('scheduled-broadcasts'); 
+          setBroadcastStatus({ type: '', message: '' }); 
+        }, 2000);
+      } else {
+        setBroadcastStatus({ type: 'success', message: `Success! ${data.queuedCount} messages have been queued for immediate delivery.` });
+        setBroadcastName(''); 
+        setBroadcastSelectedTemplate(null); 
+        setSelectedAudienceId(null);
+        setTimeout(() => { 
+          setBroadcastView('analytics'); 
+          setBroadcastStatus({ type: '', message: '' }); 
+        }, 2000);
+      }
     } catch (error) {
       setBroadcastStatus({ type: 'error', message: error.message });
     } finally {
@@ -202,7 +392,10 @@ const handleSendBroadcast = async () => {
     if ((templateSubView === 'your-templates' || broadcastView === 'new-broadcast') && user && userData && !loading) {
       fetchUserTemplates();
     }
-  }, [templateSubView, broadcastView, user, userData, loading, fetchUserTemplates]);
+    if (broadcastView === 'scheduled-broadcasts' && user && userData && !loading) {
+      fetchScheduledBroadcasts();
+    }
+  }, [templateSubView, broadcastView, user, userData, loading, fetchUserTemplates, fetchScheduledBroadcasts]);
 
 useEffect(() => {
     if (broadcastSelectedTemplate) {
@@ -391,7 +584,7 @@ useEffect(() => {
 
         {/* ── Templates ── */}
         {broadcastView === 'templates' && (
-          <div className="space-y-6 max-w-5xl mx-auto">
+          <div className="space-y-6 max-w-7xl mx-auto">
             {selectedTemplate ? (
               <TemplateEditor
                 user={user}
@@ -432,25 +625,188 @@ useEffect(() => {
 
         {/* ── Scheduled broadcasts ── */}
         {broadcastView === 'scheduled-broadcasts' && (
-          <div className="max-w-5xl mx-auto space-y-4">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Scheduled Broadcasts</h2>
-              <p className="text-sm text-slate-400 mt-0.5">Manage your upcoming broadcast campaigns.</p>
-            </div>
-            <div className="card flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
-                <svg className="w-7 h-7 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.4} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+          <div className="max-w-5xl mx-auto space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Scheduled Broadcasts</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Manage and monitor upcoming automated campaigns queued for dispatch.</p>
               </div>
-              <h3 className="text-sm font-semibold text-slate-700 mb-1">No scheduled broadcasts</h3>
-              <p className="text-xs text-slate-400 max-w-xs">Create a broadcast and choose "Schedule for a specific time" to see it here.</p>
-              <button onClick={() => setBroadcastView('new-broadcast')} className="btn-primary mt-6 text-xs gap-1.5">
-                Create broadcast
-              </button>
+              <div className="flex items-center gap-2.5">
+                <button 
+                  onClick={fetchScheduledBroadcasts}
+                  disabled={isLoadingScheduled}
+                  className="btn-outline text-xs py-2 px-3 gap-1.5"
+                  title="Refresh scheduled campaigns"
+                >
+                  <svg className={`w-3.5 h-3.5 ${isLoadingScheduled ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </button>
+                <button onClick={() => setBroadcastView('new-broadcast')} className="btn-primary text-xs py-2 px-3 gap-1.5">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Schedule Broadcast
+                </button>
+              </div>
             </div>
+
+            {/* Notification alert */}
+            {scheduledActionMsg.message && (
+              <div className={`rounded-xl px-4 py-3 text-xs flex items-center justify-between gap-2 transition-all ${scheduledActionMsg.type === 'error' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-emerald-50 border border-emerald-200 text-emerald-700'}`}>
+                <span>{scheduledActionMsg.message}</span>
+                <button onClick={() => setScheduledActionMsg({ type: '', message: '' })} className="hover:opacity-75">
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {isLoadingScheduled && (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="card p-5 animate-pulse bg-white space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div className="h-5 bg-slate-200 rounded w-1/3"></div>
+                      <div className="h-6 bg-slate-200 rounded-full w-20"></div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 pt-2">
+                      <div className="h-4 bg-slate-100 rounded"></div>
+                      <div className="h-4 bg-slate-100 rounded"></div>
+                      <div className="h-4 bg-slate-100 rounded"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!isLoadingScheduled && scheduledList.length === 0 && (
+              <div className="card flex flex-col items-center justify-center py-16 text-center border-dashed border-2 border-slate-200 bg-white">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-4 text-[#25D366]">
+                  <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-sm font-semibold text-slate-800 mb-1">No scheduled broadcasts found</h3>
+                <p className="text-xs text-slate-400 max-w-sm">When you schedule marketing campaigns for future automated dispatch, they will appear here with live countdowns and cancellation options.</p>
+                <button onClick={() => setBroadcastView('new-broadcast')} className="btn-primary mt-6 text-xs py-2 px-4 gap-1.5">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create New Broadcast
+                </button>
+              </div>
+            )}
+
+            {/* List of Scheduled Broadcasts */}
+            {!isLoadingScheduled && scheduledList.length > 0 && (
+              <div className="space-y-3.5">
+                {scheduledList.map(item => {
+                  const isCancelling = cancellingBroadcastId === item.broadcast_id;
+                  const isConfirming = confirmCancelId === item.broadcast_id;
+                  const scheduledDateObj = new Date(item.scheduled_at);
+                  const formattedDateTime = scheduledDateObj.toLocaleString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                  });
+                  const countdown = formatTimeRemaining(item.scheduled_at);
+
+                  return (
+                    <div key={item.broadcast_id} className="card p-5 bg-white border border-slate-200/90 shadow-sm hover:border-slate-300 transition-all">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 font-bold">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-bold text-slate-800">{item.name}</h3>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Scheduled
+                              </span>
+                              {countdown && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                  ⏳ {countdown}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-0.5">Campaign ID: <span className="font-mono text-slate-500">{item.broadcast_id}</span></p>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                          {isConfirming ? (
+                            <div className="flex items-center gap-1.5 bg-red-50 p-1.5 rounded-lg border border-red-200">
+                              <span className="text-[11px] font-medium text-red-700 px-1">Cancel campaign?</span>
+                              <button
+                                onClick={() => handleCancelScheduledBroadcast(item.broadcast_id)}
+                                disabled={isCancelling}
+                                className="px-2.5 py-1 text-xs font-semibold rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                              >
+                                {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                              </button>
+                              <button
+                                onClick={() => setConfirmCancelId(null)}
+                                disabled={isCancelling}
+                                className="px-2 py-1 text-xs font-medium rounded-md bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                              >
+                                Keep
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmCancelId(item.broadcast_id)}
+                              className="text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              Cancel Schedule
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Details Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-3.5 text-xs">
+                        <div>
+                          <span className="block text-slate-400 text-[11px] font-medium uppercase tracking-wider mb-0.5">Audience Segment</span>
+                          <span className="font-semibold text-slate-700">{item.audience_name || 'Custom Audience'}</span>
+                          <span className="text-slate-400 text-[11px] block">({item.recipient_count || 0} contacts)</span>
+                        </div>
+                        <div>
+                          <span className="block text-slate-400 text-[11px] font-medium uppercase tracking-wider mb-0.5">Template</span>
+                          <span className="font-semibold text-slate-700 truncate block">{item.template_name || 'Approved WhatsApp Template'}</span>
+                        </div>
+                        <div>
+                          <span className="block text-slate-400 text-[11px] font-medium uppercase tracking-wider mb-0.5">Scheduled Launch Time</span>
+                          <span className="font-semibold text-slate-800 block">{formattedDateTime}</span>
+                          <span className="text-slate-400 text-[11px] font-mono">{item.timezone || 'UTC'}</span>
+                        </div>
+                        <div>
+                          <span className="block text-slate-400 text-[11px] font-medium uppercase tracking-wider mb-0.5">Created</span>
+                          <span className="text-slate-600 block">{new Date(item.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
+
 
         {/* ── Broadcast history ── */}
         {broadcastView === 'broadcast-history' && (
@@ -471,7 +827,7 @@ useEffect(() => {
 
         {/* ── New Broadcast ── */}
         {broadcastView === 'new-broadcast' && (
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className={`${showAudienceBuilder ? 'max-w-7xl' : 'max-w-3xl'} mx-auto space-y-6 transition-all duration-300`}>
 
             {/* Broadcast name */}
             <div className="card p-5">
@@ -709,7 +1065,7 @@ useEffect(() => {
             })()}
 
             {/* Audience */}
-            <div className="card p-5">
+            <div className={`card ${showAudienceBuilder ? 'p-3 sm:p-5 bg-slate-50/40 border-slate-200/80 overflow-hidden' : 'p-5'}`}>
               <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">Who is your audience?</h3>
               {showAudienceBuilder ? (
                 <AudienceBuilder
@@ -767,19 +1123,158 @@ useEffect(() => {
             </div>
 
             {/* Scheduling */}
-            <div className="card p-5">
-              <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-3">When to send?</h3>
-              <div className="flex flex-col gap-3">
-                {[{ value: 'now', label: 'Send immediately' }, { value: 'schedule', label: 'Schedule for a specific time' }].map(opt => (
-                  <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
-                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${sendTimeMode === opt.value ? 'border-[#25D366]' : 'border-slate-300 group-hover:border-slate-400'}`}>
+            <div className="card p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">When to send?</h3>
+                {sendTimeMode === 'schedule' && calculatedScheduledUtc && (
+                  <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    🚀 {formatTimeRemaining(calculatedScheduledUtc)}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { value: 'now', label: 'Send immediately', desc: 'Dispatch to all contacts right away' },
+                  { value: 'schedule', label: 'Schedule for a specific time', desc: 'Deliver automatically at a future date & time' }
+                ].map(opt => (
+                  <label 
+                    key={opt.value} 
+                    className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                      sendTimeMode === opt.value 
+                        ? 'border-[#25D366] bg-emerald-50/30 shadow-sm' 
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center mt-0.5 flex-shrink-0 transition-colors ${
+                      sendTimeMode === opt.value ? 'border-[#25D366]' : 'border-slate-300'
+                    }`}>
                       {sendTimeMode === opt.value && <span className="w-2 h-2 rounded-full bg-[#25D366]" />}
                     </span>
-                    <input type="radio" value={opt.value} checked={sendTimeMode === opt.value} onChange={e => setSendTimeMode(e.target.value)} className="sr-only" />
-                    <span className="text-sm text-slate-700">{opt.label}</span>
+                    <input 
+                      type="radio" 
+                      value={opt.value} 
+                      checked={sendTimeMode === opt.value} 
+                      onChange={e => setSendTimeMode(e.target.value)} 
+                      className="sr-only" 
+                    />
+                    <div>
+                      <span className="text-sm font-semibold text-slate-800 block">{opt.label}</span>
+                      <span className="text-xs text-slate-400 block mt-0.5">{opt.desc}</span>
+                    </div>
                   </label>
                 ))}
               </div>
+
+              {/* Schedule Controls (When 'schedule' is selected) */}
+              {sendTimeMode === 'schedule' && (
+                <div className="pt-3 border-t border-slate-100 space-y-4 animate-in fade-in duration-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    
+                    {/* Date Selector */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                        Schedule Date
+                      </label>
+                      <input
+                        type="date"
+                        min={new Date().toISOString().split('T')[0]}
+                        value={scheduledDate}
+                        onChange={e => setScheduledDate(e.target.value)}
+                        className="input text-xs py-2"
+                      />
+                    </div>
+
+                    {/* Time (Hour : Min : AM/PM) */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                        Schedule Time
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          value={scheduledHour}
+                          onChange={e => setScheduledHour(e.target.value)}
+                          className="input text-xs py-2 px-2 flex-1"
+                        >
+                          {['01','02','03','04','05','06','07','08','09','10','11','12'].map(h => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                        <span className="text-slate-400 font-bold">:</span>
+                        <select
+                          value={scheduledMinute}
+                          onChange={e => setScheduledMinute(e.target.value)}
+                          className="input text-xs py-2 px-2 flex-1"
+                        >
+                          {['00','05','10','15','20','25','30','35','40','45','50','55'].map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        <div className="flex rounded-lg border border-slate-200 overflow-hidden flex-shrink-0">
+                          {['AM', 'PM'].map(p => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setScheduledPeriod(p)}
+                              className={`px-2.5 py-1.5 text-xs font-bold transition-colors ${
+                                scheduledPeriod === p 
+                                  ? 'bg-slate-800 text-white' 
+                                  : 'bg-white text-slate-500 hover:bg-slate-50'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Timezone Selector */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                        Timezone
+                      </label>
+                      <select
+                        value={scheduledTimezone}
+                        onChange={e => setScheduledTimezone(e.target.value)}
+                        className="input text-xs py-2"
+                      >
+                        {TIMEZONE_OPTIONS.map(tz => (
+                          <option key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Live Dispatch Preview Notice */}
+                  {calculatedScheduledUtc && (
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div className="text-xs text-slate-700">
+                        <span>Campaign will be automatically dispatched on </span>
+                        <span className="font-bold text-slate-900">
+                          {new Date(calculatedScheduledUtc).toLocaleString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          })}
+                        </span>
+                        <span className="text-slate-400 font-mono ml-1.5">({scheduledTimezone})</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Status + Submit */}

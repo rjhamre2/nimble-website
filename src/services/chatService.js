@@ -63,25 +63,49 @@ export const fetchRecentChats = async (userId, limit = 100) => {
   }
 };
 
+export const fetchInboxSummary = async (userId) => {
+  try {
+    const url = `${DB_API}/messages/inbox-summary/${userId}`;
+    const token = localStorage.getItem('authToken');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.get(url, { headers });
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching inbox summary:', error);
+    return { data: [], totalUnread: 0 };
+  }
+};
+
+export const markConversationRead = async (userId, senderNumber) => {
+  try {
+    const url = `${DB_API}/messages/mark-read/${userId}/${encodeURIComponent(senderNumber)}`;
+    const token = localStorage.getItem('authToken');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    await axios.post(url, {}, { headers });
+  } catch (error) {
+    console.error('❌ Error marking conversation as read:', error);
+  }
+};
+
 // --- SENDER METHODS (Point to WA Service) ---
 
 export const chatService = {
   fetchRecentChats,
   
   // 1. SEND TEXT
-  sendText: async (recipientPhone, text) => {
+  sendText: async (recipientPhone, text, contextMessageId) => {
     const url = `${WA_API}/api/messages/send/text`; 
     return axios.post(url, {
       user_id: getUserId(), // Will throw error if no user is found
       to: recipientPhone,
       body: text, 
-      preview_url: true
+      preview_url: true,
+      context_message_id: contextMessageId
     });
   },
 
   // 2. SEND REPLY BUTTONS (From our new Modal)
-sendReplyButtons: async (recipientPhone, payload) => {
-    // Note: Make sure this URL exactly matches your backend route path
+  sendReplyButtons: async (recipientPhone, payload, contextMessageId) => {
     const url = `${WA_API}/api/messages/send/interactive-reply-buttons`; 
     
     return axios.post(url, {
@@ -89,39 +113,69 @@ sendReplyButtons: async (recipientPhone, payload) => {
       to: recipientPhone,
       body: payload.body,
       
-      // 👇 Simply map the string array into the { id, title } format your backend expects
       buttons: payload.buttons.map((btnTitle, index) => ({
         id: `btn_${index}_${Date.now().toString().slice(-5)}`, 
         title: btnTitle 
       })),
       
-      footer: payload.footer
+      footer: payload.footer,
+      context_message_id: contextMessageId || payload.context_message_id
     });
   },
 
-  // UPLOAD MEDIA
+  // UPLOAD MEDIA (Uploads to S3 + Meta + PostgreSQL)
   uploadMedia: async (file) => {
-    const url = `${WA_API}/api/media/upload`;
+    const userId = getUserId();
+    const token = localStorage.getItem('authToken');
+    const headers = {
+      'Content-Type': 'multipart/form-data',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('type', file.type.split('/')[0]); 
-    formData.append('user_id', getUserId()); // Will throw error if no user is found
+    formData.append('user_id', userId);
 
-    const response = await axios.post(url, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    return response.data; 
+    try {
+      // First try unified DB service (uploads to S3 + Meta + saves to DB)
+      const response = await axios.post(`${DB_API}/media/upload`, formData, { headers });
+      const data = response.data?.data || response.data;
+      return {
+        id: data.meta_id || data.meta_upload_id || data.meta_file_handle || data.media_id || data.id,
+        media_id: data.media_id,
+        s3_url: data.s3_url,
+        url: data.s3_url,
+        ...data
+      };
+    } catch (dbErr) {
+      console.warn("⚠️ DB Media upload endpoint failed, falling back to WA server direct upload:", dbErr.message);
+      // Fallback to WA server direct upload
+      const fallbackUrl = `${WA_API}/api/media/upload`;
+      const fallbackForm = new FormData();
+      fallbackForm.append('file', file);
+      fallbackForm.append('type', file.type.split('/')[0]);
+      fallbackForm.append('user_id', userId);
+      const fallbackRes = await axios.post(fallbackUrl, fallbackForm, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return fallbackRes.data;
+    }
   },
 
-  // SEND MEDIA
-  sendMedia: async (recipientPhone, mediaId, mediaType, caption = '') => {
+  // SEND MEDIA (Supports Meta ID or S3 URL link)
+  sendMedia: async (recipientPhone, mediaIdOrUrl, mediaType, caption = '', contextMessageId) => {
     const url = `${WA_API}/api/messages/send/media`;
+    const isUrl = typeof mediaIdOrUrl === 'string' && (mediaIdOrUrl.startsWith('http://') || mediaIdOrUrl.startsWith('https://'));
+    const isNumeric = typeof mediaIdOrUrl === 'string' && /^\d+$/.test(mediaIdOrUrl);
+    
     return axios.post(url, {
       user_id: getUserId(),
       to: recipientPhone,
       type: mediaType, 
-      id: mediaId,
-      caption: caption
+      id: isNumeric ? mediaIdOrUrl : (!isUrl ? mediaIdOrUrl : undefined),
+      link: isUrl ? mediaIdOrUrl : undefined,
+      caption: caption,
+      context_message_id: contextMessageId
     });
   },
 
@@ -151,25 +205,29 @@ sendReplyButtons: async (recipientPhone, payload) => {
   },
   
   //Send Contact(s)
-  sendContact: async (recipientPhone, contactPayload) => {
+  sendContact: async (recipientPhone, contactPayload, contextMessageId = null) => {
     // Assuming you will create this route on your Node backend
     const url = `${WA_API}/api/messages/send/contacts`; 
     return axios.post(url, {
       user_id: getUserId(),
       to: recipientPhone,
-      contacts: [contactPayload] // Meta requires contacts to be an array
+      contacts: Array.isArray(contactPayload) ? contactPayload : [contactPayload],
+      ...(contextMessageId ? { context_message_id: contextMessageId } : {})
     });
   },
 
 // REQUEST ADDRESS (Native Meta Form)
-  sendAddressRequest: async (recipientPhone, payload) => {
-    // Adjust path if needed, matching your curl command
+  sendAddressRequest: async (recipientPhone, payload, contextMessageId = null) => {
     const url = `${WA_API}/api/messages/send/address-message`; 
     return axios.post(url, {
       user_id: getUserId(),
       to: recipientPhone,
-      country: payload.country,
-      body: payload.body
+      country: (payload.country || 'IN').toUpperCase(),
+      body: payload.body,
+      saved_addresses: payload.saved_addresses,
+      values: payload.values,
+      validation_errors: payload.validation_errors,
+      ...(contextMessageId ? { context_message_id: contextMessageId } : {})
     });
   },
 
@@ -246,4 +304,46 @@ export const formatRelativeTime = (timestamp) => {
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
   return date.toLocaleDateString();
+};
+
+// Format time as HH:MM AM/PM for message bubbles (WhatsApp style)
+export const formatMessageTime = (timestamp) => {
+  if (!timestamp) return '';
+  const date = new Date(timestamp.toString().length === 10 ? timestamp * 1000 : timestamp);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+};
+
+// Format date for conversation list (Today, Yesterday, or date)
+export const formatConversationTime = (timestamp) => {
+  if (!timestamp) return '';
+  const date = new Date(timestamp.toString().length === 10 ? timestamp * 1000 : timestamp);
+  if (isNaN(date.getTime())) return '';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  if (msgDate.getTime() === today.getTime()) {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+  if (msgDate.getTime() === yesterday.getTime()) return 'Yesterday';
+  const diffDays = Math.floor((today - msgDate) / 86400000);
+  if (diffDays < 7) return date.toLocaleDateString([], { weekday: 'short' });
+  return date.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' });
+};
+
+// Format date separator label for chat (Today, Yesterday, or formatted date)
+export const formatDateSeparator = (timestamp) => {
+  if (!timestamp) return '';
+  const date = new Date(timestamp.toString().length === 10 ? timestamp * 1000 : timestamp);
+  if (isNaN(date.getTime())) return '';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  if (msgDate.getTime() === today.getTime()) return 'Today';
+  if (msgDate.getTime() === yesterday.getTime()) return 'Yesterday';
+  return date.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 };

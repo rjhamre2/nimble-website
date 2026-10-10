@@ -19,6 +19,7 @@ import { initializeApp, getApps } from 'firebase/app';
 import { broadcastTemplates, getTemplatesByTag, getAllTags } from '../../data/broadcastTemplates';
 import Broadcast from './sections/Broadcast/Broadcast';
 import DashboardOverview from './sections/Dashboard';
+import MediaManager from './sections/Media/MediaManager';
 
 // Fetch pricing subscription status
 const fetchPricingSubscriptionStatus = async () => {
@@ -220,6 +221,7 @@ const Dashboard = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const [welcomePhoneNumber, setWelcomePhoneNumber] = useState('');
   const [welcomeBusinessType, setWelcomeBusinessType] = useState('');
   const [isWabaDetailsEmpty, setIsWabaDetailsEmpty] = useState(false);
+  const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
   const [welcomeBusinessName, setWelcomeBusinessName] = useState('');
   const [welcomeError, setWelcomeError] = useState('');
   const [isSubmittingWelcome, setIsSubmittingWelcome] = useState(false);
@@ -252,7 +254,7 @@ const Dashboard = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const whatsappBorderClass = whatsappStatus?.success && whatsappStatus?.isIntegrated
     ? 'border-green-500'
     : 'border-gray-300';
-  const shopifyBorderClass = shopifyStatus?.isIntegrated
+  const shopifyBorderClass = shopifyStatus?.isConnected
     ? 'border-green-500'
     : 'border-gray-300';
   const onboardingBorderClass = onboardingStatus?.status === 'completed'
@@ -2397,15 +2399,16 @@ const Dashboard = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
     setIsLoadingSubscription(true);
 
     try {
-      const [wa, shopify, ob, pricingSub] = await Promise.all([
+      const [wa, shopifyRes, ob, pricingSub] = await Promise.all([
         checkWhatsAppStatus(user.uid),
-        checkShopifyStatus(user.uid),
+        checkShopifyStatus(),
         getUserDashboardStatus(user.uid),
         fetchPricingSubscriptionStatus()
       ]);
 
       setWhatsappStatus(wa);
-      setShopifyStatus(shopify);
+      // checkShopifyStatus returns { success, data: { isConnected, shopifyDomain } }
+      setShopifyStatus(shopifyRes?.success ? shopifyRes.data : null);
       setOnboardingStatus(ob?.onboarding || null);
       setTrainingStatus(ob?.training || null);
       setSubscriptionDetails(ob?.subscription || null);
@@ -2745,33 +2748,39 @@ const Dashboard = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
 
       console.log('🔍 Fetching dashboard statuses for user:', user.uid);
       setIsCheckingWhatsapp(true);
+      setIsCheckingShopify(true);
       setIsLoadingOnboarding(true);
       setIsLoadingTraining(true);
       try {
-        const [wa, ob, tr, sub, pricingSub] = await Promise.all([
+        const [wa, shopifyRes, ob, pricingSub] = await Promise.all([
           checkWhatsAppStatus(user.uid),
+          checkShopifyStatus(),
           getUserDashboardStatus(user.uid),
           fetchPricingSubscriptionStatus()
         ]);
-        console.log('✅ Statuses:', { wa, ob, tr, sub, pricingSub });
+        console.log('✅ Statuses:', { wa, shopifyRes, ob, pricingSub });
         setWhatsappStatus(wa);
+        // checkShopifyStatus returns { success, data: { isConnected, shopifyDomain } }
+        setShopifyStatus(shopifyRes?.success ? shopifyRes.data : null);
         setOnboardingStatus(ob?.onboarding || null);
         setTrainingStatus(ob?.training || null);
         setSubscriptionDetails(ob?.subscription || null);
+        setPricingSubscriptionStatus(pricingSub);
       } catch (error) {
         console.error('❌ Error fetching statuses:', error);
         if (!whatsappStatus) setWhatsappStatus({ success: false, error: error.message });
       } finally {
         setIsCheckingWhatsapp(false);
+        setIsCheckingShopify(false);
         setIsLoadingOnboarding(false);
         setIsLoadingTraining(false);
       }
     };
 
-    if (user?.uid && !whatsappStatus && !onboardingStatus && !trainingStatus && !subscriptionDetails && !pricingSubscriptionStatus && !isLoadingSubscription && !isCheckingWhatsapp) {
+    if (user?.uid && !whatsappStatus && !shopifyStatus && !onboardingStatus && !trainingStatus && !subscriptionDetails && !pricingSubscriptionStatus && !isLoadingSubscription && !isCheckingWhatsapp) {
       fetchAllStatuses();
     }
-  }, [user, userData, whatsappStatus, onboardingStatus, trainingStatus, subscriptionDetails, pricingSubscriptionStatus, isLoadingSubscription, isCheckingWhatsapp]);
+  }, [user, userData, whatsappStatus, shopifyStatus, onboardingStatus, trainingStatus, subscriptionDetails, pricingSubscriptionStatus, isLoadingSubscription, isCheckingWhatsapp]);
 
   // Show loading state while authentication is being checked
   if (loading) {
@@ -2798,11 +2807,10 @@ const Dashboard = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
 
   const renderMainContent = () => {
     switch (activeTab) {
-      case 'team-inbox':
-        return <LiveChat />;
-
       case 'broadcast':
         return <Broadcast user={user} userData={userData} loading={loading} />;
+      case 'media-library':
+        return <MediaManager isDarkMode={false} />;
       case 'contacts':
         return <Contacts />;
 
@@ -5541,7 +5549,7 @@ const Dashboard = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                         <span className="ml-2 text-sm font-medium text-gray-500">Loading...</span>
                       </div>
-                    ) : shopifyStatus?.isIntegrated ? '✅ Connected' : '⏳ Pending'}
+                    ) : shopifyStatus?.isConnected ? '✅ Connected' : '⏳ Pending'}
                   </p>
                 </div>
               </div>
@@ -7284,12 +7292,20 @@ const Dashboard = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               isWabaDetailsEmpty={isWabaDetailsEmpty}
               isMobileMenuOpen={isMobileMenuOpen}
               setIsMobileMenuOpen={setIsMobileMenuOpen}
+              inboxUnreadCount={inboxUnreadCount}
             />
             {/* Main Content */}
             <div className={`flex-1 flex flex-col min-h-0 scrollbar-thin ${activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'p-0 overflow-hidden' : 'overflow-y-auto bg-slate-50'}`}>
-              <div className={`flex flex-col flex-1 min-h-0 ${activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'w-full h-full' : 'w-full'}`}>
-                {renderMainContent()}
+              {/* Persistent LiveChat: never unmounted so background video uploads, active chat states, and socket connections are preserved */}
+              <div className={`flex-col flex-1 min-h-0 w-full h-full ${activeTab === 'team-inbox' ? 'flex' : 'hidden'}`}>
+                <LiveChat onTotalUnreadChange={setInboxUnreadCount} />
               </div>
+
+              {activeTab !== 'team-inbox' && (
+                <div className={`flex flex-col flex-1 min-h-0 ${activeTab === 'broadcast' || activeTab === 'channels' ? 'w-full h-full' : 'w-full'}`}>
+                  {renderMainContent()}
+                </div>
+              )}
             </div>
           </div>
         </>
