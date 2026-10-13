@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { logoutLambda as logout } from '../services/authService';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import NotificationCenter from './NotificationCenter';
 
 const Navbar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const location = useLocation();
@@ -61,6 +62,7 @@ const Navbar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
             <span className="skeleton h-8 w-24 inline-block" />
           ) : user ? (
             <>
+              <NotificationCenter />
               {user.photoURL && (
                 <img
                   src={user.photoURL}
