@@ -6,12 +6,15 @@ import {
   ChatBubbleLeftRightIcon,
   ShoppingBagIcon,
   LinkIcon,
+  ExclamationCircleIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../hooks/useAuth';
 import { checkWhatsAppStatus, getWhatsAppLink } from '../../services/firebaseService';
 import { checkShopifyStatus, saveShopifyDomain } from '../../services/shopifyService';
 import WhatsAppEmbeddedSignup from '../WhatsAppEmbeddedSignup';
 import { QRCodeSVG } from 'qrcode.react';
+import apiConfig from '../../config/api';
 
 // ---------------------------------------------------------------------------
 // Shopify install link (update whenever you generate a new one in your
@@ -25,6 +28,8 @@ const SHOPIFY_HARDCODED_INSTALL_LINK =
 // ---------------------------------------------------------------------------
 const STATUS_COLORS = {
   connected:      'bg-emerald-100 text-emerald-700 border border-emerald-200',
+  expiring_soon:  'bg-amber-100 text-amber-700 border border-amber-200',
+  expired:        'bg-rose-100 text-rose-700 border border-rose-200',
   setup_required: 'bg-amber-100 text-amber-700 border border-amber-200',
   coming_soon:    'bg-slate-100 text-slate-500 border border-slate-200',
   checking:       'bg-blue-100 text-blue-700 border border-blue-200',
@@ -33,6 +38,8 @@ const STATUS_COLORS = {
 
 const STATUS_LABELS = {
   connected:      'Connected',
+  expiring_soon:  'Expiring Soon',
+  expired:        'Token Expired',
   setup_required: 'Setup Required',
   coming_soon:    'Coming Soon',
   checking:       'Checking…',
@@ -46,6 +53,8 @@ const StatusBadge = ({ status }) => {
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[status] || STATUS_COLORS.error}`}
     >
       {status === 'connected'      && <CheckCircleIcon className="h-3.5 w-3.5" />}
+      {status === 'expiring_soon'  && <ExclamationTriangleIcon className="h-3.5 w-3.5" />}
+      {status === 'expired'        && <XCircleIcon className="h-3.5 w-3.5" />}
       {status === 'setup_required' && <ArrowPathIcon className="h-3.5 w-3.5" />}
       {status === 'coming_soon'    && <ArrowPathIcon className="h-3.5 w-3.5" />}
       {status === 'checking'       && <ArrowPathIcon className={`h-3.5 w-3.5 ${isSpinning ? 'animate-spin' : ''}`} />}
@@ -62,15 +71,17 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
   const { user, userData } = useAuth();
 
   // ── WhatsApp state ───────────────────────────────────────────────────────
-  const [whatsappStatus,    setWhatsappStatus]    = useState(null);
-  const [isCheckingWa,      setIsCheckingWa]      = useState(false);
-  const [whatsappLink,      setWhatsappLink]       = useState(null);
-  const [isLoadingWaLink,   setIsLoadingWaLink]   = useState(false);
+  const [whatsappStatus,        setWhatsappStatus]        = useState(null);
+  const [isCheckingWa,          setIsCheckingWa]          = useState(false);
+  const [whatsappLink,          setWhatsappLink]          = useState(null);
+  const [isLoadingWaLink,       setIsLoadingWaLink]       = useState(false);
+  const [dbUserDetails,         setDbUserDetails]         = useState(null);
+  const [isLoadingUserDetails,  setIsLoadingUserDetails]  = useState(false);
 
   // ── Shopify state ────────────────────────────────────────────────────────
   /**
    * shopifyStatus shape:
-   *   { isConnected: boolean, shopifyDomain: string|null }
+   *   { isConnected: boolean, shopifyDomain: string|null, expiresAt?: string|null, isExpired?: boolean }
    *   | null  (not yet fetched)
    */
   const [shopifyStatus,         setShopifyStatus]         = useState(null);
@@ -114,7 +125,35 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
     }
   }, []);
 
-  // ── Fetch WhatsApp status ────────────────────────────────────────────────
+  // ── Fetch WhatsApp status & user details (including waba_details & token expiry) ──
+  const fetchUserDetails = useCallback(async () => {
+    const dbId = userData?.db_id || user?.db_id;
+    const token = localStorage.getItem('authToken');
+    const dbServerUrl = apiConfig.dbServerConfig?.baseURL;
+    if (!dbServerUrl) return;
+
+    try {
+      setIsLoadingUserDetails(true);
+      const url = dbId ? `${dbServerUrl}/api/users/${dbId}` : `${dbServerUrl}/api/users/me`;
+      const res = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setDbUserDetails(json.data);
+        }
+      }
+    } catch (err) {
+      console.error('❌ IntegrationsPage: User details check error:', err);
+    } finally {
+      setIsLoadingUserDetails(false);
+    }
+  }, [userData?.db_id, user?.db_id]);
+
   const fetchWhatsAppStatus = useCallback(async () => {
     if (!user?.uid) return;
     setIsCheckingWa(true);
@@ -152,23 +191,68 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
   }, [fetchShopifyStatus]);
 
   useEffect(() => {
+    fetchUserDetails();
+  }, [fetchUserDetails]);
+
+  useEffect(() => {
     if (user?.uid && !whatsappStatus && !isCheckingWa) {
       fetchWhatsAppStatus();
     }
   }, [user?.uid, whatsappStatus, isCheckingWa, fetchWhatsAppStatus]);
 
+  // ── Compute WABA Details and Token Expiry ─────────────────────────────────
+  const rawWabaDetails = dbUserDetails?.waba_details || userData?.waba_details;
+  let wabaDetails = rawWabaDetails;
+  if (typeof wabaDetails === 'string') {
+    try {
+      wabaDetails = JSON.parse(wabaDetails);
+    } catch {
+      wabaDetails = null;
+    }
+  }
+
+  let isWabaTokenExpired = false;
+  let isWabaTokenExpiringSoon = false;
+  let wabaDaysRemaining = null;
+
+  if (wabaDetails && wabaDetails.expires_at) {
+    const expiresDate = new Date(wabaDetails.expires_at);
+    if (!isNaN(expiresDate.getTime())) {
+      const diffMs = expiresDate.getTime() - Date.now();
+      wabaDaysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      if (diffMs <= 0) {
+        isWabaTokenExpired = true;
+      } else if (wabaDaysRemaining <= 7) {
+        isWabaTokenExpiringSoon = true;
+      }
+    }
+  }
+
+  const effectiveWhatsAppLink = whatsappLink || wabaDetails?.whatsapp_link || null;
+
   // ── WhatsApp helpers ─────────────────────────────────────────────────────
   const handleWhatsAppSetupComplete = async () => {
     setWhatsappStatus(null);
     setIsCheckingWa(false);
-    await fetchWhatsAppStatus();
+    await Promise.all([
+      fetchWhatsAppStatus(),
+      fetchUserDetails(),
+    ]);
     onWhatsAppSetupComplete?.();
   };
 
   const getWhatsAppStatusKey = () => {
-    if (isCheckingWa)                              return 'checking';
-    if (!whatsappStatus || !whatsappStatus.success) return 'error';
-    return whatsappStatus.isIntegrated             ? 'connected' : 'setup_required';
+    if (isCheckingWa) return 'checking';
+    const isWabaIntegrated =
+      whatsappStatus?.isIntegrated ||
+      Boolean(wabaDetails && wabaDetails.status === 'active' && wabaDetails.access_token);
+    if (!isWabaIntegrated) {
+      if (whatsappStatus && !whatsappStatus.success && !wabaDetails) return 'error';
+      return 'setup_required';
+    }
+    if (isWabaTokenExpired) return 'expired';
+    if (isWabaTokenExpiringSoon) return 'expiring_soon';
+    return 'connected';
   };
 
   // ── Shopify helpers ──────────────────────────────────────────────────────
@@ -305,50 +389,119 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
               </div>
             )}
 
-            {/* ── WhatsApp — connected ── */}
-            {integration.id === 'whatsapp' && integration.status === 'connected' && (
+            {/* ── WhatsApp — connected (healthy, expiring soon, or expired) ── */}
+            {integration.id === 'whatsapp' &&
+              (integration.status === 'connected' ||
+               integration.status === 'expiring_soon' ||
+               integration.status === 'expired') && (
               <div className="mb-4 space-y-3">
-                {isLoadingWaLink ? (
-                  <div className="flex items-center gap-2 p-3 text-sm text-gray-500">
-                    <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                    Loading WhatsApp link…
-                  </div>
-                ) : whatsappLink ? (
-                  <>
-                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <h4 className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-2">
-                        WhatsApp Link
-                      </h4>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={whatsappLink}
-                          readOnly
-                          className="flex-1 px-2 py-1.5 text-xs border border-gray-200 rounded-md bg-white text-gray-700 truncate"
-                        />
-                        <button
-                          onClick={() => navigator.clipboard.writeText(whatsappLink)}
-                          className="px-3 py-1.5 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors whitespace-nowrap"
-                        >
-                          Copy
-                        </button>
+                {/* 3. If access token is already expired: Do NOT show any WABA link or QR code, ONLY show embedded signup button */}
+                {isWabaTokenExpired ? (
+                  <div className="space-y-3">
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5">
+                      <ExclamationCircleIcon className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="text-xs font-semibold text-red-800">
+                          WhatsApp Access Token Expired
+                        </h4>
+                        <p className="text-xs text-red-700 mt-0.5">
+                          Your access token has expired. Your WhatsApp link and QR code are hidden until you reconnect.
+                        </p>
                       </div>
                     </div>
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <h4 className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-2">
-                        QR Code
-                      </h4>
-                      <div className="flex justify-center">
-                        <div className="p-2 bg-white rounded-lg">
-                          <QRCodeSVG value={whatsappLink} size={120} />
+                    <WhatsAppEmbeddedSignup
+                      isDarkMode={false}
+                      user={user}
+                      onSetupComplete={handleWhatsAppSetupComplete}
+                      buttonText="Reconnect WhatsApp Business"
+                      compact={true}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    {/* Expiring Soon Alert (< 7 days) */}
+                    {isWabaTokenExpiringSoon && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2.5">
+                        <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-xs font-semibold text-amber-800">
+                            Access Token Expiring Soon
+                          </h4>
+                          <p className="text-xs text-amber-700 mt-0.5">
+                            Your token expires in {wabaDaysRemaining === 1 ? '1 day' : `${wabaDaysRemaining} days`}. Renew now using embedded signup to prevent messaging interruptions.
+                          </p>
                         </div>
                       </div>
-                    </div>
+                    )}
+
+                    {/* WhatsApp Link and QR code */}
+                    {isLoadingWaLink && !effectiveWhatsAppLink ? (
+                      <div className="flex items-center gap-2 p-3 text-sm text-gray-500">
+                        <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                        Loading WhatsApp link…
+                      </div>
+                    ) : effectiveWhatsAppLink ? (
+                      <>
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <h4 className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-2">
+                            WhatsApp Link
+                          </h4>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={effectiveWhatsAppLink}
+                              readOnly
+                              className="flex-1 px-2 py-1.5 text-xs border border-gray-200 rounded-md bg-white text-gray-700 truncate"
+                            />
+                            <button
+                              onClick={() => navigator.clipboard.writeText(effectiveWhatsAppLink)}
+                              className="px-3 py-1.5 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors whitespace-nowrap"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <h4 className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-2">
+                            QR Code
+                          </h4>
+                          <div className="flex justify-center">
+                            <div className="p-2 bg-white rounded-lg">
+                              <QRCodeSVG value={effectiveWhatsAppLink} size={120} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. If token is about to expire within 7 days, show embedded signup button below QR code */}
+                        {isWabaTokenExpiringSoon && (
+                          <div className="pt-2">
+                            <p className="text-xs text-gray-500 mb-1.5 font-medium text-center">
+                              Renew your access credentials below:
+                            </p>
+                            <WhatsAppEmbeddedSignup
+                              isDarkMode={false}
+                              user={user}
+                              onSetupComplete={handleWhatsAppSetupComplete}
+                              buttonText="Renew WhatsApp Access Token"
+                              compact={true}
+                            />
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                        WhatsApp link not available yet.
+                      </div>
+                    )}
+
+                    {/* Token validity info when healthy */}
+                    {wabaDetails?.expires_at && !isWabaTokenExpiringSoon && (
+                      <p className="text-xs text-gray-500 px-1">
+                        Token validity: <span className="font-medium text-emerald-700">Valid until {new Date(wabaDetails.expires_at).toLocaleDateString()}</span>
+                      </p>
+                    )}
                   </>
-                ) : (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-                    WhatsApp link not available yet.
-                  </div>
                 )}
               </div>
             )}
@@ -495,6 +648,25 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
                   </button>
                 )}
 
+              {/* WhatsApp — refresh button when connected, expiring, or expired */}
+              {integration.id === 'whatsapp' &&
+                (integration.status === 'connected' ||
+                  integration.status === 'expiring_soon' ||
+                  integration.status === 'expired') && (
+                  <button
+                    onClick={() => {
+                      fetchWhatsAppStatus();
+                      fetchUserDetails();
+                    }}
+                    className="flex items-center justify-center gap-1.5 w-full px-3 py-2 border border-gray-200 text-gray-500 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors"
+                  >
+                    <ArrowPathIcon
+                      className={`h-3.5 w-3.5 ${isCheckingWa || isLoadingUserDetails ? 'animate-spin' : ''}`}
+                    />
+                    Refresh status
+                  </button>
+                )}
+
               {/* Shopify — refresh button when connected */}
               {integration.id === 'shopify' && integration.status === 'connected' && (
                 <button
@@ -506,24 +678,21 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
                 </button>
               )}
 
-              {/* Non-Shopify cards */}
-              {integration.id !== 'shopify' &&
-                !(integration.id === 'whatsapp' && integration.status === 'connected') && (
-                  integration.status === 'coming_soon' ? (
-                    <button
-                      disabled
-                      className="w-full bg-gray-100 text-gray-400 px-3 py-2 rounded-lg text-sm font-medium cursor-not-allowed"
-                    >
-                      Coming Soon
-                    </button>
-                  ) : (
-                    integration.id !== 'whatsapp' && (
-                      <button className="w-full bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-                        Connect
-                      </button>
-                    )
-                  )
-                )}
+              {/* Non-Shopify, non-WhatsApp cards */}
+              {integration.id !== 'shopify' && integration.id !== 'whatsapp' && (
+                integration.status === 'coming_soon' ? (
+                  <button
+                    disabled
+                    className="w-full bg-gray-100 text-gray-400 px-3 py-2 rounded-lg text-sm font-medium cursor-not-allowed"
+                  >
+                    Coming Soon
+                  </button>
+                ) : (
+                  <button className="w-full bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                    Connect
+                  </button>
+                )
+              )}
             </div>
           </div>
         ))}

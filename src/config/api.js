@@ -330,6 +330,11 @@ export const apiConfig = {
     dbServer: {
       createUser: () => buildDbServerUrl('createUser')
     },
+    // User endpoints
+    users: {
+      getMe: () => buildDbServerUrl('/api/users/me'),
+      get: (id) => buildDbServerUrl(`/api/users/${id}`),
+    },
     // Audience endpoints
     audience: {
       getUserAudiences: (dbId) => buildDbServerUrl(`/api/audience/user/${dbId}`),

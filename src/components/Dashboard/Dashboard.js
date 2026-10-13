@@ -76,7 +76,23 @@ const Dashboard = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
   console.log("DEBUG: Is setIsMobileMenuOpen a function?", typeof setIsMobileMenuOpen === 'function');
   console.log("DEBUG: What is setIsMobileMenuOpen?", setIsMobileMenuOpen);
   // Tab and view state
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') || 'overview';
+  });
+
+  // Listen for tab navigation from NotificationCenter or deep links
+  useEffect(() => {
+    const handleTabNav = (e) => {
+      if (e.detail) {
+        setActiveTab(e.detail);
+      }
+    };
+    window.addEventListener('navigate-dashboard-tab', handleTabNav);
+    return () => {
+      window.removeEventListener('navigate-dashboard-tab', handleTabNav);
+    };
+  }, []);
   const [broadcastView, setBroadcastView] = useState('new-broadcast');
   const [templateSubView, setTemplateSubView] = useState(null); // 'template-library' or 'your-templates'
   const [selectedTemplateTag, setSelectedTemplateTag] = useState('All');
