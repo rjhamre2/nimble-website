@@ -378,9 +378,21 @@ const IntegrationsPage = ({ onWhatsAppSetupComplete }) => {
                   <LinkIcon className="h-3.5 w-3.5" />
                   Connected Store
                 </div>
-                <p className="text-sm font-medium text-grayald-900 break-all">
+                <p className="text-sm font-medium text-gray-900 break-all">
                   {shopifyStatus?.shopifyDomain}
                 </p>
+                {shopifyStatus?.expiresAt ? (
+                  <p className="text-xs text-gray-600">
+                    Validity:{' '}
+                    <span className={shopifyStatus?.isExpired ? "text-red-600 font-semibold" : "text-emerald-700 font-medium"}>
+                      {shopifyStatus?.isExpired ? 'Expired' : `Valid until ${new Date(shopifyStatus.expiresAt).toLocaleDateString()}`}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-emerald-700 font-medium">
+                    Validity: Permanent access
+                  </p>
+                )}
               </div>
             )}
 

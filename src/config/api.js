@@ -341,6 +341,12 @@ export const apiConfig = {
       status: () => buildDbServerUrl('/api/shopify/status'),
       connect: () => buildDbServerUrl('/api/shopify/connect'),
       syncCustomers: () => buildDbServerUrl('/api/shopify/sync-customers'),
+    },
+    // Notifications endpoints
+    notifications: {
+      get: () => buildDbServerUrl('/api/notifications'),
+      markAsRead: (id) => buildDbServerUrl(`/api/notifications/${id}/read`),
+      markAllAsRead: () => buildDbServerUrl('/api/notifications/read-all'),
     }
   }
 };
