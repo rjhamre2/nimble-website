@@ -24,6 +24,8 @@ const Sidebar = ({
   activeTab,
   setActiveTab,
   isWabaDetailsEmpty,
+  isWabaTokenExpired = false,
+  isWabaTokenExpiringSoon = false,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
   inboxUnreadCount = 0,
@@ -69,7 +71,9 @@ const Sidebar = ({
           {menuItems.map((item) => {
             const Icon  = item.icon;
             const active = activeTab === item.id;
-            const warn   = item.id === 'account-details' && isWabaDetailsEmpty;
+            const isSetupWarning = item.id === 'setup' && (isWabaTokenExpired || isWabaTokenExpiringSoon);
+            const isAccountWarning = item.id === 'account-details' && isWabaDetailsEmpty;
+            const warn = isSetupWarning || isAccountWarning;
 
             return (
               <button
@@ -107,7 +111,11 @@ const Sidebar = ({
                   <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#25D366] flex-shrink-0" />
                 )}
                 {warn && !active && (
-                  <ExclamationTriangleIcon className="h-4 w-4 text-amber-400 flex-shrink-0" />
+                  <ExclamationTriangleIcon
+                    className={`h-4 w-4 flex-shrink-0 ${
+                      item.id === 'setup' && isWabaTokenExpired ? 'text-red-500' : 'text-amber-400'
+                    }`}
+                  />
                 )}
               </button>
             );
