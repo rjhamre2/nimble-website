@@ -4,9 +4,9 @@ import { apiConfig } from '../../../../config/api';
 import AddContactModal from '../../modals/AddContactModal';
 import EditContactModal from '../../modals/EditContactModal';
 import ImportContactsModal from '../../modals/ImportContactsModal';
-import { Button } from "../../../ui/button";
 import { 
   Users, 
+  Plus,
   Download, 
   Upload, 
   Edit2, 
@@ -373,13 +373,29 @@ const Contacts = () => {
       {/* View Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-[#0A0A0A] tracking-tight flex items-center gap-2">
-            <Users className="w-6 h-6 text-[#25D366]" />
-            Contacts
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold text-[#0A0A0A] tracking-tight flex items-center gap-2">
+              <Users className="w-6 h-6 text-[#25D366]" />
+              Customers
+            </h2>
+            <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full font-semibold">
+              {contactsPagination.total || contacts.length} Total
+            </span>
+          </div>
           <p className="text-sm text-gray-500 mt-1">
             Manage your audience, lead segments, and broadcast recipients.
           </p>
+        </div>
+
+        {/* Primary Header Action */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsAddContactModalOpen(true)}
+            className="flex items-center gap-2 bg-[#25D366] hover:bg-[#22C55E] text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-md shadow-green-500/20 transition-all hover:scale-[1.02]"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Contact</span>
+          </button>
         </div>
       </div>
 
@@ -399,28 +415,23 @@ const Contacts = () => {
                 placeholder="Search global contacts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#25D366]/50 focus:border-[#25D366] transition-all"
+                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#25D366]/50 focus:border-[#25D366] transition-all bg-white"
               />
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             </div>
 
-            <Button 
-              variant="hero"
+            <button 
               onClick={() => setIsAddContactModalOpen(true)}
-              // We keep the green overrides and hover animations, but drop the layout classes
-              className="w-full sm:w-auto  hover:bg-[#22c55e] text-white hover:scale-[1.02] shadow-[0_0_20px_rgba(37,211,102,0.2)] transition-all rounded-lg"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#22c55e] text-white px-4 py-2 font-medium text-sm rounded-lg shadow-sm shadow-green-600/20 transition-all hover:scale-[1.02]"
             >
+              <Plus className="w-4 h-4" />
               <span>Add Contact</span>
-              <span className="text-xs bg-black/10 px-2 py-0.5 rounded-full font-bold">
-                {contactsPagination.total || contacts.length}
-              </span>
-            </Button>
+            </button>
             
-            <Button 
-              variant="hero"
+            <button 
               onClick={handleShopifySync}
               disabled={isSyncingShopify}
-              className="w-full sm:w-auto hover:-translate-y-0.5 transition-all shadow-sm rounded-lg"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-3.5 py-2 rounded-lg text-sm font-medium transition-all shadow-sm hover:-translate-y-0.5 disabled:opacity-50"
             >
               {isSyncingShopify ? (
                 <Loader2 className="w-4 h-4 text-[#95BF47] animate-spin" />
@@ -430,7 +441,7 @@ const Contacts = () => {
                 </svg>
               )}
               <span>{isSyncingShopify ? 'Syncing...' : 'Sync from Shopify'}</span>
-            </Button>
+            </button>
           </div>
 
           {/* Filtering and Import/Export Tools */}
@@ -438,38 +449,36 @@ const Contacts = () => {
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-[#25D366]/50 transition-all">
               <span className="text-xs text-gray-500 font-medium">Sort:</span>
               <select
-  className="text-sm text-[#0A0A0A] bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-  value={searchQuery.trim().length > 0 ? "relevance" : contactsSort}
-  onChange={(e) => setContactsSort(e.target.value)}
-  disabled={searchQuery.trim().length > 0} 
->
-  {searchQuery.trim().length > 0 && (
-    <option value="relevance">Search Relevance</option>
-  )}
-  <option value="lastUpdated">Last Updated</option>
-  <option value="alpha">Alphabetical (A–Z)</option>
-</select>
+                className="text-sm text-[#0A0A0A] bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                value={searchQuery.trim().length > 0 ? "relevance" : contactsSort}
+                onChange={(e) => setContactsSort(e.target.value)}
+                disabled={searchQuery.trim().length > 0} 
+              >
+                {searchQuery.trim().length > 0 && (
+                  <option value="relevance">Search Relevance</option>
+                )}
+                <option value="lastUpdated">Last Updated</option>
+                <option value="alpha">Alphabetical (A–Z)</option>
+              </select>
             </div>
             
-            <Button
-              variant="hero"
-              size="sm"
+            <button
               onClick={handleExportCsv}
               title="Export CSV"
+              className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-lg text-sm font-medium transition-all shadow-sm"
             >
               <Download className="w-4 h-4 text-gray-500" />
               <span className="hidden sm:inline">Export</span>
-            </Button>
+            </button>
 
-            <Button
-              variant="hero"
-              size="sm"
+            <button
               onClick={() => setIsImportModalOpen(true)}
               title="Import CSV"
+              className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-lg text-sm font-medium transition-all shadow-sm"
             >
               <Upload className="w-4 h-4 text-gray-500" />
               <span className="hidden sm:inline">Import</span>
-            </Button>
+            </button>
           </div>
         </div>
 
@@ -499,7 +508,23 @@ const Contacts = () => {
                   <Users className="w-6 h-6 text-gray-400" />
                 </div>
                 <h3 className="text-sm font-semibold text-[#0A0A0A] mb-1">No contacts found</h3>
-                <p className="text-sm text-gray-500 mb-4">No contacts matched your criteria or you haven't added any yet.</p>
+                <p className="text-sm text-gray-500 mb-4 max-w-sm">No contacts matched your search or you haven't added any contacts yet.</p>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsAddContactModalOpen(true)}
+                    className="flex items-center gap-2 bg-[#25D366] hover:bg-[#22C55E] text-white px-4 py-2 rounded-lg font-medium text-sm transition-all shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Contact</span>
+                  </button>
+                  <button
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium text-sm transition-all shadow-sm"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>Import CSV</span>
+                  </button>
+                </div>
               </div>
             ) : (
               displayContacts.map((contact) => {

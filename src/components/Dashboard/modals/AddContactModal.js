@@ -431,7 +431,7 @@ const AddContactModal = ({ isOpen, onClose, onSuccess }) => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-60 flex items-center space-x-2"
+              className="px-5 py-2 text-sm font-semibold text-white bg-[#25D366] rounded-lg hover:bg-[#22C55E] disabled:opacity-60 flex items-center space-x-2 shadow-sm shadow-green-600/20 transition-all hover:scale-[1.02]"
               disabled={isSubmittingContact}
             >
               {isSubmittingContact ? 'Saving...' : 'Save Contact'}

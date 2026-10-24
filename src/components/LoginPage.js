@@ -23,8 +23,8 @@ let firebaseApp = getFirebaseApp();
 // ─── Feature bullet ───────────────────────────────────────────────────────────
 const Bullet = ({ text }) => (
   <li className="flex items-start gap-3">
-    <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-[#25D366]/15 flex items-center justify-center">
-      <svg className="w-3 h-3 text-[#25D366]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-trust-100 border border-trust-300 flex items-center justify-center">
+      <svg className="w-3 h-3 text-trust-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
       </svg>
     </span>
@@ -135,10 +135,10 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 text-slate-900 flex flex-col">
 
       {/* Decorative top bar */}
-      <div className="h-1 bg-gradient-to-r from-[#25D366] via-[#1ebe5d] to-[#128C7E]" />
+      <div className="h-1 bg-gradient-to-r from-trust-600 via-trust-500 to-conversion-500" />
 
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-5xl grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
@@ -147,43 +147,49 @@ const LoginPage = () => {
           <div className="hidden lg:flex flex-col justify-center gap-8 pt-4">
             {/* Brand */}
             <div>
-              <img src={require('../logo.png')} alt="NimbleAI" className="h-10 w-auto mb-6" />
-              <h2 className="text-3xl font-bold text-slate-900 leading-snug tracking-tight">
-                Everything you need to grow on WhatsApp.
+              <Link to="/" className="inline-block mb-6">
+                <img src={require('../logo.png')} alt="nimbleAI" className="h-10 w-auto" />
+              </Link>
+              <div className="inline-flex items-center gap-2 rounded-full border border-trust-200 bg-trust-50 px-3 py-0.5 text-xs font-bold text-trust-700 font-mono mb-3">
+                AI REVENUE &amp; RTO SHIELD
+              </div>
+              <h2 className="text-3xl font-extrabold text-slate-900 leading-snug tracking-tight">
+                Autonomous AI for Indian D2C Revenue & Returns Management.
               </h2>
               <p className="mt-3 text-slate-500 text-sm leading-relaxed">
-                Sign in to your NimbleAI dashboard and start driving revenue with broadcast campaigns, AI support, and deep Shopify integrations.
+                Access your nimbleAI dashboard to monitor real-time RTO protection, COD-to-prepaid conversion performance, and autonomous post-purchase support metrics.
               </p>
             </div>
 
-            <ul className="space-y-3">
-              <Bullet text="Targeted broadcasts with 98% open rates" />
-              <Bullet text="AI chatbot that resolves 80% of queries 24/7" />
-              <Bullet text="Recover 25%+ abandoned carts automatically" />
-              <Bullet text="Native Shopify &amp; OpenCart integrations" />
-              <Bullet text="Shared inbox for your entire support team" />
+            <ul className="space-y-3.5">
+              <Bullet text="AI-powered delivery address verification and NDR risk scoring before dispatch" />
+              <Bullet text="Converts COD orders to non-refundable prepaid UPI payments via a 1-tap WhatsApp flow" />
+              <Bullet text="Resolves over 80% of post-purchase support queries autonomously via live courier APIs" />
+              <Bullet text="Recovers abandoned carts through personalised WhatsApp conversations with 1-tap checkout" />
+              <Bullet text="Native Shopify integration and official Meta Cloud API compliance" />
             </ul>
 
-            <p className="text-xs text-slate-400 font-medium">
-              Trusted by 8,000+ businesses across 52 countries.
-            </p>
+            <div className="pt-2 border-t border-gray-200 flex items-center gap-2 text-xs text-slate-500 font-mono">
+              <span className="w-2 h-2 rounded-full bg-conversion-500 animate-pulse" />
+              <span>Live Network: 98.4% RTO Detection Accuracy</span>
+            </div>
           </div>
 
           {/* ── Right panel – auth card ──────────────────────────────────────── */}
-          <div className="card p-8 animate-scaleIn">
+          <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-lg animate-scaleIn">
 
             {/* Mobile logo */}
             <div className="flex justify-center mb-6 lg:hidden">
-              <img src={require('../logo.png')} alt="NimbleAI" className="h-10 w-auto" />
+              <img src={require('../logo.png')} alt="nimbleAI" className="h-10 w-auto" />
             </div>
 
             <h1 className="text-xl font-bold text-slate-900 mb-1">
-              {isForgot ? 'Reset your password' : 'Welcome back'}
+              {isForgot ? 'Reset your password' : 'Sign in to your Shield'}
             </h1>
-            <p className="text-sm text-slate-400 mb-6">
+            <p className="text-sm text-slate-500 mb-6">
               {isForgot
                 ? "We'll send a reset link to your email."
-                : 'Sign in to your NimbleAI account.'}
+                : 'Access your nimbleAI store dashboard.'}
             </p>
 
             {/* Error */}
@@ -211,7 +217,7 @@ const LoginPage = () => {
                   type="button"
                   onClick={handleGoogle}
                   disabled={isGoogleLoading}
-                  className="w-full flex items-center justify-center gap-3 border border-slate-200 bg-white hover:bg-slate-50
+                  className="w-full flex items-center justify-center gap-3 border border-gray-300 bg-white hover:bg-gray-50
                              text-slate-700 font-medium text-sm rounded-xl py-2.5 transition-all duration-150
                              disabled:opacity-60 disabled:cursor-not-allowed mb-4"
                 >
@@ -232,9 +238,9 @@ const LoginPage = () => {
                 </button>
 
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="flex-1 h-px bg-slate-100" />
+                  <div className="flex-1 h-px bg-gray-200" />
                   <span className="text-xs text-slate-400 font-medium">or</span>
-                  <div className="flex-1 h-px bg-slate-100" />
+                  <div className="flex-1 h-px bg-gray-200" />
                 </div>
               </>
             )}
@@ -242,7 +248,7 @@ const LoginPage = () => {
             {/* Login / Forgot form */}
             <form onSubmit={isForgot ? handleReset : handleLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5" htmlFor="loginEmail">
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5" htmlFor="loginEmail">
                   Business email
                 </label>
                 <input
@@ -252,14 +258,14 @@ const LoginPage = () => {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="input"
-                  placeholder="you@company.com"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-trust-500 focus:ring-1 focus:ring-trust-200 transition-colors"
+                  placeholder="you@brand.in"
                 />
               </div>
 
               {!isForgot && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5" htmlFor="loginPassword">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5" htmlFor="loginPassword">
                     Password
                   </label>
                   <input
@@ -269,7 +275,7 @@ const LoginPage = () => {
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="input"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-trust-500 focus:ring-1 focus:ring-trust-200 transition-colors"
                     placeholder="Your password"
                   />
                 </div>
@@ -282,12 +288,12 @@ const LoginPage = () => {
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-300 text-[#25D366] focus:ring-[#25D366]"
+                      className="w-4 h-4 rounded border-gray-300 bg-white text-trust-600 focus:ring-trust-500"
                     />
                     <span className="text-xs text-slate-500">Remember me</span>
                   </label>
                   <button type="button" onClick={toggleForgot}
-                          className="text-xs text-[#25D366] hover:underline font-medium">
+                          className="text-xs text-trust-600 hover:text-trust-700 font-medium">
                     Forgot password?
                   </button>
                 </div>
@@ -296,7 +302,7 @@ const LoginPage = () => {
               <button
                 type="submit"
                 disabled={isSubmitting || resetSent}
-                className="w-full btn-primary justify-center py-3 rounded-xl disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full btn-primary justify-center py-3 rounded-xl disabled:opacity-60 disabled:cursor-not-allowed font-bold"
               >
                 {isSubmitting ? (
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -308,16 +314,16 @@ const LoginPage = () => {
 
               {isForgot && (
                 <button type="button" onClick={toggleForgot}
-                        className="w-full text-center text-xs text-slate-400 hover:text-slate-600 transition-colors mt-1">
+                        className="w-full text-center text-xs text-slate-500 hover:text-slate-700 transition-colors mt-1">
                   ← Back to sign in
                 </button>
               )}
             </form>
 
             {!isForgot && (
-              <p className="text-center text-xs text-slate-400 mt-6">
+              <p className="text-center text-xs text-slate-500 mt-6">
                 Don't have an account?{' '}
-                <Link to="/start-now" className="text-[#25D366] font-semibold hover:underline">
+                <Link to="/start-now" className="text-trust-600 font-semibold hover:text-trust-700 hover:underline">
                   Sign up
                 </Link>
               </p>

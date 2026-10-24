@@ -2,29 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Design tokens ──────────────────────────────────────────────────────── */
+/* ─── Design tokens: Obsidian & Slate + Trust Blue + Conversion Green ────── */
 @layer base {
   :root {
-    /* Brand */
-    --wa-green: #25D366;
-    --wa-green-dark: #128C7E;
-    --wa-green-light: #DCF8C6;
+    /* Brand Colors */
+    --obsidian-950: #050811;
+    --obsidian-900: #0B0F19;
+    --obsidian-850: #101626;
+    --obsidian-800: #162035;
+    --obsidian-700: #1E293B;
 
-    /* Neutrals */
-    --slate-950: #0c1117;
-    --surface: #ffffff;
-    --surface-subtle: #f8fafc;
-    --border: #e2e8f0;
-    --border-subtle: #f1f5f9;
+    --trust-blue: #2563EB;
+    --trust-blue-hover: #1D4ED8;
+    --trust-blue-light: #3B82F6;
+    --trust-blue-glow: rgba(37, 99, 235, 0.35);
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+    --conversion-green: #10B981;
+    --conversion-green-light: #34D399;
+    --conversion-green-surface: rgba(16, 185, 129, 0.08);
+    --conversion-green-border: rgba(16, 185, 129, 0.28);
+    --conversion-green-glow: rgba(16, 185, 129, 0.35);
+
+    /* Text */
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+
+    /* Borders */
+    --border-dark: rgba(255, 255, 255, 0.08);
+    --border-dark-hover: rgba(59, 130, 246, 0.35);
 
     /* Typography */
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
   }
 
   html {
@@ -32,154 +42,174 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    background-color: #ffffff;
+    color: #0f172a;
   }
 
   body {
-    background-color: var(--surface-subtle);
-    color: #1e293b;
+    background-color: #ffffff;
+    color: #0f172a;
+    overflow-x: hidden;
   }
 
   *:focus-visible {
-    outline: 2px solid var(--wa-green);
+    outline: 2px solid var(--trust-blue-light);
     outline-offset: 2px;
   }
 }
 
-/* ─── Custom utilities ──────────────────────────────────────────────────── */
+/* ─── Custom FinOps & Brand Utilities ────────────────────────────────────── */
 @layer utilities {
-  /* Gradient backgrounds */
-  .bg-wa-gradient {
-    background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-  }
-
-  .bg-hero {
+  /* Hero atmospheric background */
+  .bg-hero-obsidian {
     background:
-      radial-gradient(900px 600px at 80% -5%, hsl(142 76% 92% / 0.7) 0%, transparent 55%),
-      radial-gradient(600px 400px at -5% 20%, hsl(142 76% 95% / 0.5) 0%, transparent 50%);
+      radial-gradient(1000px 500px at 50% -10%, rgba(37, 99, 235, 0.18) 0%, transparent 70%),
+      radial-gradient(600px 400px at 15% 30%, rgba(16, 185, 129, 0.06) 0%, transparent 60%),
+      #0B0F19;
   }
 
-  /* Glassmorphism cards */
-  .glass {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.6);
+  .bg-radial-glow {
+    background: radial-gradient(circle at center, rgba(37, 99, 235, 0.15) 0%, transparent 70%);
+  }
+
+  /* Data-driven grid overlay */
+  .grid-bg-dark {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(ellipse 85% 65% at 50% 0%, black 40%, transparent 85%);
+  }
+
+  /* Glass slate cards */
+  .glass-slate {
+    background: rgba(16, 22, 38, 0.75);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-slate-interactive {
+    background: rgba(16, 22, 38, 0.75);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .glass-slate-interactive:hover {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 10px 30px -10px rgba(37, 99, 235, 0.2);
+    transform: translateY(-2px);
   }
 
   /* Glow effects */
-  .glow-green {
-    box-shadow: 0 0 0 1px rgba(37, 211, 102, 0.3),
-                0 8px 32px rgba(37, 211, 102, 0.15);
+  .glow-trust {
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3),
+                0 10px 30px rgba(37, 99, 235, 0.2);
   }
 
-  .glow-green-lg {
-    box-shadow: 0 0 0 1px rgba(37, 211, 102, 0.4),
-                0 20px 60px rgba(37, 211, 102, 0.2);
+  .glow-conversion {
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.4),
+                0 10px 30px rgba(16, 185, 129, 0.25);
   }
 
-  /* Subtle grid background */
-  .grid-bg {
-    background-image:
-      linear-gradient(rgba(226, 232, 240, 0.5) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(226, 232, 240, 0.5) 1px, transparent 1px);
-    background-size: 40px 40px;
-    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
+  /* Phone frame shadow */
+  .shadow-phone {
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
   }
-
-  /* Sidebar active indicator */
-  .nav-active {
-    background-color: rgba(37, 211, 102, 0.10);
-    color: #15803d;
-    font-weight: 600;
-  }
-  .nav-active .nav-icon {
-    color: #25D366;
-  }
-
-  /* Logo invert utility */
-  .logo-invert { filter: invert(100%); }
 
   /* Card hover lift */
   .card-lift {
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
   .card-lift:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-xl);
+    border-color: rgba(59, 130, 246, 0.35);
   }
 
-  /* Smooth scrollbar for content panels */
+  /* Custom scrollbar */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   }
-  .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
-  .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+  .scrollbar-thin::-webkit-scrollbar { width: 5px; height: 5px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 3px; }
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+
+  /* Monospace font utility for numbers & currency */
+  .tabular-finops {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-/* ─── Component layer ────────────────────────────────────────────────────── */
+/* ─── Components ─────────────────────────────────────────────────────────── */
 @layer components {
-  /* Primary button (WhatsApp green) */
+  /* Primary button (Trust Blue) */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2
-           bg-[#25D366] hover:bg-[#1ebe5d] active:bg-[#17a452]
+           bg-trust-600 hover:bg-trust-500 active:bg-trust-700
            text-white font-semibold text-sm
            px-5 py-2.5 rounded-xl
            transition-all duration-150
-           shadow-sm hover:shadow-md
-           focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#25D366];
+           shadow-[0_1px_2px_rgba(0,0,0,0.4),0_0_20px_rgba(37,99,235,0.35)]
+           hover:shadow-[0_4px_16px_rgba(37,99,235,0.45)]
+           focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-trust-400 focus-visible:ring-offset-[#0B0F19];
   }
 
-  /* Outline button */
+  /* Outline button — light theme */
   .btn-outline {
     @apply inline-flex items-center justify-center gap-2
-           border border-slate-200 bg-white hover:bg-slate-50 active:bg-slate-100
-           text-slate-700 font-medium text-sm
+           border border-slate-300 bg-white hover:bg-gray-50 active:bg-gray-100
+           text-slate-700 hover:text-slate-900 font-medium text-sm
            px-5 py-2.5 rounded-xl
            transition-all duration-150
-           focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400;
+           hover:border-slate-400
+           focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-trust-400;
   }
 
-  /* Ghost button */
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2
-           text-slate-600 hover:bg-slate-100 hover:text-slate-900
-           font-medium text-sm
-           px-3 py-2 rounded-lg
-           transition-colors duration-150;
-  }
-
-  /* Standard card */
-  .card {
-    @apply bg-white rounded-2xl border border-slate-100
-           shadow-[var(--shadow-sm)]
-           overflow-hidden;
-  }
-
-  /* Input field */
-  .input {
-    @apply w-full px-4 py-2.5 rounded-xl
-           border border-slate-200 bg-white
-           text-sm text-slate-800 placeholder-slate-400
-           focus:outline-none focus:ring-2 focus:ring-[#25D366]/50 focus:border-[#25D366]
-           transition-colors duration-150;
-  }
-
-  /* Section label / eyebrow */
-  .eyebrow {
-    @apply text-xs font-bold tracking-[0.18em] uppercase text-[#25D366];
-  }
-
-  /* Stat badge pill */
-  .stat-pill {
+  /* Conversion Green Badge: Exclusively for positive ROI, recovered revenue, Nimble-Confirmed */
+  .badge-conversion {
     @apply inline-flex items-center gap-1.5
-           text-xs font-semibold
-           px-2.5 py-1 rounded-full;
+           bg-conversion-500/10 text-conversion-400
+           border border-conversion-500/30
+           rounded-full px-3 py-1 text-xs font-semibold;
+  }
+
+  /* Trust Blue Badge: Enterprise reliability, RTO Shield, Autonomous engine */
+  .badge-trust {
+    @apply inline-flex items-center gap-1.5
+           bg-trust-600/15 text-trust-400
+           border border-trust-500/30
+           rounded-full px-3 py-1 text-xs font-semibold;
+  }
+
+  /* Nimble-Confirmed Order Tag: High-trust green verification badge */
+  .tag-nimble-confirmed {
+    @apply inline-flex items-center gap-1
+           bg-emerald-50 text-emerald-700
+           border border-emerald-300
+           px-2 py-0.5 rounded text-[11px] font-semibold tracking-wide uppercase;
+  }
+
+  /* FinOps Card */
+  .card-finops {
+    @apply bg-[#101626]/80 rounded-2xl border border-white/10
+           p-6 transition-all duration-200
+           hover:border-trust-500/30;
+  }
+
+  /* Eyebrow label */
+  .eyebrow {
+    @apply text-xs font-bold tracking-[0.18em] uppercase text-trust-600;
+  }
+
+  .eyebrow-conversion {
+    @apply text-xs font-bold tracking-[0.18em] uppercase text-conversion-600;
   }
 }
 
-/* ─── Page transitions ──────────────────────────────────────────────────── */
+/* ─── Animations ─────────────────────────────────────────────────────────── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -188,40 +218,11 @@
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.97); }
-  to   { opacity: 1; transform: scale(1); }
-}
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
 }
 
-.animate-fadeUp  { animation: fadeUp  0.35s ease-out both; }
-.animate-fadeIn  { animation: fadeIn  0.25s ease-out both; }
-.animate-scaleIn { animation: scaleIn 0.25s ease-out both; }
-
-/* Delay utilities */
-.delay-75  { animation-delay: 75ms;  }
-.delay-150 { animation-delay: 150ms; }
-.delay-225 { animation-delay: 225ms; }
-.delay-300 { animation-delay: 300ms; }
-
-/* Skeleton shimmer */
-.skeleton {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 6px;
-}
-
-/* ─── WhatsApp-branded scrollbar for sidebar ─────────────────────────────── */
-.sidebar-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(37, 211, 102, 0.3) transparent;
-}
-.sidebar-scroll::-webkit-scrollbar { width: 3px; }
-.sidebar-scroll::-webkit-scrollbar-thumb {
-  background: rgba(37, 211, 102, 0.3);
-  border-radius: 2px;
-}
+.animate-fadeUp { animation: fadeUp 0.35s ease-out both; }
+.animate-fadeIn { animation: fadeIn 0.25s ease-out both; }
+.animate-pulse-subtle { animation: pulseSubtle 3s infinite ease-in-out; }

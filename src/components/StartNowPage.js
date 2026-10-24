@@ -177,50 +177,53 @@ const StartNowPage = ({ isDarkMode }) => {
           {/* Left Side - Heading and Features */}
           <div className="flex flex-col">
             {/* Main Heading */}
-            <h1 className={`text-4xl md:text-5xl font-bold mb-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              Everything you need to grow your business on WhatsApp
+            <div className="inline-flex items-center gap-2 rounded-full border border-trust-500/30 bg-trust-600/15 px-3 py-1 text-xs font-bold text-trust-300 font-mono mb-4">
+              AI REVENUE &amp; RTO SHIELD FOR INDIAN D2C
+            </div>
+            <h1 className={`text-4xl md:text-5xl font-extrabold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight leading-tight`}>
+              Stop RTO Bleeding &amp; Protect Your Unit Economics
             </h1>
 
             {/* Features List */}
             <ul className="space-y-4">
               <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-emerald-500 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Targeted Campaigns to deliver personalized offers
+                <span className={`text-base ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Autonomous address risk scoring &amp; pin-code fraud detection
                 </span>
               </li>
               <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-emerald-500 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Pre-built templates to send updates & reminders
+                <span className={`text-base ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Convert 22% of COD orders to non-refundable 1-tap UPI prepaid
                 </span>
               </li>
               <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-emerald-500 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  24x7 instant engagement with no-code chatbots
+                <span className={`text-base ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Auto-resolve 80%+ of WISMO and policy tickets in 1.2 seconds
                 </span>
               </li>
               <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-emerald-500 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Powerful automations to resolve issues faster
+                <span className={`text-base ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Recover 26%+ abandoned carts with native WhatsApp 1-tap checkout
                 </span>
               </li>
               <li className="flex items-start">
-                <svg className="w-6 h-6 text-green-600 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-emerald-500 mr-3 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className={`text-lg ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Integrations to bring in context from Zoho, Shopify, etc.
+                <span className={`text-base ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Built exclusively for Indian D2C Shopify brands
                 </span>
               </li>
             </ul>

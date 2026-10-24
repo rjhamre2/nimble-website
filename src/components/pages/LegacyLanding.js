@@ -174,7 +174,7 @@ function LegacyLanding() {
 	
 	return (
 		<Router>
-			<div className={`min-h-screen font-sans ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'}`}>
+			<div className="min-h-screen font-sans bg-[#0B0F19] text-slate-100">
 				{/* Define custom animations here for demonstration */}
 				<style>
 					{`
@@ -568,7 +568,7 @@ function FAQItem({ question, answer, delay, isDarkMode }) {
 	);
 }
 
-// Footer Component - Updated for Black & White theme to match the screenshot
+// Footer Component - Updated for nimbleAI AI Revenue & RTO Shield positioning
 function Footer({ isDarkMode }) {
 	const [footerRef, footerVisible] = useIntersectionObserver({
 		threshold: 0.1,
@@ -577,114 +577,68 @@ function Footer({ isDarkMode }) {
 	return (
 		<footer
 			ref={footerRef}
-			className={`py-8 sm:py-10 border-t transition-opacity duration-1000 ${footerVisible ? 'opacity-100' : 'opacity-0'} ${
-				isDarkMode ? 'bg-gray-800 text-gray-100 border-gray-700' : 'bg-white text-gray-900 border-gray-200'
-			}`}
+			className={`py-12 border-t border-white/10 transition-opacity duration-1000 ${footerVisible ? 'opacity-100' : 'opacity-0'} bg-[#070A11] text-slate-400`}
 		>
-			<div className='container mx-auto px-4 text-center'>
-		<div className='flex flex-col sm:flex-row gap-3 sm:gap-4 mb-3 sm:mb-4 justify-center items-center'>
-    <a
-        href='mailto:enquire@nimble.ai'
-        className={`
-            px-6 py-2.5 font-medium rounded-lg transition-all duration-200 
-            flex items-center gap-2 text-sm sm:text-base
-            hover:scale-[1.02] active:scale-[0.98]
-            shadow-[0_0_20px_rgba(37,211,102,0.15)]
-            bg-[#25D366] text-black hover:bg-[#20bd5a]
-        `}
-    >
-        <svg className='w-4 h-4 sm:w-5 sm:h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'>
-            <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth='2'
-                d='M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
-            />
-        </svg>
-        Write to Us
-    </a>
-</div>
-
-				{/* Follow Us */}
-				<div className='flex flex-col items-center space-y-1.5 sm:space-y-2 mb-3 sm:mb-4'>
-					<span className={`text-xs sm:text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Follow Us</span>
+			<div className='container mx-auto px-4 text-center max-w-5xl'>
+				<div className='flex flex-col sm:flex-row gap-4 mb-6 justify-center items-center'>
+					<a
+						href='mailto:contact@nimbleai.in'
+						className='px-6 py-2.5 font-bold rounded-xl transition-all duration-200 flex items-center gap-2 text-sm bg-trust-600 hover:bg-trust-500 text-white shadow-glow-trust'
+					>
+						<svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'>
+							<path
+								strokeLinecap='round'
+								strokeLinejoin='round'
+								strokeWidth='2'
+								d='M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
+							/>
+						</svg>
+						Contact FinOps Strategist
+					</a>
 					<a
 						href='https://www.linkedin.com/company/nimbleai-in/'
 						target='_blank'
 						rel='noopener noreferrer'
-						className={`${isDarkMode ? 'text-gray-200 hover:text-gray-100' : 'text-gray-700 hover:text-gray-900'} transition-colors duration-300`}
+						className='px-5 py-2.5 font-medium rounded-xl border border-white/10 hover:border-white/20 bg-slate-900/60 text-slate-300 hover:text-white transition-all text-sm flex items-center gap-2'
 					>
-						<svg className='w-6 h-6 sm:w-8 sm:h-8' fill='currentColor' viewBox='0 0 24 24' aria-hidden='true'>
+						<svg className='w-4 h-4' fill='currentColor' viewBox='0 0 24 24' aria-hidden='true'>
 							<path d='M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z' />
 						</svg>
+						LinkedIn
 					</a>
 				</div>
 
 				{/* Legal Links */}
-				<div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
-					<a
-						href="/privacy-policy"
-						className={`text-xs sm:text-sm underline hover:no-underline transition-colors duration-200 ${isDarkMode ? 'text-gray-200 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+				<div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mb-6 text-xs text-slate-400">
+					<a href="/privacy-policy" className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">
 						Privacy Policy
 					</a>
-					<span className={`hidden sm:inline text-gray-400`}>|</span>
-					<a
-						href="/terms-of-service"
-						className={`text-xs sm:text-sm underline hover:no-underline transition-colors duration-200 ${isDarkMode ? 'text-gray-200 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+					<span className="text-slate-600">|</span>
+					<a href="/terms-of-service" className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">
 						Terms of Service
 					</a>
-					<span className={`hidden sm:inline text-gray-400`}>|</span>
-					<a
-						href="/pricing-policy"
-						className={`text-xs sm:text-sm underline hover:no-underline transition-colors duration-200 ${isDarkMode ? 'text-gray-200 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+					<span className="text-slate-600">|</span>
+					<a href="/pricing-policy" className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">
 						Pricing Policy
 					</a>
-					<span className={`hidden sm:inline text-gray-400`}>|</span>
-					<a
-						href="/shipping-policy"
-						className={`text-xs sm:text-sm underline hover:no-underline transition-colors duration-200 ${isDarkMode ? 'text-gray-200 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+					<span className="text-slate-600">|</span>
+					<a href="/shipping-policy" className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">
 						Shipping Policy
 					</a>
-					<span className={`hidden sm:inline text-gray-400`}>|</span>
-					<a
-						href="/cancellation-refund-policy"
-						className={`text-xs sm:text-sm underline hover:no-underline transition-colors duration-200 ${isDarkMode ? 'text-gray-200 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+					<span className="text-slate-600">|</span>
+					<a href="/cancellation-refund-policy" className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">
 						Cancellation/Refund Policy
 					</a>
-					<span className={`hidden sm:inline text-gray-400`}>|</span>
-					<a
-						href="/delete-user-data"
-						className={`text-xs sm:text-sm underline hover:no-underline transition-colors duration-200 ${isDarkMode ? 'text-gray-200 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+					<span className="text-slate-600">|</span>
+					<a href="/delete-user-data" className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">
 						User Data Deletion
 					</a>
 				</div>
 
 				{/* Copyright and Slogan */}
-				<div
-					className={`flex flex-col sm:flex-row justify-between items-center text-xs sm:text-sm border-t pt-4 sm:pt-6 mt-4 sm:mt-6 ${
-						isDarkMode ? 'text-gray-300 border-gray-700' : 'text-gray-600 border-gray-200'
-					}`}
-				>
-					<p className='mb-1.5 sm:mb-0'>&copy; Nimble AI, Inc. | A subsidiary of Experted Nexus Pvt. Ltd. (In Registration)</p>
-					<p>100x your productivity while supporting customers!</p>
+				<div className="flex flex-col sm:flex-row justify-between items-center text-xs border-t border-white/5 pt-6 text-slate-500 font-mono">
+					<p className="mb-2 sm:mb-0">&copy; nimbleAI | The AI Revenue &amp; RTO Shield for Indian D2C</p>
+					<p className="text-slate-400">Protecting gross margins for Indian D2C Shopify brands</p>
 				</div>
 			</div>
 		</footer>
