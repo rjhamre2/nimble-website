@@ -16,9 +16,9 @@ import RtoCalculator from '../RtoCalculator';
 // FinOps Hero Metrics
 const STATS = [
   { value: '34% → 14%', label: 'Average RTO Rate Reduction', sub: 'Audited across 649+ Indian D2C Shopify brands' },
-  { value: '22%',       label: 'COD Converted to Prepaid',   sub: 'Non-refundable UPI revenue secured before dispatch' },
-  { value: '80%+',      label: 'Post-Purchase Queries Resolved Autonomously', sub: '1.2s median response via live courier API' },
-  { value: '₹1.4L+',   label: 'Monthly Courier Loss Recovered', sub: 'Direct freight savings flowing back to EBITDA' },
+  { value: '22%', label: 'COD Converted to Prepaid', sub: 'Non-refundable UPI revenue secured before dispatch' },
+  { value: '80%+', label: 'Post-Purchase Queries Resolved Autonomously', sub: '1.2s median response via live courier API' },
+  { value: '₹1.4L+', label: 'Monthly Courier Loss Recovered', sub: 'Direct freight savings flowing back to EBITDA' },
 ];
 
 // The 4 Solutions Data
@@ -499,30 +499,38 @@ export default function MainLanding() {
                   💰 <strong>Pays for itself</strong> by preventing just 13 RTOs/month
                 </div>
 
-                <ul className="space-y-2.5 pt-3 border-t border-gray-100 text-xs text-slate-600">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span className="font-semibold text-slate-800">14-Day Live ROI Pilot</span>
+                <ul className="space-y-2.5 pt-3 border-t border-gray-100 text-xs text-slate-600 list-none p-0 m-0" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 font-semibold">14-Day Live ROI Pilot</strong> <span className="text-trust-600 font-medium">(Founding Cohort — First 5 Stores)</span></span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>Pre-Dispatch COD Confirmation &amp; Risk Tagging</span>
+                  <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 font-semibold">Up to 1,500 monthly orders</strong> (~50 orders/day)</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>1-Tap UPI COD-to-Prepaid Converter</span>
+                  <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 font-semibold">1,500 Autonomous AI Support Resolutions / mo</strong> (WISMO &amp; Policy FAQs)</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>30-Min Abandoned Cart Recovery</span>
+                  <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 font-semibold">Up to 10,000 Broadcast Recipients / mo</strong> (Standard single-image/text templates)</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>Autonomous AI WISMO &amp; FAQ Agent</span>
+                  <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 font-semibold">Pre-Dispatch COD Confirmation &amp; Risk Tagging</strong> (Nimble-Confirmed)</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>0% Markup on Meta API Rates</span>
+                  <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 font-semibold">1-Tap UPI COD-to-Prepaid Converter</strong></span>
+                  </li>
+                  <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 font-semibold">30-Min Abandoned Cart Recovery</strong></span>
+                  </li>
+                  <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 font-semibold">0% Markup on Meta API Rates</strong> (Pay Meta actuals)</span>
                   </li>
                 </ul>
               </div>
@@ -577,28 +585,40 @@ export default function MainLanding() {
 
                 <div className="pt-3 border-t border-gray-100">
                   <p className="text-[11px] font-bold text-slate-800 mb-2.5 font-mono uppercase tracking-wide">
-                    Everything in Starter Shield, plus:
+                    EVERYTHING IN STARTER SHIELD, PLUS:
                   </p>
-                  <ul className="space-y-2.5 text-xs text-slate-700">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0 mt-0.5" />
-                      <span className="font-semibold text-slate-900">Up to 6,000 monthly orders</span>
+                  <ul className="space-y-2.5 text-xs text-slate-700 list-none p-0 m-0" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">Up to 6,000 monthly orders</strong> (50–200 orders/day)</span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0 mt-0.5" />
-                      <span>Live Courier Tracking Sync (Shiprocket/Delhivery)</span>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">6,000 Autonomous AI Support Resolutions / mo</strong></span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0 mt-0.5" />
-                      <span>Smart Segmented Catalog Broadcasts</span>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">Up to 50,000 Broadcast Recipients / mo</strong> <span className="text-emerald-700 font-semibold">(Saves ~₹11,345/mo vs. competitor markups)</span></span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0 mt-0.5" />
-                      <span>48-Hour White-Glove Concierge Setup</span>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">Multi-Product Catalog Carousel Broadcasts</strong> with 1-Tap WhatsApp Checkout</span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0 mt-0.5" />
-                      <span>Priority WhatsApp Founder Support</span>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">AI Smart Broadcast Segmentation</strong> (Auto-excludes chronic COD/RTO offenders)</span>
+                    </li>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">Live Courier Tracking Sync</strong> (Shiprocket / Delhivery integration)</span>
+                    </li>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">48-Hour White-Glove Concierge Setup</strong> &amp; Custom RAG Policy Training</span>
+                    </li>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">Priority WhatsApp Founder Support</strong> &amp; Priority Broadcast Queue (40 msgs/sec)</span>
                     </li>
                   </ul>
                 </div>
@@ -647,24 +667,32 @@ export default function MainLanding() {
 
                 <div className="pt-3 border-t border-gray-100">
                   <p className="text-[11px] font-bold text-slate-800 mb-2.5 font-mono uppercase tracking-wide">
-                    Everything in Growth Shield, plus:
+                    EVERYTHING IN GROWTH SHIELD, PLUS:
                   </p>
-                  <ul className="space-y-2.5 text-xs text-slate-600">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0 mt-0.5" />
-                      <span className="font-semibold text-slate-900">High-Throughput Broadcast Queues</span>
+                  <ul className="space-y-2.5 text-xs text-slate-600 list-none p-0 m-0" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">Up to 15,000+ monthly orders</strong> (200–500+ orders/day)</span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0 mt-0.5" />
-                      <span>Custom NDR &amp; Doorstep Exchange Flows</span>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">15,000 Autonomous AI Support Resolutions / mo</strong></span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0 mt-0.5" />
-                      <span>Custom Webhook &amp; ERP Integrations</span>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">Up to 2,00,000 Broadcast Recipients / mo</strong> on High-Throughput Queues (80+ msgs/sec)</span>
                     </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0 mt-0.5" />
-                      <span>Dedicated FinOps Account Strategist</span>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">Custom NDR &amp; Doorstep Exchange AI Flows</strong></span>
+                    </li>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">Custom Webhook, ERP &amp; WMS Integrations</strong></span>
+                    </li>
+                    <li className="flex items-center gap-2 list-none" style={{ display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none' }}>
+                      <CheckCircle2 className="w-4 h-4 text-conversion-500 shrink-0" />
+                      <span><strong className="text-slate-900 font-semibold">Dedicated FinOps Account Strategist</strong> &amp; Custom SLA</span>
                     </li>
                   </ul>
                 </div>
@@ -678,23 +706,15 @@ export default function MainLanding() {
             </div>
           </div>
 
-          {/* Transparent Meta Pricing Notice */}
-          <div className="mt-12 p-6 rounded-2xl bg-white border border-gray-200 shadow-sm max-w-4xl mx-auto">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-bold text-slate-900 uppercase font-mono tracking-wide">
-                    Zero Markup on Meta WhatsApp Rates
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Meta base conversation charges (~₹0.125/utility, ~₹0.88/marketing) are paid directly by you to Meta via official Embedded Signup or your Meta Business wallet. nimbleAI charges 0% commission on conversation volume.
-                </p>
-              </div>
-              <div className="px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-[11px] font-mono text-slate-700 whitespace-nowrap shrink-0">
-                Billed Directly by Meta · 0% Markup
-              </div>
+          {/* 0% Meta Markup & Fair-Use Trust Bar */}
+          <div className="mt-12 max-w-6xl mx-auto rounded-2xl bg-[#0B0F19] border-2 border-[#0F52BA] p-6 sm:p-7 shadow-[0_0_30px_rgba(15,82,186,0.2)] text-left relative overflow-hidden">
+            <div className="space-y-2">
+              <h4 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                <span>🛡️ 100% Transparent Meta Pass-Through Billing (0% Markup):</span>
+              </h4>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+                Unlike legacy platforms (Interakt, Wati, AiSensy) that charge an <span className="text-rose-400 font-semibold">11%–26% markup</span> on every message plus ₹2,500+/mo for AI add-ons, nimbleAI charges <strong className="text-[#00C853] font-bold">0% markup</strong>. You connect your own payment card directly to Meta via our 3-click Embedded Signup (or pre-load a Razorpay wallet) and pay Meta's exact India wholesale rates (<span className="text-[#00C853] font-mono font-semibold">₹0.8631</span> / marketing message and <span className="text-[#00C853] font-mono font-semibold">₹0.1150</span> / utility message). Need more broadcast volume on Growth Shield? Add <span className="text-[#00C853] font-mono font-bold">+₹500</span> per extra 25,000 recipients anytime.
+              </p>
             </div>
           </div>
         </div>
@@ -723,7 +743,7 @@ export default function MainLanding() {
                   </span>
                 </div>
                 <h4 className="text-base font-bold text-slate-900 leading-snug">
-                  ₹2,499 Order Lost to "Sorry, I Didn't Understand"
+                  2,499 Orders Lost to "Sorry, I Didn't Understand"
                 </h4>
                 <div className="bg-rose-50/70 border border-rose-200 rounded-xl p-3 text-xs text-rose-900 space-y-1.5 font-mono">
                   <p className="text-[11px] text-slate-600 font-sans">
