@@ -8,6 +8,7 @@ import Sidebar from './Sidebar';
 import RecentChats from './RecentChats';
 import IntegrationsPage from './IntegrationsPage';
 import KnowledgeBase from './KnowledgeBase';
+import AiAgentCommandCenter from './AiAgentCommandCenter';
 import PlanBilling from './PlanBilling';
 import Settings from './Settings';
 import OnboardingBanner from './OnboardingBanner';
@@ -2854,6 +2855,8 @@ const Dashboard = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
 
   const renderMainContent = () => {
     switch (activeTab) {
+      case 'ai-agent':
+        return <AiAgentCommandCenter user={user} userData={userData} />;
       case 'broadcast':
         return <Broadcast user={user} userData={userData} loading={loading} />;
       case 'media-library':
@@ -7433,14 +7436,14 @@ const Dashboard = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               inboxUnreadCount={inboxUnreadCount}
             />
             {/* Main Content */}
-            <div className={`flex-1 flex flex-col min-h-0 scrollbar-thin ${activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' ? 'p-0 overflow-hidden' : 'overflow-y-auto bg-slate-50'}`}>
+            <div className={`flex-1 flex flex-col min-h-0 scrollbar-thin ${activeTab === 'team-inbox' || activeTab === 'broadcast' || activeTab === 'channels' || activeTab === 'ai-agent' ? 'p-0 overflow-hidden' : 'overflow-y-auto bg-slate-50'}`}>
               {/* Persistent LiveChat: never unmounted so background video uploads, active chat states, and socket connections are preserved */}
               <div className={`flex-col flex-1 min-h-0 w-full h-full ${activeTab === 'team-inbox' ? 'flex' : 'hidden'}`}>
                 <LiveChat onTotalUnreadChange={setInboxUnreadCount} />
               </div>
 
               {activeTab !== 'team-inbox' && (
-                <div className={`flex flex-col flex-1 min-h-0 ${activeTab === 'broadcast' || activeTab === 'channels' ? 'w-full h-full' : 'w-full'}`}>
+                <div className={`flex flex-col flex-1 min-h-0 ${activeTab === 'broadcast' || activeTab === 'channels' || activeTab === 'ai-agent' ? 'w-full h-full' : 'w-full'}`}>
                   {renderMainContent()}
                 </div>
               )}

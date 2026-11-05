@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiConfig } from '../../../../config/api'; 
 import AudienceBuilder from './AudienceBuilder';
 import BroadcastAnalytics from './BroadcastAnalytics';
-import { extractVariablesFromTemplate, TemplateEditor, TemplateLibrary, UserTemplatesList } from './Templates';
+import { extractVariablesFromTemplate, TemplateEditor, TemplateLibrary, UserTemplatesList, SpecialTemplates } from './Templates';
 
 // ─── Timezone Definitions ───────────────────────────────────────────────────
 const TIMEZONE_OPTIONS = [
@@ -555,8 +555,9 @@ useEffect(() => {
         <div className="bg-white border-b border-slate-100 flex-shrink-0 px-4 sm:px-6">
           <div className="flex items-center gap-1">
             {[
-              { key: 'your-templates',  label: 'Your Templates' },
+              { key: 'your-templates',   label: 'Your Templates' },
               { key: 'template-library', label: 'Template Library' },
+              { key: 'special-templates', label: 'Special Templates' },
             ].map(sub => (
               <button
                 key={sub.key}
@@ -604,6 +605,10 @@ useEffect(() => {
               <TemplateLibrary onSelectTemplate={(template) => setSelectedTemplate(template)} />
             )}
 
+            {!selectedTemplate && templateSubView === 'special-templates' && (
+              <SpecialTemplates onSelectTemplate={(template) => setSelectedTemplate(template)} />
+            )}
+
             {!selectedTemplate && templateSubView === 'your-templates' && (
               <UserTemplatesList
                 user={user}
@@ -617,7 +622,7 @@ useEffect(() => {
 
             {!selectedTemplate && !templateSubView && (
               <div className="card p-8 text-center">
-                <p className="text-sm text-slate-500">Select "Template library" or "Your templates" from the tab above to get started.</p>
+                <p className="text-sm text-slate-500">Select "Your templates", "Template library" or "Special templates" from the tab above to get started.</p>
               </div>
             )}
           </div>

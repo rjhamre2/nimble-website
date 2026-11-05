@@ -8,10 +8,12 @@ import {
   IdentificationIcon,
   ExclamationTriangleIcon,
   PhotoIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 const menuItems = [
   { id: 'dashboard',        name: 'Dashboard',       icon: ChartPieIcon },
+  { id: 'ai-agent',         name: 'AI Support Agent',icon: SparklesIcon, isNew: true },
   { id: 'setup',            name: 'Setup',            icon: ClipboardDocumentCheckIcon },
   { id: 'team-inbox',       name: 'Inbox',            icon: InboxIcon },
   { id: 'broadcast',        name: 'Broadcast',        icon: MegaphoneIcon },
@@ -107,7 +109,12 @@ const Sidebar = ({
                     {inboxUnreadCount > 99 ? '99+' : inboxUnreadCount}
                   </span>
                 )}
-                {item.id !== 'team-inbox' && active && (
+                {item.isNew && (
+                  <span className="ml-auto bg-gradient-to-r from-blue-600 to-[#00C853] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider flex items-center justify-center flex-shrink-0 shadow-sm animate-pulse">
+                    AI
+                  </span>
+                )}
+                {item.id !== 'team-inbox' && !item.isNew && active && (
                   <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#25D366] flex-shrink-0" />
                 )}
                 {warn && !active && (

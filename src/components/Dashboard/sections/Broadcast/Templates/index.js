@@ -4,3 +4,4 @@ export { TemplateLibrary } from './templateLibrary';
 export { UserTemplatesList } from './userTemplatesList';
 export { WhatsAppPhonePreview } from './WhatsAppPhonePreview';
 export { MediaLibraryModal } from './MediaLibraryModal';
+export { SpecialTemplates } from './SpecialTemplates';

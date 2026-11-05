@@ -10,6 +10,7 @@ import {
   formatMessageTime,
   formatDateSeparator,
 } from "../services/chatService";
+import { toggleChatAgent } from "../services/aiAgentService";
 import {
   ReplyButtonsBuilder, MediaBuilder, LocationBuilder, RequestLocationBuilder,
   ContactBuilder, RequestAddressBuilder, InteractiveListBuilder,
@@ -303,14 +304,26 @@ const LiveChat = ({ isDarkMode, onTotalUnreadChange }) => {
       );
     };
 
+    const handleAgentToggled = (data) => {
+      if (data?.customerPhone) {
+        setConversations(prev => prev.map(c =>
+          isPhoneMatch(c.sender_number, data.customerPhone)
+            ? { ...c, agent_on: data.agent_on, ai_status: data.status }
+            : c
+        ));
+      }
+    };
+
     websocketService.onMessage("new_message", handleNew);
     websocketService.onMessage("message_updated", handleUpdate);
     websocketService.onMessage("message_update", handleUpdate);
+    websocketService.onMessage("conversation.agent_toggled", handleAgentToggled);
 
     return () => {
       websocketService.offMessage("new_message", handleNew);
       websocketService.offMessage("message_updated", handleUpdate);
       websocketService.offMessage("message_update", handleUpdate);
+      websocketService.offMessage("conversation.agent_toggled", handleAgentToggled);
     };
   }, [getUserId, loadInboxSummary, loadMessages]);
 
@@ -329,6 +342,31 @@ const LiveChat = ({ isDarkMode, onTotalUnreadChange }) => {
       });
     });
   }, [selectedSenderNumber, getUserId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const currentChatObj = useMemo(() => {
+    if (!selectedSenderNumber) return null;
+    return conversations.find(c => isPhoneMatch(c.sender_number, selectedSenderNumber)) || null;
+  }, [conversations, selectedSenderNumber]);
+
+  const isCurrentChatAgentOn = currentChatObj ? (currentChatObj.agent_on !== false && currentChatObj.ai_status !== 'HUMAN_TAKEOVER') : true;
+
+  const handleToggleChatAgent = async () => {
+    if (!selectedSenderNumber) return;
+    const nextOn = !isCurrentChatAgentOn;
+
+    // Optimistically update conversation
+    setConversations(prev => prev.map(c =>
+      isPhoneMatch(c.sender_number, selectedSenderNumber)
+        ? { ...c, agent_on: nextOn, ai_status: nextOn ? 'ACTIVE' : 'HUMAN_TAKEOVER' }
+        : c
+    ));
+
+    try {
+      await toggleChatAgent(selectedSenderNumber, nextOn);
+    } catch (err) {
+      console.error('Failed to toggle chat agent:', err);
+    }
+  };
 
   const scrollToBottom = (smooth = true) => {
     setTimeout(() => {
@@ -1234,9 +1272,20 @@ const LiveChat = ({ isDarkMode, onTotalUnreadChange }) => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-0.5">
-                    <h3 className={`font-semibold text-[15px] truncate ${isDarkMode ? "text-gray-100" : "text-slate-900"}`}>
-                      {chat.display_name}
-                    </h3>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <h3 className={`font-semibold text-[15px] truncate ${isDarkMode ? "text-gray-100" : "text-slate-900"}`}>
+                        {chat.display_name}
+                      </h3>
+                      {chat.agent_on !== false && chat.ai_status !== 'HUMAN_TAKEOVER' ? (
+                        <span className="px-1.5 py-0.2 text-[9px] font-bold rounded bg-emerald-100 text-emerald-800 shrink-0 ring-1 ring-emerald-200">
+                          AI
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.2 text-[9px] font-bold rounded bg-slate-200 text-slate-700 shrink-0">
+                          Human
+                        </span>
+                      )}
+                    </div>
                     <span className={`text-[11px] whitespace-nowrap ml-2 ${unread ? "text-[#25D366] font-semibold" : isDarkMode ? "text-slate-500" : "text-slate-400"}`}>
                       {formatConversationTime(chat.sent_at || chat.time_stamp)}
                     </span>
@@ -1282,8 +1331,51 @@ const LiveChat = ({ isDarkMode, onTotalUnreadChange }) => {
                 {(selectedName || "?")[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className={`font-bold text-base truncate ${isDarkMode ? "text-white" : "text-slate-900"}`}>{selectedName}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className={`font-bold text-base truncate ${isDarkMode ? "text-white" : "text-slate-900"}`}>{selectedName}</h3>
+                  {isCurrentChatAgentOn ? (
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300">
+                      🤖 AI Active
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-200 text-slate-700">
+                      👤 Human Only
+                    </span>
+                  )}
+                </div>
                 <p className={`text-xs truncate ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>{selectedSenderNumber}</p>
+              </div>
+
+              {/* Chat Switch: Toggle AI Agent */}
+              <div className="shrink-0 flex items-center gap-2">
+                <button
+                  onClick={handleToggleChatAgent}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all shadow-xs cursor-pointer select-none ${
+                    isCurrentChatAgentOn
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900 hover:bg-emerald-100/90 ring-1 ring-emerald-200'
+                      : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200/80 ring-1 ring-slate-200'
+                  }`}
+                  title={
+                    isCurrentChatAgentOn
+                      ? 'AI Agent is ON for this chat. Incoming messages will be automatically answered by AI.'
+                      : 'AI Agent is OFF for this chat. Only human agents will reply.'
+                  }
+                >
+                  <div
+                    className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors duration-200 ${
+                      isCurrentChatAgentOn ? 'bg-[#25D366]' : 'bg-slate-400'
+                    }`}
+                  >
+                    <div
+                      className={`bg-white w-2.5 h-2.5 rounded-full shadow transform transition-transform duration-200 ${
+                        isCurrentChatAgentOn ? 'translate-x-2.5' : 'translate-x-0'
+                      }`}
+                    />
+                  </div>
+                  <span className="font-bold text-[11px]">
+                    {isCurrentChatAgentOn ? '🤖 AI ON' : '⚪ AI OFF'}
+                  </span>
+                </button>
               </div>
             </div>
 
