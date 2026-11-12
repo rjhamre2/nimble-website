@@ -374,18 +374,27 @@ export const sendManualMessage = async (conversationId, message, customerPhone) 
  */
 export const resumeAiAutomation = async (conversationId, customerPhone, status = 'AI_ACTIVE') => {
   const tenantId = getTenantId();
+  const payload = {
+    status,
+    customer_phone: customerPhone,
+    tenant_id: tenantId
+  };
   try {
-    const res = await axios.patch(`${API_BASE}/conversations/${conversationId}/status`, {
-      status,
-      customer_phone: customerPhone,
-      tenant_id: tenantId
-    }, {
+    const res = await axios.patch(`${API_BASE}/conversations/${conversationId}/status`, payload, {
       headers: getAuthHeaders()
     });
     return res.data;
   } catch (err) {
-    console.warn('[aiAgentService] resumeAiAutomation error', err.message);
-    return { success: true, status: 'AI_ACTIVE' };
+    console.warn('[aiAgentService] resumeAiAutomation PATCH error, trying POST fallback...', err.message);
+    try {
+      const resPost = await axios.post(`${API_BASE}/conversations/${conversationId}/status`, payload, {
+        headers: getAuthHeaders()
+      });
+      return resPost.data;
+    } catch (postErr) {
+      console.warn('[aiAgentService] resumeAiAutomation fallback failed', postErr.message);
+      return { success: true, status: 'AI_ACTIVE' };
+    }
   }
 };
 
@@ -422,24 +431,22 @@ export const fetchGlobalAgentSettings = async () => {
  */
 export const updateGlobalAgentSettings = async (agentOn) => {
   const tenantId = getTenantId();
+  const payload = {
+    tenant_id: tenantId,
+    agent_on: Boolean(agentOn)
+  };
   try {
-    const res = await axios.patch(`${API_BASE}/settings`, {
-      tenant_id: tenantId,
-      agent_on: Boolean(agentOn)
-    }, {
+    const res = await axios.patch(`${API_BASE}/settings`, payload, {
       headers: getAuthHeaders()
     });
     return res.data?.data || res.data;
   } catch (err) {
-    console.warn('[aiAgentService] updateGlobalAgentSettings error, trying fallback...', err.message);
+    console.warn('[aiAgentService] updateGlobalAgentSettings PATCH error, trying POST fallback...', err.message);
     try {
-      const fallbackRes = await axios.patch(`${FALLBACK_API_BASE}/settings`, {
-        tenant_id: tenantId,
-        agent_on: Boolean(agentOn)
-      }, {
+      const postRes = await axios.post(`${API_BASE}/settings`, payload, {
         headers: getAuthHeaders()
       });
-      return fallbackRes.data?.data || fallbackRes.data;
+      return postRes.data?.data || postRes.data;
     } catch (e) {
       return { agent_on: Boolean(agentOn) };
     }
@@ -454,29 +461,26 @@ export const updateGlobalAgentSettings = async (agentOn) => {
  */
 export const toggleChatAgent = async (customerPhone, agentOn, conversationId = null) => {
   const tenantId = getTenantId();
+  const payload = {
+    tenant_id: tenantId,
+    customer_phone: customerPhone,
+    conversation_id: conversationId,
+    agent_on: Boolean(agentOn)
+  };
   try {
-    const res = await axios.patch(`${API_BASE}/chat-toggle`, {
-      tenant_id: tenantId,
-      customer_phone: customerPhone,
-      conversation_id: conversationId,
-      agent_on: Boolean(agentOn)
-    }, {
+    const res = await axios.patch(`${API_BASE}/chat-toggle`, payload, {
       headers: getAuthHeaders()
     });
     return res.data?.data || res.data;
   } catch (err) {
-    console.warn('[aiAgentService] toggleChatAgent error, trying fallback...', err.message);
+    console.warn('[aiAgentService] toggleChatAgent PATCH error, trying POST fallback...', err.message);
     try {
-      const fallbackRes = await axios.patch(`${FALLBACK_API_BASE}/chat-toggle`, {
-        tenant_id: tenantId,
-        customer_phone: customerPhone,
-        conversation_id: conversationId,
-        agent_on: Boolean(agentOn)
-      }, {
+      const postRes = await axios.post(`${API_BASE}/chat-toggle`, payload, {
         headers: getAuthHeaders()
       });
-      return fallbackRes.data?.data || fallbackRes.data;
+      return postRes.data?.data || postRes.data;
     } catch (e) {
+      console.warn('[aiAgentService] toggleChatAgent failed on POST fallback too', e.message);
       return { customer_phone: customerPhone, agent_on: Boolean(agentOn) };
     }
   }

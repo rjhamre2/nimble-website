@@ -46,7 +46,8 @@ const FALLBACK_SPECIAL_TEMPLATES = [
             {
               type: "URL",
               text: "Take me to My Cart",
-              url: "https://yourstore.com/cart"
+              url: "https://yourstore.com/{{1}}",
+              example: ["cart"]
             }
           ]
         }
@@ -63,7 +64,7 @@ const FALLBACK_SPECIAL_TEMPLATES = [
     tags: ["COD Confirmation", "E-commerce"],
     object: {
       name: "cod_address_confirmation",
-      category: "UTILITY",
+      category: "MARKETING",
       language: "en_US",
       parameter_format: "named",
       components: [
@@ -82,9 +83,9 @@ const FALLBACK_SPECIAL_TEMPLATES = [
         {
           type: "BUTTONS",
           buttons: [
-            { type: "QUICK_REPLY", text: "Confirm COD" },
-            { type: "QUICK_REPLY", text: "Pay Online & Save {{discount_percent}}%" },
-            { type: "QUICK_REPLY", text: "Reject Order" }
+            { type: "URL", text: "Pay now and get 10% off", url: "https://yourstore.com/pay" },
+            { type: "QUICK_REPLY", text: "Confirm COD on Address" },
+            { type: "QUICK_REPLY", text: "Reject order" }
           ]
         }
       ]
@@ -93,8 +94,8 @@ const FALLBACK_SPECIAL_TEMPLATES = [
   {
     id: "special_cod_to_prepaid",
     name: "cod_to_prepaid",
-    displayName: "COD to Prepaid Converter",
-    description: "Incentivize Cash on Delivery buyers to switch to online prepaid payment with an exclusive time-sensitive discount.",
+    displayName: "COD Verification (Returning Customers)",
+    description: "Incentivize verified Cash on Delivery buyers to switch to online prepaid payment with an instant 10% discount.",
     template_type: "custom",
     industry: "ecommerce",
     tags: ["COD2Prepaid", "E-commerce"],
@@ -106,21 +107,20 @@ const FALLBACK_SPECIAL_TEMPLATES = [
       components: [
         {
           type: "BODY",
-          text: "Hey {{customer_name}}! 👋\n\nYour Cash on Delivery order {{order_id}} of {{currency}} {{order_value}} has been confirmed! 📦\n\n✨ *Exclusive Prepaid Offer:*\nPay online right now and get an instant *{{discount_percent}}% discount* on your order!\n\nEnjoy zero contact delivery, fast dispatch, and instant savings. ⚡\n\nTap below to pay securely and claim your discount! 👇",
+          text: "Hey {{customer_name}}! 👋\n\nYour Cash on Delivery order {{order_id}} of {{currency}} {{order_value}} has been confirmed! 📦\n\n✨ *Exclusive Prepaid Offer:*\nPay online right now and get an instant *10% discount* on your order!\n\nEnjoy zero contact delivery, fast dispatch, and instant savings. ⚡\n\nTap below to pay securely and claim your discount! 👇",
           example: {
             body_text_named_params: [
               { param_name: "customer_name", example: "Rahul" },
               { param_name: "order_id", example: "#1024" },
               { param_name: "currency", example: "INR" },
-              { param_name: "order_value", example: "1,999" },
-              { param_name: "discount_percent", example: "10" }
+              { param_name: "order_value", example: "1,999" }
             ]
           }
         },
         {
           type: "BUTTONS",
           buttons: [
-            { type: "QUICK_REPLY", text: "Pay Online & Save {{discount_percent}}%" }
+            { type: "URL", text: "Pay now and get 10% off", url: "https://yourstore.com/pay" }
           ]
         }
       ]
@@ -181,7 +181,13 @@ export const SpecialTemplates = ({ onSelectTemplate }) => {
         setIsLoading(true);
         const dbServerUrl = apiConfig?.dbServerConfig?.baseURL;
         if (dbServerUrl) {
-          const res = await fetch(`${dbServerUrl}/api/templates/special`);
+          const token = localStorage.getItem('authToken');
+        const res = await fetch(`${dbServerUrl}/api/templates/special`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        });
           if (res.ok) {
             const data = await res.json();
             const fetched = data.data || data || [];

@@ -52,6 +52,41 @@
     overflow-x: hidden;
   }
 
+  /* Form controls: ensure crisp, highly visible dark text on white/light backgrounds across all browsers */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+  select,
+  textarea {
+    color: #0f172a;
+    color-scheme: light;
+  }
+
+  /* Ensure select options and groups have solid white background and dark text */
+  select option {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+
+  select optgroup {
+    background-color: #ffffff;
+    color: #475569;
+    font-weight: 600;
+  }
+
+  /* Legible placeholders */
+  input::placeholder,
+  textarea::placeholder {
+    color: #94a3b8;
+    opacity: 1;
+  }
+
+  /* Disabled state: still readable */
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    color: #64748b;
+    -webkit-text-fill-color: #64748b;
+  }
+
   *:focus-visible {
     outline: 2px solid var(--trust-blue-light);
     outline-offset: 2px;
@@ -206,6 +241,17 @@
 
   .eyebrow-conversion {
     @apply text-xs font-bold tracking-[0.18em] uppercase text-conversion-600;
+  }
+
+  /* Standard input & select field class used throughout Dashboard / Broadcast */
+  .input {
+    @apply w-full px-4 py-2.5 rounded-xl
+           border border-slate-200 bg-white
+           text-sm text-slate-900 placeholder-slate-400
+           focus:outline-none focus:ring-2 focus:ring-trust-500/50 focus:border-trust-500
+           transition-colors duration-150;
+    color: #0f172a;
+    color-scheme: light;
   }
 }
 
